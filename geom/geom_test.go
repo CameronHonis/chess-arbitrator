@@ -12,10 +12,13 @@ var _ = Describe("Geom", func() {
 			It("should add alike dimensions", func() {
 				vecA := geom.Vector2d{1.23, 4.555}
 				vecB := geom.Vector2d{1.337, 3.1415}
-				vecC := vecA
 				vecC := geom.AddVector2ds(vecA, vecB)
 				Expect(vecC.X).To(Equal(2.567))
 				Expect(vecC.Y).To(Equal(7.6965))
+
+				vecD := vecA.Add(vecB)
+				Expect(vecD.X).To(Equal(2.567))
+				Expect(vecD.Y).To(Equal(7.6965))
 			})
 		})
 	})

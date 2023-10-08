@@ -1,0 +1,12 @@
+package chess
+
+type BoardStatus uint8
+
+const (
+	DRAW_BY_INSUFFICIENT_MATERIAL BoardStatus = iota
+	DRAW_BY_STALEMENT
+	DRAW_BY_FIFTY_MOVE_RULE
+	WHITE_WINS
+	BLACK_WINS
+	IN_PROGRESS
+)
