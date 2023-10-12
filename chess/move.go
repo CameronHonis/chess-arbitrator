@@ -1,5 +1,7 @@
 package chess
 
+import "sort"
+
 type Move struct {
 	Piece               Piece
 	StartSquare         *Square
@@ -9,7 +11,19 @@ type Move struct {
 	PawnUpgradedTo      Piece
 }
 
+func (move *Move) SortKingCheckingSquares() {
+	sort.Slice(move.KingCheckingSquares, func(i, j int) bool {
+		squareA := move.KingCheckingSquares[i]
+		squareB := move.KingCheckingSquares[j]
+		return squareA.Rank*8+squareA.File < squareB.Rank*8+squareB.File
+	})
+}
+
 func (move *Move) EqualTo(otherMove *Move) bool {
+	if len(move.KingCheckingSquares) != len(otherMove.KingCheckingSquares) {
+		return false
+	}
+	move.SortKingCheckingSquares()
 	for squareIdx, square := range move.KingCheckingSquares {
 		otherSquare := otherMove.KingCheckingSquares[squareIdx]
 		if !square.EqualTo(otherSquare) {

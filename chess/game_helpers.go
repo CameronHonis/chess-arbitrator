@@ -5,25 +5,25 @@ import "fmt"
 func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 	checkingSquares := make([]*Square, 0)
 	kingSquare := board.GetKingSquare(isWhiteKing)
-	knightCheckSquares := []Square{
-		Square{kingSquare.Rank + 2, kingSquare.File + 1},
-		Square{kingSquare.Rank + 2, kingSquare.File - 1},
-		Square{kingSquare.Rank + 1, kingSquare.File + 2},
-		Square{kingSquare.Rank + 1, kingSquare.File - 2},
-		Square{kingSquare.Rank - 1, kingSquare.File + 2},
-		Square{kingSquare.Rank - 1, kingSquare.File - 2},
-		Square{kingSquare.Rank - 2, kingSquare.File + 1},
-		Square{kingSquare.Rank - 2, kingSquare.File - 1},
+	knightCheckSquares := []*Square{
+		{kingSquare.Rank + 2, kingSquare.File + 1},
+		{kingSquare.Rank + 2, kingSquare.File - 1},
+		{kingSquare.Rank + 1, kingSquare.File + 2},
+		{kingSquare.Rank + 1, kingSquare.File - 2},
+		{kingSquare.Rank - 1, kingSquare.File + 2},
+		{kingSquare.Rank - 1, kingSquare.File - 2},
+		{kingSquare.Rank - 2, kingSquare.File + 1},
+		{kingSquare.Rank - 2, kingSquare.File - 1},
 	}
 	for _, knightCheckSquare := range knightCheckSquares {
 		if !knightCheckSquare.IsValidBoardSquare() {
 			continue
 		}
-		piece := board.GetPieceOnSquare(&knightCheckSquare)
+		piece := board.GetPieceOnSquare(knightCheckSquare)
 		if isWhiteKing && piece == BLACK_KNIGHT {
-			checkingSquares = append(checkingSquares, &knightCheckSquare)
+			checkingSquares = append(checkingSquares, knightCheckSquare)
 		} else if !isWhiteKing && piece == WHITE_KNIGHT {
-			checkingSquares = append(checkingSquares, &knightCheckSquare)
+			checkingSquares = append(checkingSquares, knightCheckSquare)
 		}
 	}
 	var pawnCheckSquares []Square
@@ -102,7 +102,7 @@ func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 func filterMovesByKingSafety(board *Board, moves *[]*Move) *[]*Move {
 	filteredMoves := make([]*Move, 0, len(*moves))
 	for _, move := range *moves {
-		tempBoard := board.CopyWithPieces()
+		tempBoard := board.CopyPieces()
 		UpdateBoardPiecesFromMove(tempBoard, move)
 		checkingSquares := GetCheckingSquares(tempBoard, board.IsWhiteTurn)
 		if len(*checkingSquares) == 0 {
@@ -114,7 +114,9 @@ func filterMovesByKingSafety(board *Board, moves *[]*Move) *[]*Move {
 
 func addKingChecksToMoves(board *Board, moves *[]*Move) {
 	for _, move := range *moves {
-		move.KingCheckingSquares = *GetCheckingSquares(board, !board.IsWhiteTurn)
+		tempBoard := board.CopyPieces()
+		UpdateBoardPiecesFromMove(tempBoard, move)
+		move.KingCheckingSquares = *GetCheckingSquares(tempBoard, !board.IsWhiteTurn)
 	}
 }
 func GetLegalMovesForPawn(board *Board, square *Square) (*[]*Move, error) {
@@ -210,6 +212,144 @@ func GetLegalMovesForPawn(board *Board, square *Square) (*[]*Move, error) {
 	pawnMoves = *filterMovesByKingSafety(board, &pawnMoves)
 	addKingChecksToMoves(board, &pawnMoves)
 	return &pawnMoves, nil
+}
+
+func GetLegalMovesForKnight(board *Board, square *Square) (*[]*Move, error) {
+	knightMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	if board.IsWhiteTurn && piece != WHITE_KNIGHT {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected WHITE_KNIGHT", piece)
+	} else if !board.IsWhiteTurn && piece != BLACK_KNIGHT {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected BLACK_KNIGHT", piece)
+	}
+	landSquares := []*Square{
+		{square.Rank + 2, square.File - 1},
+		{square.Rank + 2, square.File + 1},
+		{square.Rank + 1, square.File - 2},
+		{square.Rank + 1, square.File + 2},
+		{square.Rank - 1, square.File - 2},
+		{square.Rank - 1, square.File + 2},
+		{square.Rank - 2, square.File - 1},
+		{square.Rank - 2, square.File + 1},
+	}
+	for _, landSquare := range landSquares {
+		if !landSquare.IsValidBoardSquare() {
+			continue
+		}
+		landPiece := board.GetPieceOnSquare(landSquare)
+		if landPiece == EMPTY {
+			move := Move{piece, square, landSquare, EMPTY, make([]*Square, 0), EMPTY}
+			knightMoves = append(knightMoves, &move)
+		} else if landPiece.IsWhite() != board.IsWhiteTurn {
+			move := Move{piece, square, landSquare, landPiece, make([]*Square, 0), EMPTY}
+			knightMoves = append(knightMoves, &move)
+		}
+	}
+	knightMoves = *filterMovesByKingSafety(board, &knightMoves)
+	addKingChecksToMoves(board, &knightMoves)
+	return &knightMoves, nil
+}
+
+func GetLegalMovesForBishop(board *Board, square *Square) (*[]*Move, error) {
+	bishopMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	if board.IsWhiteTurn && piece != WHITE_BISHOP {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected WHITE_BISHOP", piece)
+	} else if !board.IsWhiteTurn && piece != BLACK_BISHOP {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected BLACK_BISHOP", piece)
+	}
+	for _, dir := range [4][2]int{{1, 1}, {-1, 1}, {1, -1}, {-1, -1}} {
+		dis := 0
+		for {
+			dis++
+			landSquare := Square{square.Rank + uint8(dis*dir[0]), square.File + uint8(dis*dir[1])}
+			if !landSquare.IsValidBoardSquare() {
+				break
+			}
+			landPiece := board.GetPieceOnSquare(&landSquare)
+			if landPiece == EMPTY {
+				move := Move{piece, square, &landSquare, EMPTY, make([]*Square, 0), EMPTY}
+				bishopMoves = append(bishopMoves, &move)
+			} else {
+				if piece.IsWhite() != landPiece.IsWhite() {
+					move := Move{piece, square, &landSquare, landPiece, make([]*Square, 0), EMPTY}
+					bishopMoves = append(bishopMoves, &move)
+				}
+				break
+			}
+		}
+	}
+	bishopMoves = *filterMovesByKingSafety(board, &bishopMoves)
+	addKingChecksToMoves(board, &bishopMoves)
+	return &bishopMoves, nil
+}
+
+func GetLegalMovesForRook(board *Board, square *Square) (*[]*Move, error) {
+	rookMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	if board.IsWhiteTurn && piece != WHITE_ROOK {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected WHITE_ROOK", piece)
+	} else if !board.IsWhiteTurn && piece != BLACK_ROOK {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected BLACK_ROOK", piece)
+	}
+	for _, dir := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		dis := 0
+		for {
+			dis++
+			landSquare := Square{square.Rank + uint8(dis*dir[0]), square.File + uint8(dis*dir[1])}
+			if !landSquare.IsValidBoardSquare() {
+				break
+			}
+			landPiece := board.GetPieceOnSquare(&landSquare)
+			if landPiece == EMPTY {
+				move := Move{piece, square, &landSquare, EMPTY, make([]*Square, 0), EMPTY}
+				rookMoves = append(rookMoves, &move)
+			} else {
+				if piece.IsWhite() != landPiece.IsWhite() {
+					move := Move{piece, square, &landSquare, landPiece, make([]*Square, 0), EMPTY}
+					rookMoves = append(rookMoves, &move)
+				}
+				break
+			}
+		}
+	}
+	rookMoves = *filterMovesByKingSafety(board, &rookMoves)
+	addKingChecksToMoves(board, &rookMoves)
+	return &rookMoves, nil
+}
+
+func GetLegalMovesForQueen(board *Board, square *Square) (*[]*Move, error) {
+	queenMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	if board.IsWhiteTurn && piece != WHITE_QUEEN {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected WHITE_ROOK", piece)
+	} else if !board.IsWhiteTurn && piece != BLACK_QUEEN {
+		return nil, fmt.Errorf("square contains unexpected piece %s, expected BLACK_ROOK", piece)
+	}
+	for _, dir := range [8][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}} {
+		dis := 0
+		for {
+			dis++
+			landSquare := Square{square.Rank + uint8(dis*dir[0]), square.File + uint8(dis*dir[1])}
+			if !landSquare.IsValidBoardSquare() {
+				break
+			}
+			landPiece := board.GetPieceOnSquare(&landSquare)
+			if landPiece == EMPTY {
+				move := Move{piece, square, &landSquare, EMPTY, make([]*Square, 0), EMPTY}
+				queenMoves = append(queenMoves, &move)
+			} else {
+				if piece.IsWhite() != landPiece.IsWhite() {
+					move := Move{piece, square, &landSquare, landPiece, make([]*Square, 0), EMPTY}
+					queenMoves = append(queenMoves, &move)
+				}
+				break
+			}
+		}
+	}
+	queenMoves = *filterMovesByKingSafety(board, &queenMoves)
+	addKingChecksToMoves(board, &queenMoves)
+	return &queenMoves, nil
 }
 
 func UpdateBoardFromMove(startBoard *Board, move *Move) {

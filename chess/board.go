@@ -304,7 +304,7 @@ func (board *Board) GetKingSquare(isWhiteKing bool) *Square {
 
 func (board *Board) Copy() *Board {
 	// copies all fields EXCEPT memoizers
-	newBoard := board.CopyWithPieces()
+	newBoard := board.CopyPieces()
 	newBoard.IsWhiteTurn = board.IsWhiteTurn
 	newBoard.CanWhiteCastleKingside = board.CanWhiteCastleKingside
 	newBoard.CanWhiteCastleQueenside = board.CanWhiteCastleQueenside
@@ -318,7 +318,7 @@ func (board *Board) Copy() *Board {
 	return newBoard
 }
 
-func (board *Board) CopyWithPieces() *Board {
+func (board *Board) CopyPieces() *Board {
 	var piecesCpy [8][8]Piece
 	for r, rowPieces := range *board.Pieces {
 		for c, piece := range rowPieces {
