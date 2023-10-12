@@ -16,7 +16,7 @@ func (bb *BoardBuilder) WithPieces(pieces *[8][8]Piece) *BoardBuilder {
 }
 
 func (bb *BoardBuilder) WithEnPassantSquare(enPassantSquare *Square) *BoardBuilder {
-	bb.board.EnPassantSquare = enPassantSquare
+	bb.board.OptEnPassantSquare = enPassantSquare
 	return bb
 }
 

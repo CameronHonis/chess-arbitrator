@@ -9,7 +9,7 @@ import (
 
 type Board struct {
 	Pieces                  *[8][8]Piece
-	EnPassantSquare         *Square
+	OptEnPassantSquare      *Square
 	IsWhiteTurn             bool
 	CanWhiteCastleQueenside bool
 	CanWhiteCastleKingside  bool
@@ -300,4 +300,32 @@ func (board *Board) GetKingSquare(isWhiteKing bool) *Square {
 	} else {
 		return board.optBlackKingSquare
 	}
+}
+
+func (board *Board) Copy() *Board {
+	// copies all fields EXCEPT memoizers
+	newBoard := board.CopyWithPieces()
+	newBoard.IsWhiteTurn = board.IsWhiteTurn
+	newBoard.CanWhiteCastleKingside = board.CanWhiteCastleKingside
+	newBoard.CanWhiteCastleQueenside = board.CanWhiteCastleQueenside
+	newBoard.CanBlackCastleKingside = board.CanBlackCastleKingside
+	newBoard.CanBlackCastleQueenside = board.CanBlackCastleQueenside
+	newBoard.HalfMoveClockCount = board.HalfMoveClockCount
+	newBoard.FullMoveCount = board.FullMoveCount
+	if board.OptEnPassantSquare != nil {
+		newBoard.OptEnPassantSquare = board.OptEnPassantSquare.Copy()
+	}
+	return newBoard
+}
+
+func (board *Board) CopyWithPieces() *Board {
+	var piecesCpy [8][8]Piece
+	for r, rowPieces := range *board.Pieces {
+		for c, piece := range rowPieces {
+			piecesCpy[r][c] = piece
+		}
+	}
+	newBoard := Board{}
+	newBoard.Pieces = &piecesCpy
+	return &newBoard
 }

@@ -17,3 +17,19 @@ const (
 	BLACK_QUEEN
 	BLACK_KING
 )
+
+func (p Piece) String() string {
+	return []string{"EMPTY", "WHITE_PAWN", "WHITE_KNIGHT", "WHITE_BISHOP", "WHITE_ROOK",
+		"WHITE_QUEEN", "WHITE_KING", "BLACK_PAWN", "BLACK_KNIGHT", "BLACK_BISHOP",
+		"BLACK_ROOK", "BLACK_QUEEN", "BLACK_KING",
+	}[p]
+}
+
+func (p Piece) IsWhite() bool {
+	return p == WHITE_PAWN || p == WHITE_KNIGHT || p == WHITE_BISHOP ||
+		p == WHITE_ROOK || p == WHITE_QUEEN || p == WHITE_KING
+}
+
+func (p Piece) IsPawn() bool {
+	return p == WHITE_PAWN || p == BLACK_PAWN
+}

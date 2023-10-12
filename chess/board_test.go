@@ -143,7 +143,7 @@ var _ = Describe("Board", func() {
 					Expect(board.CanWhiteCastleKingside).To(Equal(expBoard.CanWhiteCastleKingside))
 					Expect(board.CanWhiteCastleQueenside).To(Equal(expBoard.CanWhiteCastleQueenside))
 					Expect(board.IsWhiteTurn).To(Equal(expBoard.IsWhiteTurn))
-					Expect(board.EnPassantSquare).To(Equal(expBoard.EnPassantSquare))
+					Expect(board.OptEnPassantSquare).To(Equal(expBoard.OptEnPassantSquare))
 					for i := 0; i < 8; i++ {
 						for j := 0; j < 8; j++ {
 							piece := board.Pieces[i][j]

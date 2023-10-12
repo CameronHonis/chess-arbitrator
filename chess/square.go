@@ -31,6 +31,14 @@ func (s *Square) IsDarkSquare() bool {
 	return !s.IsLightSquare()
 }
 
+func (s *Square) EqualTo(other *Square) bool {
+	return s.Rank == other.Rank && s.File == other.File
+}
+
+func (s *Square) Copy() *Square {
+	return &Square{s.Rank, s.File}
+}
+
 func SquareFromAlgebraicCoords(algCoords string) (*Square, error) {
 	runeCoords := []rune(strings.ToLower(algCoords))
 	if len(runeCoords) != 2 {

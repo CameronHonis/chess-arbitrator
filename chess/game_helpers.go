@@ -1,5 +1,7 @@
 package chess
 
+import "fmt"
+
 func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 	checkingSquares := make([]*Square, 0)
 	kingSquare := board.GetKingSquare(isWhiteKing)
@@ -97,6 +99,131 @@ func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 	return &checkingSquares
 }
 
-func GetResultingBoard(startBoard Board, move Move) {
+func filterMovesByKingSafety(board *Board, moves *[]*Move) *[]*Move {
+	filteredMoves := make([]*Move, 0, len(*moves))
+	for _, move := range *moves {
+		tempBoard := board.CopyWithPieces()
+		UpdateBoardPiecesFromMove(tempBoard, move)
+		checkingSquares := GetCheckingSquares(tempBoard, board.IsWhiteTurn)
+		if len(*checkingSquares) == 0 {
+			filteredMoves = append(filteredMoves, move)
+		}
+	}
+	return &filteredMoves
+}
 
+func addKingChecksToMoves(board *Board, moves *[]*Move) {
+	for _, move := range *moves {
+		move.KingCheckingSquares = *GetCheckingSquares(board, !board.IsWhiteTurn)
+	}
+}
+func GetLegalMovesForPawn(board *Board, square *Square) (*[]*Move, error) {
+	pawnMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	var upgradePieces [4]Piece
+	var squareInFront Square
+	var leftCaptureSquare Square
+	var rightCaptureSquare Square
+	if board.IsWhiteTurn {
+		if piece != WHITE_PAWN {
+			return nil, fmt.Errorf("square contains unexpected piece %s, expected WHITE_PAWN", piece)
+		}
+		upgradePieces = [4]Piece{WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN}
+		squareInFront = Square{square.Rank + 1, square.File}
+		leftCaptureSquare = Square{square.Rank + 1, square.File - 1}
+		rightCaptureSquare = Square{square.Rank + 1, square.File + 1}
+	} else {
+		if piece != BLACK_PAWN {
+			return nil, fmt.Errorf("square contains unexpected piece %s, expected BLACK_PAWN", piece)
+		}
+		upgradePieces = [4]Piece{BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN}
+		squareInFront = Square{square.Rank - 1, square.File}
+		leftCaptureSquare = Square{square.Rank - 1, square.File - 1}
+		rightCaptureSquare = Square{square.Rank - 1, square.File + 1}
+	}
+	pieceInFront := board.GetPieceOnSquare(&squareInFront)
+	if pieceInFront == EMPTY {
+		if squareInFront.Rank == 8 || squareInFront.Rank == 1 {
+			move0 := Move{piece, square, &squareInFront, EMPTY, make([]*Square, 0), upgradePieces[0]}
+			move1 := Move{piece, square, &squareInFront, EMPTY, make([]*Square, 0), upgradePieces[1]}
+			move2 := Move{piece, square, &squareInFront, EMPTY, make([]*Square, 0), upgradePieces[2]}
+			move3 := Move{piece, square, &squareInFront, EMPTY, make([]*Square, 0), upgradePieces[3]}
+			pawnMoves = append(pawnMoves, &move0, &move1, &move2, &move3)
+		} else {
+			move := Move{piece, square, &squareInFront, EMPTY, make([]*Square, 0), EMPTY}
+			pawnMoves = append(pawnMoves, &move)
+		}
+		if (board.IsWhiteTurn && square.Rank == 2) || (!board.IsWhiteTurn && square.Rank == 7) {
+			var squareTwoInFront Square
+			if board.IsWhiteTurn {
+				squareTwoInFront = Square{square.Rank + 2, square.File}
+			} else {
+				squareTwoInFront = Square{square.Rank - 2, square.File}
+			}
+			pieceTwoInFront := board.GetPieceOnSquare(&squareTwoInFront)
+			if pieceTwoInFront == EMPTY {
+				move := Move{piece, square, &squareTwoInFront, EMPTY, make([]*Square, 0), EMPTY}
+				pawnMoves = append(pawnMoves, &move)
+			}
+		}
+	}
+	if leftCaptureSquare.IsValidBoardSquare() {
+		var leftCapturePiece Piece
+		if board.OptEnPassantSquare != nil && leftCaptureSquare.EqualTo(board.OptEnPassantSquare) {
+			leftCapturePiece = board.GetPieceOnSquare(&Square{square.Rank, square.File - 1})
+		} else {
+			leftCapturePiece = board.GetPieceOnSquare(&leftCaptureSquare)
+		}
+		if leftCapturePiece != EMPTY && leftCapturePiece.IsWhite() != piece.IsWhite() {
+			if (piece.IsWhite() && square.Rank == 7) || (!piece.IsWhite() && square.Rank == 2) {
+				move0 := Move{piece, square, &leftCaptureSquare, leftCapturePiece, make([]*Square, 0), upgradePieces[0]}
+				move1 := Move{piece, square, &leftCaptureSquare, leftCapturePiece, make([]*Square, 0), upgradePieces[1]}
+				move2 := Move{piece, square, &leftCaptureSquare, leftCapturePiece, make([]*Square, 0), upgradePieces[2]}
+				move3 := Move{piece, square, &leftCaptureSquare, leftCapturePiece, make([]*Square, 0), upgradePieces[3]}
+				pawnMoves = append(pawnMoves, &move0, &move1, &move2, &move3)
+			} else {
+				move := Move{piece, square, &leftCaptureSquare, leftCapturePiece, make([]*Square, 0), EMPTY}
+				pawnMoves = append(pawnMoves, &move)
+			}
+		}
+	}
+	if rightCaptureSquare.IsValidBoardSquare() {
+		var rightCapturePiece Piece
+		if board.OptEnPassantSquare != nil && rightCaptureSquare.EqualTo(board.OptEnPassantSquare) {
+			rightCapturePiece = board.GetPieceOnSquare(&Square{square.Rank, square.File + 1})
+		} else {
+			rightCapturePiece = board.GetPieceOnSquare(&rightCaptureSquare)
+		}
+		if rightCapturePiece != EMPTY && rightCapturePiece.IsWhite() != piece.IsWhite() {
+			if (piece.IsWhite() && square.Rank == 7) || (!piece.IsWhite() && square.Rank == 2) {
+				move0 := Move{piece, square, &rightCaptureSquare, rightCapturePiece, make([]*Square, 0), upgradePieces[0]}
+				move1 := Move{piece, square, &rightCaptureSquare, rightCapturePiece, make([]*Square, 0), upgradePieces[1]}
+				move2 := Move{piece, square, &rightCaptureSquare, rightCapturePiece, make([]*Square, 0), upgradePieces[2]}
+				move3 := Move{piece, square, &rightCaptureSquare, rightCapturePiece, make([]*Square, 0), upgradePieces[3]}
+				pawnMoves = append(pawnMoves, &move0, &move1, &move2, &move3)
+			} else {
+				move := Move{piece, square, &rightCaptureSquare, rightCapturePiece, make([]*Square, 0), EMPTY}
+				pawnMoves = append(pawnMoves, &move)
+			}
+		}
+	}
+	pawnMoves = *filterMovesByKingSafety(board, &pawnMoves)
+	addKingChecksToMoves(board, &pawnMoves)
+	return &pawnMoves, nil
+}
+
+func UpdateBoardFromMove(startBoard *Board, move *Move) {
+}
+
+func UpdateBoardPiecesFromMove(board *Board, move *Move) {
+	movingPiece := board.GetPieceOnSquare(move.StartSquare)
+	board.SetPieceOnSquare(movingPiece, move.EndSquare)
+	board.SetPieceOnSquare(EMPTY, move.StartSquare)
+	if board.OptEnPassantSquare != nil && movingPiece.IsPawn() && move.EndSquare.EqualTo(board.OptEnPassantSquare) {
+		enPassantedPawnSquare := Square{
+			move.StartSquare.Rank,
+			board.OptEnPassantSquare.File,
+		}
+		board.SetPieceOnSquare(EMPTY, &enPassantedPawnSquare)
+	}
 }

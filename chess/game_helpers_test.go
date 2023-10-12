@@ -21,6 +21,20 @@ func compareSquares(expSquares *[]Square, realSquares *[]*Square) {
 	}
 }
 
+func compareMoves(expMoves *[]Move, realMoves *[]*Move) {
+	Expect(*realMoves).To(HaveLen(len(*expMoves)))
+	for _, realMove := range *realMoves {
+		foundMatch := false
+		for _, expMove := range *expMoves {
+			if expMove.EqualTo(realMove) {
+				foundMatch = true
+				break
+			}
+		}
+		Expect(foundMatch).To(BeTrue(), "unexpected move %+v", realMove)
+	}
+}
+
 var _ = Describe("GameHelpers", func() {
 	Describe("#GetCheckingKingSquares", func() {
 		When("the board is the initial board", func() {
@@ -139,9 +153,281 @@ var _ = Describe("GameHelpers", func() {
 			})
 		})
 	})
+	Describe("#GetLegalMovesForPawn", func() {
+		When("the pawn can capture in either direction", func() {
+			Context("and the pawn is not blocked", func() {
+				It("returns 2 capture moves and one non-capture move", func() {
+					board, err := BoardFromFEN("k1K5/8/8/4p1n1/5P2/8/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 6}, EMPTY, make([]*Square, 0), EMPTY},
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY},
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 7}, BLACK_KNIGHT, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the pawn is blocked", func() {
+				It("returns 2 capture moves", func() {
+					board, err := BoardFromFEN("k1K5/8/8/4ppn1/5P2/8/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY},
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 7}, BLACK_KNIGHT, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+		})
+		When("the pawn can capture in one direction", func() {
+			Context("and the pawn is not blocked", func() {
+				It("returns 1 capture moves and a non-capturing move", func() {
+					board, err := BoardFromFEN("k1K5/8/8/4p3/5P2/8/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 6}, EMPTY, make([]*Square, 0), EMPTY},
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the pawn is blocked", func() {
+				It("returns 1 capture moves", func() {
+					board, err := BoardFromFEN("k7/8/8/4rq2/5P2/8/8/7K w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 5}, BLACK_ROOK, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+		})
+		When("the pawn cannot capture either direction", func() {
+			Context("and the pawn is not blocked", func() {
+				It("returns a non-capturing move", func() {
+					board, err := BoardFromFEN("k1K5/8/8/8/5P2/8/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{4, 6}, &Square{5, 6}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the pawn is blocked", func() {
+				It("returns no moves", func() {
+					board, err := BoardFromFEN("k1K5/8/8/5n2/5P2/8/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{4, 6})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*realMoves).To(HaveLen(0))
+				})
+			})
+			Context("and the 'attacked' squares are occupied by friendly pieces", func() {
+				It("returns only non-capturing moves", func() {
+					board, err := BoardFromFEN("8/8/k7/8/3B1R2/4P3/7K/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{3, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+		})
+		When("the pawn can capture en passant to the left", func() {
+			It("includes the en passant capture move", func() {
+				board, err := BoardFromFEN("k1K5/8/8/4pP2/8/8/8/8 w - e6 0 1")
+				Expect(err).ToNot(HaveOccurred())
+				realMoves, err := GetLegalMovesForPawn(board, &Square{5, 6})
+				Expect(err).ToNot(HaveOccurred())
+				expMoves := []Move{
+					{WHITE_PAWN, &Square{5, 6}, &Square{6, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY},
+					{WHITE_PAWN, &Square{5, 6}, &Square{6, 6}, EMPTY, make([]*Square, 0), EMPTY},
+				}
+				compareMoves(&expMoves, realMoves)
+			})
+		})
+		When("the pawn can capture en passant to the right", func() {
+			It("includes the en passant capture move", func() {
+				board, err := BoardFromFEN("k1K5/8/8/5Pp1/8/8/8/8 w - g6 0 1")
+				Expect(err).ToNot(HaveOccurred())
+				realMoves, err := GetLegalMovesForPawn(board, &Square{5, 6})
+				Expect(err).ToNot(HaveOccurred())
+				expMoves := []Move{
+					{WHITE_PAWN, &Square{5, 6}, &Square{6, 7}, BLACK_PAWN, make([]*Square, 0), EMPTY},
+					{WHITE_PAWN, &Square{5, 6}, &Square{6, 6}, EMPTY, make([]*Square, 0), EMPTY},
+				}
+				compareMoves(&expMoves, realMoves)
+			})
+		})
+		When("the pawn is on the starting row", func() {
+			Context("and both squares directly in front are not occupied", func() {
+				It("returns all possible moves including a double jump", func() {
+					board, err := BoardFromFEN("k1K5/8/8/8/8/8/1P6/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{2, 2})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{2, 2}, &Square{3, 2}, EMPTY, make([]*Square, 0), EMPTY},
+						{WHITE_PAWN, &Square{2, 2}, &Square{4, 2}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the double jump square is blocked", func() {
+				It("returns only the single jump non-capturing move", func() {
+					board, err := BoardFromFEN("k1K5/8/8/8/1B6/8/1P6/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{2, 2})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{2, 2}, &Square{3, 2}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the square directly in front is occupied", func() {
+				It("returns no moves", func() {
+					board, err := BoardFromFEN("k1K5/8/8/8/8/1R6/1P6/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{2, 2})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*realMoves).To(HaveLen(0))
+				})
+			})
+		})
+		When("the pawn can be promoted", func() {
+			When("and the pawn can capture", func() {
+				Context("and the square in front is not occupied", func() {
+					It("returns both capturing and non-capturing promotion moves", func() {
+						board, err := BoardFromFEN("r7/1P6/8/8/8/8/8/k1K5 w - - 0 1")
+						Expect(err).ToNot(HaveOccurred())
+						realMoves, err := GetLegalMovesForPawn(board, &Square{7, 2})
+						Expect(err).ToNot(HaveOccurred())
+						expMoves := []Move{
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_KNIGHT},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_BISHOP},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_ROOK},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_QUEEN},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_KNIGHT},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_BISHOP},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_ROOK},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_QUEEN},
+						}
+						compareMoves(&expMoves, realMoves)
+					})
+				})
+				Context("and the square in front is occupied", func() {
+					It("only returns capture promotion moves", func() {
+						board, err := BoardFromFEN("rn6/1P6/8/8/8/8/8/k1K5 w - - 0 1")
+						Expect(err).ToNot(HaveOccurred())
+						realMoves, err := GetLegalMovesForPawn(board, &Square{7, 2})
+						Expect(err).ToNot(HaveOccurred())
+						expMoves := []Move{
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_KNIGHT},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_BISHOP},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_ROOK},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_QUEEN},
+						}
+						compareMoves(&expMoves, realMoves)
+					})
+				})
+			})
+			Context("and the pawn cannot capture", func() {
+				It("returns non-capturing promotion moves", func() {
+					board, err := BoardFromFEN("8/1P6/8/8/8/8/8/k1K5 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{7, 2})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_KNIGHT},
+						{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_BISHOP},
+						{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_ROOK},
+						{WHITE_PAWN, &Square{7, 2}, &Square{8, 2}, EMPTY, make([]*Square, 0), WHITE_QUEEN},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+		})
+		When("the pawn is pinned to its king", func() {
+			Context("and the pin is coming from a piece on the same file", func() {
+				It("returns only moves that block the pin", func() {
+					board, err := BoardFromFEN("k7/4r3/8/8/8/4P3/4K3/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{3, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the pin is coming from a piece on the same diagonal", func() {
+				It("returns no moves", func() {
+					board, err := BoardFromFEN("k7/8/1q6/8/8/4P3/5K2/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*realMoves).To(HaveLen(0))
+				})
+			})
+			Context("and the pin is coming from the same rank", func() {
+				It("returns no moves", func() {
+					board, err := BoardFromFEN("k7/8/8/8/8/1r2PK2/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*realMoves).To(HaveLen(0))
+				})
+			})
+		})
+		When("the pawn can block a check", func() {
+			It("returns the move that would block the check", func() {
+				board, err := BoardFromFEN("k7/1b1B4/8/8/8/4PK2/8/8 w - - 0 1")
+				Expect(err).ToNot(HaveOccurred())
+				realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+				Expect(err).ToNot(HaveOccurred())
+				expMoves := []Move{
+					{WHITE_PAWN, &Square{3, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY},
+				}
+				compareMoves(&expMoves, realMoves)
+			})
+			Context("and the pawn can capture", func() {
+				It("only returns the non-capturing move that blocks the check", func() {
+					board, err := BoardFromFEN("k7/1b1B4/8/8/3q4/4PK2/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					expMoves := []Move{
+						{WHITE_PAWN, &Square{3, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY},
+					}
+					compareMoves(&expMoves, realMoves)
+				})
+			})
+			Context("and the friendly king is under double check", func() {
+				It("returns no moves", func() {
+					board, err := BoardFromFEN("k7/1b1B4/8/4n3/8/4PK2/8/8 w - - 0 1")
+					Expect(err).ToNot(HaveOccurred())
+					realMoves, err := GetLegalMovesForPawn(board, &Square{3, 5})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(*realMoves).To(HaveLen(0))
+				})
+			})
+		})
+	})
 	Describe("#GetResultingBoard", func() {
 		When("the move is a capture", func() {
-
 		})
 		When("the move is not a capture", func() {
 
