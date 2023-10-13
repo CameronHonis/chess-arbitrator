@@ -1,6 +1,9 @@
 package chess
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 	checkingSquares := make([]*Square, 0)
@@ -350,6 +353,112 @@ func GetLegalMovesForQueen(board *Board, square *Square) (*[]*Move, error) {
 	queenMoves = *filterMovesByKingSafety(board, &queenMoves)
 	addKingChecksToMoves(board, &queenMoves)
 	return &queenMoves, nil
+}
+
+func GetLegalMovesForKing(board *Board, square *Square) (*[]*Move, error) {
+	kingMoves := make([]*Move, 0)
+	piece := board.GetPieceOnSquare(square)
+	if board.IsWhiteTurn && piece != WHITE_KING {
+		return nil, fmt.Errorf("unexpected piece on square %s, expected WHITE_KING", piece)
+	} else if !board.IsWhiteTurn && piece != BLACK_KING {
+		return nil, fmt.Errorf("unexpected piece on square %s, expected BLACK_KING", piece)
+	}
+	landSquares := []*Square{
+		{square.Rank + 1, square.File - 1},
+		{square.Rank + 1, square.File},
+		{square.Rank + 1, square.File + 1},
+		{square.Rank, square.File - 1},
+		{square.Rank, square.File + 1},
+		{square.Rank - 1, square.File - 1},
+		{square.Rank - 1, square.File},
+		{square.Rank - 1, square.File + 1},
+	}
+	enemyKingSquare := board.GetKingSquare(!board.IsWhiteTurn)
+	for _, landSquare := range landSquares {
+		if !landSquare.IsValidBoardSquare() {
+			continue
+		}
+		enemyKingRankDis := math.Abs(float64(int(enemyKingSquare.Rank) - int(landSquare.Rank)))
+		enemyKingFileDis := math.Abs(float64(int(enemyKingSquare.File) - int(landSquare.File)))
+		if enemyKingRankDis < 2 && enemyKingFileDis < 2 {
+			continue
+		}
+		landPiece := board.GetPieceOnSquare(landSquare)
+		if landPiece == EMPTY || landPiece.IsWhite() != piece.IsWhite() {
+			move := Move{piece, square, landSquare, landPiece, make([]*Square, 0), EMPTY}
+			kingMoves = append(kingMoves, &move)
+		}
+	}
+	if canCastleKingside(board, square) {
+		kingDestSquare := Square{square.Rank, square.File + 2}
+		kingMoves = append(kingMoves, &Move{piece, square, &kingDestSquare, EMPTY, make([]*Square, 0), EMPTY})
+	}
+	if canCastleQueenside(board, square) {
+		kingDestSquare := Square{square.Rank, square.File - 2}
+		kingMoves = append(kingMoves, &Move{piece, square, &kingDestSquare, EMPTY, make([]*Square, 0), EMPTY})
+	}
+	kingMoves = *filterMovesByKingSafety(board, &kingMoves)
+	return &kingMoves, nil
+}
+
+func canCastleKingside(board *Board, square *Square) bool {
+	if board.IsWhiteTurn && !board.CanWhiteCastleKingside {
+		return false
+	} else if !board.IsWhiteTurn && !board.CanBlackCastleKingside {
+		return false
+	}
+	piece := board.GetPieceOnSquare(square)
+
+	kingRightSquare := Square{square.Rank, square.File + 1}
+	kingRightTwoSquare := Square{square.Rank, square.File + 2}
+	kingRightPiece := board.GetPieceOnSquare(&kingRightSquare)
+	kingTwoRightPiece := board.GetPieceOnSquare(&kingRightTwoSquare)
+	if kingRightPiece != EMPTY || kingTwoRightPiece != EMPTY {
+		return false
+	}
+
+	tempBoard := board.CopyPieces()
+	tempBoard.SetPieceOnSquare(piece, &kingRightSquare)
+	tempBoard.SetPieceOnSquare(EMPTY, square)
+	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
+		return false
+	}
+	tempBoard.SetPieceOnSquare(piece, &kingRightTwoSquare)
+	tempBoard.SetPieceOnSquare(EMPTY, &kingRightSquare)
+	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
+		return false
+	}
+	return true
+}
+
+func canCastleQueenside(board *Board, square *Square) bool {
+	if board.IsWhiteTurn && !board.CanWhiteCastleQueenside {
+		return false
+	} else if !board.IsWhiteTurn && !board.CanBlackCastleQueenside {
+		return false
+	}
+	piece := board.GetPieceOnSquare(square)
+
+	kingLeftSquare := Square{square.Rank, square.File - 1}
+	kingLeftTwoSquare := Square{square.Rank, square.File - 2}
+	kingLeftPiece := board.GetPieceOnSquare(&kingLeftSquare)
+	kingTwoLeftPiece := board.GetPieceOnSquare(&kingLeftTwoSquare)
+	if kingLeftPiece != EMPTY || kingTwoLeftPiece != EMPTY {
+		return false
+	}
+
+	tempBoard := board.CopyPieces()
+	tempBoard.SetPieceOnSquare(piece, &kingLeftSquare)
+	tempBoard.SetPieceOnSquare(EMPTY, square)
+	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
+		return false
+	}
+	tempBoard.SetPieceOnSquare(piece, &kingLeftTwoSquare)
+	tempBoard.SetPieceOnSquare(EMPTY, &kingLeftSquare)
+	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
+		return false
+	}
+	return true
 }
 
 func UpdateBoardFromMove(startBoard *Board, move *Move) {
