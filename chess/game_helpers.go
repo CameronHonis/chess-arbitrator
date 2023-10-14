@@ -105,9 +105,9 @@ func GetCheckingSquares(board *Board, isWhiteKing bool) *[]*Square {
 func filterMovesByKingSafety(board *Board, moves *[]*Move) *[]*Move {
 	filteredMoves := make([]*Move, 0, len(*moves))
 	for _, move := range *moves {
-		tempBoard := board.CopyPieces()
-		UpdateBoardPiecesFromMove(tempBoard, move)
-		checkingSquares := GetCheckingSquares(tempBoard, board.IsWhiteTurn)
+		tempBoard := *board
+		UpdateBoardPiecesFromMove(&tempBoard, move)
+		checkingSquares := GetCheckingSquares(&tempBoard, board.IsWhiteTurn)
 		if len(*checkingSquares) == 0 {
 			filteredMoves = append(filteredMoves, move)
 		}
@@ -117,9 +117,9 @@ func filterMovesByKingSafety(board *Board, moves *[]*Move) *[]*Move {
 
 func addKingChecksToMoves(board *Board, moves *[]*Move) {
 	for _, move := range *moves {
-		tempBoard := board.CopyPieces()
-		UpdateBoardPiecesFromMove(tempBoard, move)
-		move.KingCheckingSquares = *GetCheckingSquares(tempBoard, !board.IsWhiteTurn)
+		tempBoard := *board
+		UpdateBoardPiecesFromMove(&tempBoard, move)
+		move.KingCheckingSquares = *GetCheckingSquares(&tempBoard, !board.IsWhiteTurn)
 	}
 }
 func GetLegalMovesForPawn(board *Board, square *Square) (*[]*Move, error) {
@@ -417,7 +417,7 @@ func canCastleKingside(board *Board, square *Square) bool {
 		return false
 	}
 
-	tempBoard := board.CopyPieces()
+	tempBoard := *board
 	tempBoard.SetPieceOnSquare(piece, &kingRightSquare)
 	tempBoard.SetPieceOnSquare(EMPTY, square)
 	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
@@ -447,7 +447,7 @@ func canCastleQueenside(board *Board, square *Square) bool {
 		return false
 	}
 
-	tempBoard := board.CopyPieces()
+	tempBoard := *board
 	tempBoard.SetPieceOnSquare(piece, &kingLeftSquare)
 	tempBoard.SetPieceOnSquare(EMPTY, square)
 	if len(*GetCheckingSquares(board, board.IsWhiteTurn)) > 0 {
@@ -501,18 +501,24 @@ func UpdateBoardPiecesFromMove(board *Board, move *Move) {
 		}
 		board.SetPieceOnSquare(EMPTY, &enPassantedPawnSquare)
 	}
-	if move.Piece == WHITE_KING && move.EndSquare.EqualTo(&Square{1, 7}) {
-		board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 6})
-		board.SetPieceOnSquare(EMPTY, &Square{1, 8})
-	} else if move.Piece == WHITE_KING && move.EndSquare.EqualTo(&Square{1, 3}) {
-		board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 4})
-		board.SetPieceOnSquare(EMPTY, &Square{1, 1})
-	} else if move.Piece == BLACK_KING && move.EndSquare.EqualTo(&Square{8, 7}) {
-		board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 6})
-		board.SetPieceOnSquare(EMPTY, &Square{8, 8})
-	} else if move.Piece == BLACK_KING && move.EndSquare.EqualTo(&Square{8, 3}) {
-		board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 4})
-		board.SetPieceOnSquare(EMPTY, &Square{8, 1})
+	if move.Piece == WHITE_KING {
+		board.optWhiteKingSquare = move.EndSquare
+		if move.EndSquare.EqualTo(&Square{1, 7}) {
+			board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 6})
+			board.SetPieceOnSquare(EMPTY, &Square{1, 8})
+		} else if move.EndSquare.EqualTo(&Square{1, 3}) {
+			board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 4})
+			board.SetPieceOnSquare(EMPTY, &Square{1, 1})
+		}
+	} else if move.Piece == BLACK_KING {
+		board.optWhiteKingSquare = move.EndSquare
+		if move.EndSquare.EqualTo(&Square{8, 7}) {
+			board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 6})
+			board.SetPieceOnSquare(EMPTY, &Square{8, 8})
+		} else if move.EndSquare.EqualTo(&Square{8, 3}) {
+			board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 4})
+			board.SetPieceOnSquare(EMPTY, &Square{8, 1})
+		}
 	}
 }
 

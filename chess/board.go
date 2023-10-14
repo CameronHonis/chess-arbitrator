@@ -8,7 +8,7 @@ import (
 )
 
 type Board struct {
-	Pieces                  *[8][8]Piece
+	Pieces                  [8][8]Piece
 	OptEnPassantSquare      *Square
 	IsWhiteTurn             bool
 	CanWhiteCastleQueenside bool
@@ -41,7 +41,7 @@ func NewBoard(pieces *[8][8]Piece,
 	isWhiteWinner bool,
 	isBlackWinner bool) *Board {
 	return &Board{
-		pieces, enPassantSquare, isWhiteTurn,
+		*pieces, enPassantSquare, isWhiteTurn,
 		canWhiteCastleQueenside, canWhiteCastleKingside,
 		canBlackCastleQueenside, canBlackCastleKingside,
 		halfMoveClockCount, fullMoveCount, repetitionsByMiniFEN, isTerminal, isWhiteWinner, isBlackWinner, nil, nil, nil,
@@ -385,32 +385,4 @@ func (board *Board) ToFEN() string {
 	fenSegsBuilder.WriteString(strconv.Itoa(int(board.FullMoveCount)))
 
 	return fenSegsBuilder.String()
-}
-
-func (board *Board) Copy() *Board {
-	// copies all fields EXCEPT memoizers
-	newBoard := board.CopyPieces()
-	newBoard.IsWhiteTurn = board.IsWhiteTurn
-	newBoard.CanWhiteCastleKingside = board.CanWhiteCastleKingside
-	newBoard.CanWhiteCastleQueenside = board.CanWhiteCastleQueenside
-	newBoard.CanBlackCastleKingside = board.CanBlackCastleKingside
-	newBoard.CanBlackCastleQueenside = board.CanBlackCastleQueenside
-	newBoard.HalfMoveClockCount = board.HalfMoveClockCount
-	newBoard.FullMoveCount = board.FullMoveCount
-	if board.OptEnPassantSquare != nil {
-		newBoard.OptEnPassantSquare = board.OptEnPassantSquare.Copy()
-	}
-	return newBoard
-}
-
-func (board *Board) CopyPieces() *Board {
-	var piecesCpy [8][8]Piece
-	for r, rowPieces := range *board.Pieces {
-		for c, piece := range rowPieces {
-			piecesCpy[r][c] = piece
-		}
-	}
-	newBoard := Board{}
-	newBoard.Pieces = &piecesCpy
-	return &newBoard
 }

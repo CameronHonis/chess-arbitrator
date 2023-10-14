@@ -868,12 +868,10 @@ var _ = Describe("GameHelpers", func() {
 				Expect(board.GetPieceOnSquare(&Square{7, 4})).To(Equal(WHITE_BISHOP))
 			})
 			Context("and the capture is an en passant move", func() {
-				BeforeEach(func() {
+				It("moves the capturing piece to the en passant square and removes the en passanted pawn", func() {
 					board, _ = BoardFromFEN("k7/8/4pP2/8/8/8/8/7K w - e7 0 1")
 					move = Move{WHITE_PAWN, &Square{6, 6}, &Square{7, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY}
 					UpdateBoardFromMove(board, &move)
-				})
-				It("moves the capturing piece to the en passant square and removes the en passanted pawn", func() {
 					Expect(board.GetPieceOnSquare(&Square{6, 6})).To(Equal(EMPTY))
 					Expect(board.GetPieceOnSquare(&Square{6, 5})).To(Equal(EMPTY))
 					Expect(board.GetPieceOnSquare(&Square{7, 5})).To(Equal(WHITE_PAWN))

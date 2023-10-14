@@ -1,7 +1,6 @@
 package chess_test
 
 import (
-	"fmt"
 	. "github.com/CameronHonis/chess-arbitrator/chess"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -138,13 +137,6 @@ var _ = Describe("Board", func() {
 		Entry("en passant square", "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1"),
 		Entry("move counters boosted", "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 25 30"),
 	)
-	Describe("copying", func() {
-		It("creates a complete copy by reassignment", func() {
-			board := GetInitBoard()
-			newBoard := *board
-			fmt.Sprintf("asdf%+v", newBoard)
-		})
-	})
 	Describe("#BoardFromFEN", func() {
 		When("the FEN is valid", func() {
 			When("the FEN is the initial board", func() {

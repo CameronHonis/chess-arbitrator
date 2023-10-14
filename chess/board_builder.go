@@ -11,7 +11,7 @@ func NewBoardBuilder() *BoardBuilder {
 }
 
 func (bb *BoardBuilder) WithPieces(pieces *[8][8]Piece) *BoardBuilder {
-	bb.board.Pieces = pieces
+	bb.board.Pieces = *pieces
 	return bb
 }
 
