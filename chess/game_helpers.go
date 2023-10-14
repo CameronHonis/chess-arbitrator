@@ -461,12 +461,38 @@ func canCastleQueenside(board *Board, square *Square) bool {
 	return true
 }
 
-func UpdateBoardFromMove(startBoard *Board, move *Move) {
+func UpdateBoardFromMove(board *Board, move *Move) {
+	UpdateBoardPiecesFromMove(board, move)
+	if move.CapturedPiece != EMPTY || move.Piece.IsPawn() {
+		board.HalfMoveClockCount = 0
+	} else {
+		board.HalfMoveClockCount++
+	}
+
+	if move.DoesAllowEnPassant() {
+		board.OptEnPassantSquare = &Square{
+			uint8(math.Min(float64(move.StartSquare.Rank), float64(move.EndSquare.Rank))) + 1,
+			move.StartSquare.File,
+		}
+	}
+
+	if !board.IsWhiteTurn {
+		board.FullMoveCount++
+	}
+	board.IsWhiteTurn = !board.IsWhiteTurn
+
+	UpdateCastleRightsFromMove(board, move)
 }
 
 func UpdateBoardPiecesFromMove(board *Board, move *Move) {
 	movingPiece := board.GetPieceOnSquare(move.StartSquare)
-	board.SetPieceOnSquare(movingPiece, move.EndSquare)
+	var landingPiece Piece
+	if move.PawnUpgradedTo != EMPTY {
+		landingPiece = move.PawnUpgradedTo
+	} else {
+		landingPiece = movingPiece
+	}
+	board.SetPieceOnSquare(landingPiece, move.EndSquare)
 	board.SetPieceOnSquare(EMPTY, move.StartSquare)
 	if board.OptEnPassantSquare != nil && movingPiece.IsPawn() && move.EndSquare.EqualTo(board.OptEnPassantSquare) {
 		enPassantedPawnSquare := Square{
@@ -474,5 +500,43 @@ func UpdateBoardPiecesFromMove(board *Board, move *Move) {
 			board.OptEnPassantSquare.File,
 		}
 		board.SetPieceOnSquare(EMPTY, &enPassantedPawnSquare)
+	}
+	if move.Piece == WHITE_KING && move.EndSquare.EqualTo(&Square{1, 7}) {
+		board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 6})
+		board.SetPieceOnSquare(EMPTY, &Square{1, 8})
+	} else if move.Piece == WHITE_KING && move.EndSquare.EqualTo(&Square{1, 3}) {
+		board.SetPieceOnSquare(WHITE_ROOK, &Square{1, 4})
+		board.SetPieceOnSquare(EMPTY, &Square{1, 1})
+	} else if move.Piece == BLACK_KING && move.EndSquare.EqualTo(&Square{8, 7}) {
+		board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 6})
+		board.SetPieceOnSquare(EMPTY, &Square{8, 8})
+	} else if move.Piece == BLACK_KING && move.EndSquare.EqualTo(&Square{8, 3}) {
+		board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 4})
+		board.SetPieceOnSquare(EMPTY, &Square{8, 1})
+	}
+}
+
+func UpdateCastleRightsFromMove(board *Board, move *Move) {
+	if !move.Piece.IsKing() && !move.Piece.IsRook() {
+		return
+	}
+	if move.Piece.IsRook() {
+		if move.StartSquare.EqualTo(&Square{1, 1}) {
+			board.CanWhiteCastleQueenside = false
+		} else if move.StartSquare.EqualTo(&Square{1, 8}) {
+			board.CanWhiteCastleKingside = false
+		} else if move.StartSquare.EqualTo(&Square{8, 1}) {
+			board.CanBlackCastleQueenside = false
+		} else if move.StartSquare.EqualTo(&Square{8, 8}) {
+			board.CanBlackCastleKingside = false
+		}
+	} else if move.Piece.IsKing() {
+		if move.Piece.IsWhite() {
+			board.CanWhiteCastleKingside = false
+			board.CanWhiteCastleQueenside = false
+		} else {
+			board.CanBlackCastleKingside = false
+			board.CanBlackCastleQueenside = false
+		}
 	}
 }

@@ -17,7 +17,10 @@ type Board struct {
 	CanBlackCastleKingside  bool
 	HalfMoveClockCount      uint8
 	FullMoveCount           uint16
-
+	RepetitionsByMiniFEN    map[string]uint8
+	IsTerminal              bool
+	IsWhiteWinner           bool
+	IsBlackWinner           bool
 	// memoizers
 	optMaterialCount   *MaterialCount
 	optWhiteKingSquare *Square
@@ -32,12 +35,16 @@ func NewBoard(pieces *[8][8]Piece,
 	canBlackCastleKingside bool,
 	canBlackCastleQueenside bool,
 	halfMoveClockCount uint8,
-	fullMoveCount uint16) *Board {
+	fullMoveCount uint16,
+	repetitionsByMiniFEN map[string]uint8,
+	isTerminal bool,
+	isWhiteWinner bool,
+	isBlackWinner bool) *Board {
 	return &Board{
 		pieces, enPassantSquare, isWhiteTurn,
 		canWhiteCastleQueenside, canWhiteCastleKingside,
 		canBlackCastleQueenside, canBlackCastleKingside,
-		halfMoveClockCount, fullMoveCount, nil, nil, nil,
+		halfMoveClockCount, fullMoveCount, repetitionsByMiniFEN, isTerminal, isWhiteWinner, isBlackWinner, nil, nil, nil,
 	}
 }
 
@@ -168,6 +175,10 @@ func BoardFromFEN(fen string) (*Board, error) {
 }
 
 func GetInitBoard() *Board {
+	miniFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
+	repetitionsByMiniFEN := map[string]uint8{
+		miniFEN: uint8(1),
+	}
 	return NewBoard(&[8][8]Piece{
 		{WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK},
 		{WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN},
@@ -177,7 +188,8 @@ func GetInitBoard() *Board {
 		{EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY},
 		{BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN},
 		{BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK},
-	}, nil, true, true, true, true, true, 0, 1)
+	}, nil, true, true, true, true,
+		true, 0, 1, repetitionsByMiniFEN, false, false, false)
 }
 
 func (board *Board) SetPieceOnSquare(piece Piece, square *Square) *Board {
@@ -300,6 +312,79 @@ func (board *Board) GetKingSquare(isWhiteKing bool) *Square {
 	} else {
 		return board.optBlackKingSquare
 	}
+}
+
+func (board *Board) ToFEN() string {
+	var fenSegsBuilder strings.Builder
+
+	pieceRuneByPiece := []rune{'x', 'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'}
+	fenPiecesSeg := make([]rune, 0, 64)
+	for r := 7; r >= 0; r-- {
+		consecEmptyCount := 0
+		for c := 0; c < 8; c++ {
+			piece := board.Pieces[r][c]
+			if piece == EMPTY {
+				consecEmptyCount++
+				continue
+			}
+			if consecEmptyCount > 0 {
+				fenPiecesSeg = append(fenPiecesSeg, rune(consecEmptyCount+48))
+				consecEmptyCount = 0
+			}
+			fenPiecesSeg = append(fenPiecesSeg, pieceRuneByPiece[piece])
+		}
+		if consecEmptyCount > 0 {
+			fenPiecesSeg = append(fenPiecesSeg, rune(consecEmptyCount+48))
+			consecEmptyCount = 0
+		}
+		if r > 0 {
+			fenPiecesSeg = append(fenPiecesSeg, '/')
+		}
+	}
+	fenSegsBuilder.WriteString(string(fenPiecesSeg))
+	fenSegsBuilder.WriteRune(' ')
+
+	var turnRune rune
+	if board.IsWhiteTurn {
+		turnRune = 'w'
+	} else {
+		turnRune = 'b'
+	}
+	fenSegsBuilder.WriteRune(turnRune)
+	fenSegsBuilder.WriteRune(' ')
+
+	fenCastleSeg := make([]rune, 0, 4)
+	if board.CanWhiteCastleKingside {
+		fenCastleSeg = append(fenCastleSeg, 'K')
+	}
+	if board.CanWhiteCastleQueenside {
+		fenCastleSeg = append(fenCastleSeg, 'Q')
+	}
+	if board.CanBlackCastleKingside {
+		fenCastleSeg = append(fenCastleSeg, 'k')
+	}
+	if board.CanBlackCastleQueenside {
+		fenCastleSeg = append(fenCastleSeg, 'q')
+	}
+	if len(fenCastleSeg) == 0 {
+		fenCastleSeg = append(fenCastleSeg, '-')
+	}
+	fenSegsBuilder.WriteString(string(fenCastleSeg))
+	fenSegsBuilder.WriteRune(' ')
+
+	if board.OptEnPassantSquare != nil {
+		fenSegsBuilder.WriteString(board.OptEnPassantSquare.ToAlgebraicCoords())
+	} else {
+		fenSegsBuilder.WriteRune('-')
+	}
+	fenSegsBuilder.WriteRune(' ')
+
+	fenSegsBuilder.WriteString(strconv.Itoa(int(board.HalfMoveClockCount)))
+	fenSegsBuilder.WriteRune(' ')
+
+	fenSegsBuilder.WriteString(strconv.Itoa(int(board.FullMoveCount)))
+
+	return fenSegsBuilder.String()
 }
 
 func (board *Board) Copy() *Board {

@@ -54,6 +54,24 @@ func (bb *BoardBuilder) WithFullMoveCount(fullMoveCount uint16) *BoardBuilder {
 	return bb
 }
 
+func (bb *BoardBuilder) WithRepetitionsByMiniFEN(repetitionsByMiniFEN map[string]uint8) *BoardBuilder {
+	bb.board.RepetitionsByMiniFEN = repetitionsByMiniFEN
+	return bb
+}
+
+func (bb *BoardBuilder) WithIsTerminal(isTerminal bool) *BoardBuilder {
+	bb.board.IsTerminal = isTerminal
+	return bb
+}
+
+func (bb *BoardBuilder) WithIsWhiteWinner(isWhiteWinner bool) *BoardBuilder {
+	bb.board.IsTerminal = isWhiteWinner
+	return bb
+}
+func (bb *BoardBuilder) WithIsBlackWinner(isBlackWinner bool) *BoardBuilder {
+	bb.board.IsTerminal = isBlackWinner
+	return bb
+}
 func (bb *BoardBuilder) Build() *Board {
 	return bb.board
 }

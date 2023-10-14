@@ -1,6 +1,9 @@
 package chess
 
-import "sort"
+import (
+	"math"
+	"sort"
+)
 
 type Move struct {
 	Piece               Piece
@@ -35,4 +38,12 @@ func (move *Move) EqualTo(otherMove *Move) bool {
 		move.EndSquare.EqualTo(otherMove.EndSquare) &&
 		move.CapturedPiece == otherMove.CapturedPiece &&
 		move.PawnUpgradedTo == otherMove.PawnUpgradedTo
+}
+
+func (move *Move) DoesAllowEnPassant() bool {
+	if !move.Piece.IsPawn() {
+		return false
+	}
+	dis := math.Abs(float64(int(move.EndSquare.Rank) - int(move.StartSquare.Rank)))
+	return dis > 1
 }

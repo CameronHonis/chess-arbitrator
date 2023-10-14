@@ -1,7 +1,8 @@
 package chess_test
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/chess"
+	"fmt"
+	. "github.com/CameronHonis/chess-arbitrator/chess"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -11,40 +12,40 @@ var _ = Describe("Board", func() {
 		When("the remaining material forces a draw", func() {
 			When("only the kings are on the board", func() {
 				It("returns true", func() {
-					board, _ := chess.BoardFromFEN("8/8/8/8/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/8/8/8/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeTrue())
 				})
 			})
 			When("only one bishop exists", func() {
 				Context("and its a white bishop", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/4B3/8/8/7K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/4B3/8/8/7K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
 				Context("and its a black bishop", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/4b3/8/8/7K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/4b3/8/8/7K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
 			})
 			When("both players have one bishop", func() {
 				It("returns true", func() {
-					board, _ := chess.BoardFromFEN("8/4B3/8/8/7K/8/3b4/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/4B3/8/8/7K/8/3b4/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeTrue())
 				})
 			})
 			When("a player has two same colored bishops", func() {
 				Context("and the bishops are white", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/4B3/3B4/8/7K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/4B3/3B4/8/7K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
 				Context("and the bishops are black", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/5b2/4b3/8/7K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/5b2/4b3/8/7K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
@@ -52,20 +53,20 @@ var _ = Describe("Board", func() {
 			When("only one knight exists", func() {
 				Context("and the knight is white", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/8/8/8/4N2K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/8/8/8/4N2K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
 				Context("and the knight is black", func() {
 					It("returns true", func() {
-						board, _ := chess.BoardFromFEN("8/8/4n3/8/7K/8/8/k7 w - - 0 1")
+						board, _ := BoardFromFEN("8/8/4n3/8/7K/8/8/k7 w - - 0 1")
 						Expect(board.IsForcedDraw()).To(BeTrue())
 					})
 				})
 			})
 			When("both players have only one knight", func() {
 				It("returns true", func() {
-					board, _ := chess.BoardFromFEN("5n2/8/8/8/4N2K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("5n2/8/8/8/4N2K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeTrue())
 				})
 			})
@@ -73,37 +74,37 @@ var _ = Describe("Board", func() {
 		When("the remaining material does not force a draw", func() {
 			When("only one rook exists", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/2R5/8/8/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/2R5/8/8/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
 			When("only one queen exists", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/8/4q3/8/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/8/4q3/8/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
 			When("only one pawn exists", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/8/8/6P1/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/8/8/6P1/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
 			When("a player has two different colored bishops", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/4B3/4B3/8/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/4B3/4B3/8/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
 			When("only one player has a bishop and knight", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/4B3/4N3/8/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/4B3/4N3/8/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
 			When("only one player has two knights", func() {
 				It("returns false", func() {
-					board, _ := chess.BoardFromFEN("8/8/4n3/4n3/7K/8/8/k7 w - - 0 1")
+					board, _ := BoardFromFEN("8/8/4n3/4n3/7K/8/8/k7 w - - 0 1")
 					Expect(board.IsForcedDraw()).To(BeFalse())
 				})
 			})
@@ -111,7 +112,7 @@ var _ = Describe("Board", func() {
 	})
 	Describe("::getMaterialCount", func() {
 		It("counts material of the initiate board", func() {
-			board := chess.GetInitBoard()
+			board := GetInitBoard()
 			materialCount := board.ComputeMaterialCount(true)
 			Expect(materialCount.WhitePawnCount).To(Equal(uint8(8)))
 			Expect(materialCount.WhiteKnightCount).To(Equal(uint8(2)))
@@ -127,13 +128,30 @@ var _ = Describe("Board", func() {
 			Expect(materialCount.BlackQueenCount).To(Equal(uint8(1)))
 		})
 	})
+	DescribeTable("::ToFEN", func(fen string) {
+		board, _ := BoardFromFEN(fen)
+		generatedFEN := board.ToFEN()
+		Expect(generatedFEN).To(Equal(fen))
+	},
+		Entry("initial board", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+		Entry("no castle rights", "3R2R1/8/2R5/2Rk2R1/4R3/2R5/R2R4/8 w - - 0 1"),
+		Entry("en passant square", "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1"),
+		Entry("move counters boosted", "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 25 30"),
+	)
+	Describe("copying", func() {
+		It("creates a complete copy by reassignment", func() {
+			board := GetInitBoard()
+			newBoard := *board
+			fmt.Sprintf("asdf%+v", newBoard)
+		})
+	})
 	Describe("#BoardFromFEN", func() {
 		When("the FEN is valid", func() {
 			When("the FEN is the initial board", func() {
 				It("returns exactly the init board", func() {
 					fen := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-					expBoard := chess.GetInitBoard()
-					board, err := chess.BoardFromFEN(fen)
+					expBoard := GetInitBoard()
+					board, err := BoardFromFEN(fen)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(board).ToNot(BeNil())
 					Expect(board.FullMoveCount).To(Equal(expBoard.FullMoveCount))
@@ -156,7 +174,7 @@ var _ = Describe("Board", func() {
 			When("the FEN specifies that neither player has castle rights", func() {
 				It("returns a board with all castle rights revoked", func() {
 					fen := "3R2R1/8/2R5/2Rk2R1/4R3/2R5/R2R4/8 w - - 0 1"
-					board, err := chess.BoardFromFEN(fen)
+					board, err := BoardFromFEN(fen)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(board.CanWhiteCastleQueenside).To(BeFalse())
 					Expect(board.CanWhiteCastleKingside).To(BeFalse())
@@ -167,7 +185,7 @@ var _ = Describe("Board", func() {
 			When("two white kings exist in the FEN pieces", func() {
 				It("parses the board with no errors", func() {
 					fen := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKKBNR w KQkq - 0 1"
-					_, err := chess.BoardFromFEN(fen)
+					_, err := BoardFromFEN(fen)
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -176,7 +194,7 @@ var _ = Describe("Board", func() {
 			Context("the FEN does not have the correct amount of segments", func() {
 				It("returns an error", func() {
 					invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0"
-					_, err := chess.BoardFromFEN(invalidFEN)
+					_, err := BoardFromFEN(invalidFEN)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -184,35 +202,35 @@ var _ = Describe("Board", func() {
 				Context("the FEN has too many pieces rows", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN has one too few rows in pieces", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN has too many pieces on the first row", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnrp/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN has too few pieces on the first row", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbn/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN contains invalid piece chars", func() {
 					It("returns an error", func() {
 						invalidFEN := "xxxxxxxx/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
@@ -220,21 +238,21 @@ var _ = Describe("Board", func() {
 			Context("the FEN does not have a valid turn specifier character", func() {
 				It("returns an error", func() {
 					invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR X KQkq - 0 1"
-					_, err := chess.BoardFromFEN(invalidFEN)
+					_, err := BoardFromFEN(invalidFEN)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 			Context("the FEN contains an invalid castle rights specifier", func() {
 				It("returns an error", func() {
 					invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w XQkq - 0 1"
-					_, err := chess.BoardFromFEN(invalidFEN)
+					_, err := BoardFromFEN(invalidFEN)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 			Context("the FEN contains an invalid enPassant square", func() {
 				It("returns an error", func() {
 					invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq jk4 0 1"
-					_, err := chess.BoardFromFEN(invalidFEN)
+					_, err := BoardFromFEN(invalidFEN)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -242,14 +260,14 @@ var _ = Describe("Board", func() {
 				Context("the FEN contains a halfMoveClockCount greater than the range for a uint8", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 277 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN contains a non-integer as the halfMoveClockCount", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - X 1"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
@@ -258,14 +276,14 @@ var _ = Describe("Board", func() {
 				Context("the FEN contains a fullMoveCount greater than the range for a uint16", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 70700"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})
 				Context("the FEN contains a non-integer as the fullMoveCount", func() {
 					It("returns an error", func() {
 						invalidFEN := "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 X"
-						_, err := chess.BoardFromFEN(invalidFEN)
+						_, err := BoardFromFEN(invalidFEN)
 						Expect(err).To(HaveOccurred())
 					})
 				})

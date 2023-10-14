@@ -311,7 +311,7 @@ var _ = Describe("GameHelpers", func() {
 			When("and the pawn can capture", func() {
 				Context("and the square in front is not occupied", func() {
 					It("returns both capturing and non-capturing promotion moves", func() {
-						board, err := BoardFromFEN("r7/1P6/8/8/8/8/8/k1K5 w - - 0 1")
+						board, err := BoardFromFEN("r7/1P6/8/8/8/8/8/2K3k1 w - - 0 1")
 						Expect(err).ToNot(HaveOccurred())
 						realMoves, err := GetLegalMovesForPawn(board, &Square{7, 2})
 						Expect(err).ToNot(HaveOccurred())
@@ -337,8 +337,8 @@ var _ = Describe("GameHelpers", func() {
 						expMoves := []Move{
 							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_KNIGHT},
 							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_BISHOP},
-							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_ROOK},
-							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, make([]*Square, 0), WHITE_QUEEN},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, []*Square{{8, 1}}, WHITE_ROOK},
+							{WHITE_PAWN, &Square{7, 2}, &Square{8, 1}, BLACK_ROOK, []*Square{{8, 1}}, WHITE_QUEEN},
 						}
 						compareMoves(&expMoves, realMoves)
 					})
@@ -852,25 +852,242 @@ var _ = Describe("GameHelpers", func() {
 		})
 	})
 	Describe("#UpdateBoardFromMove", func() {
+		var board *Board
+		var move Move
 		When("the move is a capture", func() {
+			BeforeEach(func() {
+				board, _ = BoardFromFEN("k7/p2n4/8/8/6B1/8/8/7K w - - 0 1")
+				move = Move{WHITE_BISHOP, &Square{4, 7}, &Square{7, 4}, BLACK_KNIGHT, make([]*Square, 0), EMPTY}
+				UpdateBoardFromMove(board, &move)
+			})
+			It("resets the half move clock counter", func() {
+				Expect(board.HalfMoveClockCount).To(Equal(uint8(0)))
+			})
+			It("replaces the capturing piece with the capture piece", func() {
+				Expect(board.GetPieceOnSquare(&Square{4, 7})).To(Equal(EMPTY))
+				Expect(board.GetPieceOnSquare(&Square{7, 4})).To(Equal(WHITE_BISHOP))
+			})
+			Context("and the capture is an en passant move", func() {
+				BeforeEach(func() {
+					board, _ = BoardFromFEN("k7/8/4pP2/8/8/8/8/7K w - e7 0 1")
+					move = Move{WHITE_PAWN, &Square{6, 6}, &Square{7, 5}, BLACK_PAWN, make([]*Square, 0), EMPTY}
+					UpdateBoardFromMove(board, &move)
+				})
+				It("moves the capturing piece to the en passant square and removes the en passanted pawn", func() {
+					Expect(board.GetPieceOnSquare(&Square{6, 6})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{6, 5})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{7, 5})).To(Equal(WHITE_PAWN))
+				})
+			})
 		})
 		When("the move is not a capture", func() {
-
+			BeforeEach(func() {
+				board, _ = BoardFromFEN("k7/4r3/8/8/8/8/5N2/7K w - - 0 1")
+				move = Move{WHITE_KNIGHT, &Square{2, 6}, &Square{3, 4}, EMPTY, make([]*Square, 0), EMPTY}
+				UpdateBoardFromMove(board, &move)
+			})
+			It("moves the piece", func() {
+				Expect(board.GetPieceOnSquare(&Square{2, 6})).To(Equal(EMPTY))
+				Expect(board.GetPieceOnSquare(&Square{3, 4})).To(Equal(WHITE_KNIGHT))
+			})
+			It("increments the half move counter", func() {
+				Expect(board.HalfMoveClockCount).To(Equal(uint8(1)))
+			})
+			Context("and the pawn is being upgraded", func() {
+				It("converts the pawn to its upgraded piece", func() {
+					board, _ := BoardFromFEN("8/5P2/8/8/8/1kb5/8/7K w - - 0 1")
+					move := Move{WHITE_PAWN, &Square{7, 6}, &Square{8, 6}, EMPTY, make([]*Square, 0), WHITE_ROOK}
+					UpdateBoardFromMove(board, &move)
+					Expect(board.GetPieceOnSquare(&Square{8, 6})).To(Equal(WHITE_ROOK))
+					Expect(board.GetPieceOnSquare(&Square{7, 6})).To(Equal(EMPTY))
+				})
+			})
+			Context("and the move allows for en passant", func() {
+				It("sets the en passant square", func() {
+					board, _ := BoardFromFEN("8/8/8/8/7K/8/4P3/k7 w - - 0 1")
+					move := Move{WHITE_PAWN, &Square{2, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY}
+					UpdateBoardFromMove(board, &move)
+					Expect(board.OptEnPassantSquare).ToNot(BeNil())
+					Expect(board.OptEnPassantSquare.EqualTo(&Square{3, 5}))
+				})
+			})
+		})
+		When("its white's move", func() {
+			BeforeEach(func() {
+				board, _ = BoardFromFEN("8/8/8/8/7K/8/4P3/k7 w - - 0 1")
+				move = Move{WHITE_PAWN, &Square{2, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY}
+				UpdateBoardFromMove(board, &move)
+			})
+			It("sets the next turn to black", func() {
+				Expect(board.IsWhiteTurn).To(BeFalse())
+			})
 		})
 		When("its black's move", func() {
-
+			BeforeEach(func() {
+				board, _ = BoardFromFEN("8/1r4k1/8/8/7K/8/4P3/8 b - - 0 1")
+				move = Move{BLACK_ROOK, &Square{7, 2}, &Square{2, 2}, EMPTY, make([]*Square, 0), EMPTY}
+				UpdateBoardFromMove(board, &move)
+			})
+			It("increments the full move counter", func() {
+				Expect(board.FullMoveCount).To(Equal(uint16(2)))
+			})
+			It("moves the piece", func() {
+				Expect(board.GetPieceOnSquare(&Square{7, 2})).To(Equal(EMPTY))
+				Expect(board.GetPieceOnSquare(&Square{2, 2})).To(Equal(BLACK_ROOK))
+			})
+			It("updates the next turn to white", func() {
+				Expect(board.IsWhiteTurn).To(BeTrue())
+			})
+			It("increments the half move clock count", func() {
+				Expect(board.HalfMoveClockCount).To(Equal(uint8(1)))
+			})
 		})
 		When("a rook moves, revoking a castling right", func() {
-
+			When("the rook is white", func() {
+				BeforeEach(func() {
+					board, _ = BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+				})
+				Context("and the rook is the kingside rook", func() {
+					BeforeEach(func() {
+						move = Move{WHITE_ROOK, &Square{1, 8}, &Square{1, 7}, EMPTY, make([]*Square, 0), EMPTY}
+					})
+					It("revokes the white kingside castle right", func() {
+						Expect(board.CanWhiteCastleKingside).To(BeTrue())
+						UpdateBoardFromMove(board, &move)
+						Expect(board.CanWhiteCastleKingside).To(BeFalse())
+					})
+				})
+				Context("and the rook is the queenside rook", func() {
+					BeforeEach(func() {
+						move = Move{WHITE_ROOK, &Square{1, 1}, &Square{1, 2}, EMPTY, make([]*Square, 0), EMPTY}
+					})
+					It("revokes the white queenside castle right", func() {
+						Expect(board.CanWhiteCastleQueenside).To(BeTrue())
+						UpdateBoardFromMove(board, &move)
+						Expect(board.CanWhiteCastleQueenside).To(BeFalse())
+					})
+				})
+			})
+			When("the rook is black", func() {
+				BeforeEach(func() {
+					board, _ = BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1")
+				})
+				Context("and the rook is the kingside rook", func() {
+					BeforeEach(func() {
+						move = Move{BLACK_ROOK, &Square{8, 8}, &Square{8, 7}, EMPTY, make([]*Square, 0), EMPTY}
+					})
+					It("revokes the black kingside castle right", func() {
+						Expect(board.CanBlackCastleKingside).To(BeTrue())
+						UpdateBoardFromMove(board, &move)
+						Expect(board.CanBlackCastleKingside).To(BeFalse())
+					})
+				})
+				Context("and the rook is the queenside rook", func() {
+					BeforeEach(func() {
+						move = Move{BLACK_ROOK, &Square{8, 1}, &Square{8, 2}, EMPTY, make([]*Square, 0), EMPTY}
+					})
+					It("revokes the black queenside castle right", func() {
+						Expect(board.CanBlackCastleQueenside).To(BeTrue())
+						UpdateBoardFromMove(board, &move)
+						Expect(board.CanBlackCastleQueenside).To(BeFalse())
+					})
+				})
+			})
 		})
-		When("a king moves", func() {
-
+		When("a king moves with both castle rights", func() {
+			Context("the king is white", func() {
+				BeforeEach(func() {
+					board, _ = BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+					move = Move{WHITE_KING, &Square{1, 5}, &Square{2, 4}, EMPTY, make([]*Square, 0), EMPTY}
+				})
+				It("revokes both of white's castle rights", func() {
+					Expect(board.CanWhiteCastleKingside).To(BeTrue())
+					Expect(board.CanWhiteCastleQueenside).To(BeTrue())
+					UpdateBoardFromMove(board, &move)
+					Expect(board.CanWhiteCastleKingside).To(BeFalse())
+					Expect(board.CanWhiteCastleQueenside).To(BeFalse())
+				})
+			})
+			Context("the king is black", func() {
+				BeforeEach(func() {
+					board, _ = BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1")
+					move = Move{BLACK_KING, &Square{8, 5}, &Square{8, 6}, EMPTY, make([]*Square, 0), EMPTY}
+				})
+				It("revokes both of black's castle rights", func() {
+					Expect(board.CanBlackCastleKingside).To(BeTrue())
+					Expect(board.CanBlackCastleQueenside).To(BeTrue())
+					UpdateBoardFromMove(board, &move)
+					Expect(board.CanBlackCastleKingside).To(BeFalse())
+					Expect(board.CanBlackCastleQueenside).To(BeFalse())
+				})
+			})
 		})
 		When("the moves is castles", func() {
-
+			Context("and white castles kingside", func() {
+				It("re-positions the white king and king's rook", func() {
+					board, _ := BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+					move := Move{WHITE_KING, &Square{1, 5}, &Square{1, 7}, EMPTY, make([]*Square, 0), EMPTY}
+					Expect(board.GetPieceOnSquare(&Square{1, 5})).To(Equal(WHITE_KING))
+					Expect(board.GetPieceOnSquare(&Square{1, 6})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 7})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 8})).To(Equal(WHITE_ROOK))
+					UpdateBoardFromMove(board, &move)
+					Expect(board.GetPieceOnSquare(&Square{1, 5})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 6})).To(Equal(WHITE_ROOK))
+					Expect(board.GetPieceOnSquare(&Square{1, 7})).To(Equal(WHITE_KING))
+					Expect(board.GetPieceOnSquare(&Square{1, 8})).To(Equal(EMPTY))
+				})
+			})
+			Context("and white castles queenside", func() {
+				It("re-positions the white king and queen's rook", func() {
+					board, _ := BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+					move := Move{WHITE_KING, &Square{1, 5}, &Square{1, 3}, EMPTY, make([]*Square, 0), EMPTY}
+					Expect(board.GetPieceOnSquare(&Square{1, 5})).To(Equal(WHITE_KING))
+					Expect(board.GetPieceOnSquare(&Square{1, 4})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 3})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 1})).To(Equal(WHITE_ROOK))
+					UpdateBoardFromMove(board, &move)
+					Expect(board.GetPieceOnSquare(&Square{1, 5})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{1, 4})).To(Equal(WHITE_ROOK))
+					Expect(board.GetPieceOnSquare(&Square{1, 3})).To(Equal(WHITE_KING))
+					Expect(board.GetPieceOnSquare(&Square{1, 1})).To(Equal(EMPTY))
+				})
+			})
+			Context("and black castles kingside", func() {
+				It("re-positions the black king and king's rook", func() {
+					board, _ := BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1")
+					move := Move{BLACK_KING, &Square{8, 5}, &Square{8, 7}, EMPTY, make([]*Square, 0), EMPTY}
+					Expect(board.GetPieceOnSquare(&Square{8, 5})).To(Equal(BLACK_KING))
+					Expect(board.GetPieceOnSquare(&Square{8, 6})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 7})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 8})).To(Equal(BLACK_ROOK))
+					UpdateBoardFromMove(board, &move)
+					Expect(board.GetPieceOnSquare(&Square{8, 5})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 6})).To(Equal(BLACK_ROOK))
+					Expect(board.GetPieceOnSquare(&Square{8, 7})).To(Equal(BLACK_KING))
+					Expect(board.GetPieceOnSquare(&Square{8, 8})).To(Equal(EMPTY))
+				})
+			})
+			Context("and black castles queenside", func() {
+				It("re-positions the black king and queen's rook", func() {
+					board, _ := BoardFromFEN("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1")
+					move := Move{BLACK_KING, &Square{8, 5}, &Square{8, 3}, EMPTY, make([]*Square, 0), EMPTY}
+					Expect(board.GetPieceOnSquare(&Square{8, 5})).To(Equal(BLACK_KING))
+					Expect(board.GetPieceOnSquare(&Square{8, 4})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 3})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 1})).To(Equal(BLACK_ROOK))
+					UpdateBoardFromMove(board, &move)
+					Expect(board.GetPieceOnSquare(&Square{8, 5})).To(Equal(EMPTY))
+					Expect(board.GetPieceOnSquare(&Square{8, 4})).To(Equal(BLACK_ROOK))
+					Expect(board.GetPieceOnSquare(&Square{8, 3})).To(Equal(BLACK_KING))
+					Expect(board.GetPieceOnSquare(&Square{8, 1})).To(Equal(EMPTY))
+				})
+			})
 		})
 		When("the resulting board is a stalemate", func() {
+			It("results in a terminal draw board", func() {
 
+			})
 		})
 		When("the move violates the 50-move rule", func() {
 

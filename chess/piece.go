@@ -33,3 +33,11 @@ func (p Piece) IsWhite() bool {
 func (p Piece) IsPawn() bool {
 	return p == WHITE_PAWN || p == BLACK_PAWN
 }
+
+func (p Piece) IsRook() bool {
+	return p == WHITE_ROOK || p == BLACK_ROOK
+}
+
+func (p Piece) IsKing() bool {
+	return p == WHITE_KING || p == BLACK_KING
+}
