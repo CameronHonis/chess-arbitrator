@@ -397,3 +397,9 @@ func (board *Board) ToFEN() string {
 
 	return fenSegsBuilder.String()
 }
+
+func (board *Board) ToMiniFEN() string {
+	fen := board.ToFEN()
+	fenSegs := strings.Split(fen, " ")
+	return strings.Join(fenSegs[:4], " ")
+}

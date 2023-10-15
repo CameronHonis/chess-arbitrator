@@ -909,6 +909,12 @@ var _ = Describe("GameHelpers", func() {
 				Expect(board.GetPieceOnSquare(&Square{4, 7})).To(Equal(EMPTY))
 				Expect(board.GetPieceOnSquare(&Square{7, 4})).To(Equal(WHITE_BISHOP))
 			})
+			It("adds the miniFEN to the board counter map", func() {
+				miniFEN := "k7/p2B4/8/8/8/8/8/7K b - -"
+				miniFENRepetitions, ok := board.RepetitionsByMiniFEN[miniFEN]
+				Expect(ok).To(BeTrue())
+				Expect(miniFENRepetitions).To(Equal(uint8(1)))
+			})
 			Context("and the capture is an en passant move", func() {
 				It("moves the capturing piece to the en passant square and removes the en passanted pawn", func() {
 					board, _ = BoardFromFEN("k7/8/4pP2/8/8/8/8/7K w - e7 0 1")

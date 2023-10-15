@@ -5,8 +5,10 @@ type BoardBuilder struct {
 }
 
 func NewBoardBuilder() *BoardBuilder {
+	board := Board{}
+	board.RepetitionsByMiniFEN = make(map[string]uint8)
 	return &BoardBuilder{
-		board: &Board{},
+		board: &board,
 	}
 }
 

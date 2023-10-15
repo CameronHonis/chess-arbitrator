@@ -511,7 +511,8 @@ func UpdateBoardFromMove(board *Board, move *Move) {
 	UpdateBoardEnPassantSquare(board, move)
 	board.IsWhiteTurn = !board.IsWhiteTurn
 
-	UpdateCastleRightsFromMove(board, move)
+	UpdateCastleRights(board, move)
+	UpdateRepetitionsByFENMap(board, move)
 	UpdateBoardIsTerminal(board)
 }
 
@@ -571,7 +572,7 @@ func UpdateBoardEnPassantSquare(board *Board, move *Move) {
 		}
 	}
 }
-func UpdateCastleRightsFromMove(board *Board, move *Move) {
+func UpdateCastleRights(board *Board, move *Move) {
 	if !move.Piece.IsKing() && !move.Piece.IsRook() {
 		return
 	}
@@ -594,6 +595,12 @@ func UpdateCastleRightsFromMove(board *Board, move *Move) {
 			board.CanBlackCastleQueenside = false
 		}
 	}
+}
+
+func UpdateRepetitionsByFENMap(board *Board, move *Move) {
+	miniFEN := board.ToMiniFEN()
+	repetitions, _ := board.RepetitionsByMiniFEN[miniFEN]
+	board.RepetitionsByMiniFEN[miniFEN] = repetitions + 1
 }
 
 func UpdateBoardIsTerminal(board *Board) {
