@@ -507,22 +507,8 @@ func canCastleQueenside(board *Board, square *Square) bool {
 
 func UpdateBoardFromMove(board *Board, move *Move) {
 	UpdateBoardPiecesFromMove(board, move)
-	if move.CapturedPiece != EMPTY || move.Piece.IsPawn() {
-		board.HalfMoveClockCount = 0
-	} else {
-		board.HalfMoveClockCount++
-	}
-
-	if move.DoesAllowEnPassant() {
-		board.OptEnPassantSquare = &Square{
-			uint8(math.Min(float64(move.StartSquare.Rank), float64(move.EndSquare.Rank))) + 1,
-			move.StartSquare.File,
-		}
-	}
-
-	if !board.IsWhiteTurn {
-		board.FullMoveCount++
-	}
+	UpdateBoardCounters(board, move)
+	UpdateBoardEnPassantSquare(board, move)
 	board.IsWhiteTurn = !board.IsWhiteTurn
 
 	UpdateCastleRightsFromMove(board, move)
@@ -567,6 +553,24 @@ func UpdateBoardPiecesFromMove(board *Board, move *Move) {
 	}
 }
 
+func UpdateBoardCounters(board *Board, move *Move) {
+	if move.CapturedPiece != EMPTY || move.Piece.IsPawn() {
+		board.HalfMoveClockCount = 0
+	} else {
+		board.HalfMoveClockCount++
+	}
+	if !board.IsWhiteTurn {
+		board.FullMoveCount++
+	}
+}
+func UpdateBoardEnPassantSquare(board *Board, move *Move) {
+	if move.DoesAllowEnPassant() {
+		board.OptEnPassantSquare = &Square{
+			uint8(math.Min(float64(move.StartSquare.Rank), float64(move.EndSquare.Rank))) + 1,
+			move.StartSquare.File,
+		}
+	}
+}
 func UpdateCastleRightsFromMove(board *Board, move *Move) {
 	if !move.Piece.IsKing() && !move.Piece.IsRook() {
 		return
