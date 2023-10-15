@@ -355,13 +355,17 @@ func GetLegalMovesForQueen(board *Board, square *Square) (*[]*Move, error) {
 	return &queenMoves, nil
 }
 
-func GetLegalMovesForKing(board *Board, square *Square) (*[]*Move, error) {
+func GetLegalMovesForKing(board *Board) *[]*Move {
 	kingMoves := make([]*Move, 0)
-	piece := board.GetPieceOnSquare(square)
-	if board.IsWhiteTurn && piece != WHITE_KING {
-		return nil, fmt.Errorf("unexpected piece on square %s, expected WHITE_KING", piece)
-	} else if !board.IsWhiteTurn && piece != BLACK_KING {
-		return nil, fmt.Errorf("unexpected piece on square %s, expected BLACK_KING", piece)
+	whiteKingSquare, blackKingSquare := board.ComputeKingPositions()
+	var square *Square
+	var piece Piece
+	if board.IsWhiteTurn {
+		square = whiteKingSquare
+		piece = WHITE_KING
+	} else {
+		square = blackKingSquare
+		piece = BLACK_KING
 	}
 	landSquares := []*Square{
 		{square.Rank + 1, square.File - 1},
@@ -398,7 +402,47 @@ func GetLegalMovesForKing(board *Board, square *Square) (*[]*Move, error) {
 		kingMoves = append(kingMoves, &Move{piece, square, &kingDestSquare, EMPTY, make([]*Square, 0), EMPTY})
 	}
 	kingMoves = *filterMovesByKingSafety(board, &kingMoves)
-	return &kingMoves, nil
+	return &kingMoves
+}
+
+func GetLegalMoves(board *Board, stopAtFirst bool) (*[8][8][]*Move, uint8) {
+	// for the active player, it returns:
+	//	1. A 2d array which maps to board squares, where the element type
+	//	   is a slice of legal moves for that piece in that square
+	//  2. The total count of all legal moves
+	var boardMoves [8][8][]*Move
+	movesCount := uint8(0)
+	for rank := uint8(1); rank < 9; rank++ {
+		for file := uint8(1); file < 9; file++ {
+			square := Square{rank, file}
+			piece := board.GetPieceOnSquare(&square)
+			if piece == EMPTY {
+				continue
+			}
+			if piece.IsWhite() == board.IsWhiteTurn {
+				var moves *[]*Move
+				if piece.IsPawn() {
+					moves, _ = GetLegalMovesForPawn(board, &square)
+				} else if piece.IsKnight() {
+					moves, _ = GetLegalMovesForKnight(board, &square)
+				} else if piece.IsBishop() {
+					moves, _ = GetLegalMovesForBishop(board, &square)
+				} else if piece.IsRook() {
+					moves, _ = GetLegalMovesForRook(board, &square)
+				} else if piece.IsQueen() {
+					moves, _ = GetLegalMovesForQueen(board, &square)
+				} else {
+					moves = GetLegalMovesForKing(board)
+				}
+				boardMoves[rank-1][file-1] = *moves
+				movesCount += uint8(len(*moves))
+				if stopAtFirst && len(*moves) > 0 {
+					return &boardMoves, movesCount
+				}
+			}
+		}
+	}
+	return &boardMoves, movesCount
 }
 
 func canCastleKingside(board *Board, square *Square) bool {
@@ -482,6 +526,7 @@ func UpdateBoardFromMove(board *Board, move *Move) {
 	board.IsWhiteTurn = !board.IsWhiteTurn
 
 	UpdateCastleRightsFromMove(board, move)
+	UpdateBoardIsTerminal(board)
 }
 
 func UpdateBoardPiecesFromMove(board *Board, move *Move) {
@@ -545,4 +590,24 @@ func UpdateCastleRightsFromMove(board *Board, move *Move) {
 			board.CanBlackCastleQueenside = false
 		}
 	}
+}
+
+func UpdateBoardIsTerminal(board *Board) {
+	if !board.HasLegalNextMove() {
+		board.IsTerminal = true
+		checkingSquares := GetCheckingSquares(board, board.IsWhiteTurn)
+		if len(*checkingSquares) > 1 {
+			if board.IsWhiteTurn {
+				board.IsBlackWinner = true
+			} else {
+				board.IsWhiteWinner = true
+			}
+		}
+		return
+	}
+	if board.IsForcedDrawByMaterial() || board.HalfMoveClockCount >= 50 {
+		board.IsTerminal = true
+		return
+	}
+	// TODO: check for board repeats
 }

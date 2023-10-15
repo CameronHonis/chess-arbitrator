@@ -675,8 +675,7 @@ var _ = Describe("GameHelpers", func() {
 		When("the king is unimpeded in the middle of the board", func() {
 			It("returns all 8 king moves", func() {
 				board, _ := BoardFromFEN("k7/p7/5K2/8/8/8/8/8 w - - 0 1")
-				realMoves, err := GetLegalMovesForKing(board, &Square{6, 6})
-				Expect(err).ToNot(HaveOccurred())
+				realMoves := GetLegalMovesForKing(board)
 				expMoves := []Move{
 					{WHITE_KING, &Square{6, 6}, &Square{7, 5}, EMPTY, make([]*Square, 0), EMPTY},
 					{WHITE_KING, &Square{6, 6}, &Square{7, 6}, EMPTY, make([]*Square, 0), EMPTY},
@@ -693,8 +692,7 @@ var _ = Describe("GameHelpers", func() {
 		When("the king is unimpeded on the corner of the board", func() {
 			It("does not include moves off the board", func() {
 				board, _ := BoardFromFEN("k7/p7/8/8/8/8/8/7K w - - 0 1")
-				realMoves, err := GetLegalMovesForKing(board, &Square{1, 8})
-				Expect(err).ToNot(HaveOccurred())
+				realMoves := GetLegalMovesForKing(board)
 				expMoves := []Move{
 					{WHITE_KING, &Square{1, 8}, &Square{1, 7}, EMPTY, make([]*Square, 0), EMPTY},
 					{WHITE_KING, &Square{1, 8}, &Square{2, 7}, EMPTY, make([]*Square, 0), EMPTY},
@@ -706,8 +704,7 @@ var _ = Describe("GameHelpers", func() {
 		When("the king is two files away from the enemy king", func() {
 			It("does not include moves that 'touch' the enemy king", func() {
 				board, _ := BoardFromFEN("8/p7/8/2k1K3/8/8/8/8 w - - 0 1")
-				realMoves, err := GetLegalMovesForKing(board, &Square{5, 5})
-				Expect(err).ToNot(HaveOccurred())
+				realMoves := GetLegalMovesForKing(board)
 				expMoves := []Move{
 					{WHITE_KING, &Square{5, 5}, &Square{6, 5}, EMPTY, make([]*Square, 0), EMPTY},
 					{WHITE_KING, &Square{5, 5}, &Square{4, 5}, EMPTY, make([]*Square, 0), EMPTY},
@@ -723,8 +720,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is white", func() {
 					It("does not return a king move to castle kingside", func() {
 						board, _ := BoardFromFEN("4k3/p7/8/8/8/8/3PPP2/3QK1NR w K - 0 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{1, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						for _, realMove := range *realMoves {
 							Expect(realMove.EndSquare.EqualTo(&Square{1, 7})).To(BeFalse())
 						}
@@ -733,8 +729,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is black", func() {
 					It("does not return a king move to castle kingside", func() {
 						board, _ := BoardFromFEN("3pkb1r/3ppp2/8/8/8/8/8/3K4 b k - 0 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{8, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						for _, realMove := range *realMoves {
 							Expect(realMove.EndSquare.EqualTo(&Square{8, 7})).To(BeFalse())
 						}
@@ -745,8 +740,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is white", func() {
 					It("returns a king move to castle kingside", func() {
 						board, _ := BoardFromFEN("4k3/p7/8/8/8/5N2/3PPP2/3QK2R w K - 0 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{1, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						foundCastleMove := false
 						for _, realMove := range *realMoves {
 							if realMove.EndSquare.EqualTo(&Square{1, 7}) {
@@ -759,8 +753,7 @@ var _ = Describe("GameHelpers", func() {
 					Context("and an enemy rook stares between the king's start and end castle squares", func() {
 						It("does not return a king move to castle kingside", func() {
 							board, _ := BoardFromFEN("4k1r1/p7/8/8/8/5N2/3PPP2/3QK2R w K - 0 1")
-							realMoves, err := GetLegalMovesForKing(board, &Square{1, 5})
-							Expect(err).ToNot(HaveOccurred())
+							realMoves := GetLegalMovesForKing(board)
 							for _, realMove := range *realMoves {
 								Expect(realMove.EndSquare.EqualTo(&Square{1, 7})).To(BeFalse())
 							}
@@ -770,8 +763,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is black", func() {
 					It("returns a king move to castle kingside", func() {
 						board, _ := BoardFromFEN("3pk2r/3ppp2/3b4/8/8/8/8/3K4 b k - 0 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{8, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						foundCastleMove := false
 						for _, realMove := range *realMoves {
 							if realMove.EndSquare.EqualTo(&Square{8, 7}) {
@@ -789,8 +781,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is white", func() {
 					It("does not return a king move to castle queenside", func() {
 						board, _ := BoardFromFEN("4k3/8/2p5/8/8/8/3PPP2/R2QKB2 w Q - 0 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{1, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						for _, realMove := range *realMoves {
 							Expect(realMove.EndSquare.EqualTo(&Square{1, 3})).To(BeFalse())
 						}
@@ -799,8 +790,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is black", func() {
 					It("does not return a king move to castle queenside", func() {
 						board, _ := BoardFromFEN("r2qkb2/3ppp2/8/8/8/8/3PPP2/R2QKB2 b q - 1 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{8, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						for _, realMove := range *realMoves {
 							Expect(realMove.EndSquare.EqualTo(&Square{8, 3})).To(BeFalse())
 						}
@@ -811,8 +801,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is white", func() {
 					It("returns a king move to castle queenside", func() {
 						board, _ := BoardFromFEN("r2qkb2/3ppp2/8/8/8/8/3PPP2/R3KB2 w Qq - 1 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{1, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						foundCastleMove := false
 						for _, realMove := range *realMoves {
 							if realMove.EndSquare.EqualTo(&Square{1, 3}) {
@@ -825,8 +814,7 @@ var _ = Describe("GameHelpers", func() {
 					Context("and an enemy rook stares down between the king's start and end castle squares", func() {
 						It("does not return a king move to castle queenside", func() {
 							board, _ := BoardFromFEN("r2qkb2/3ppp2/8/8/8/8/3PPP2/R2QKB2 b q - 1 1")
-							realMoves, err := GetLegalMovesForKing(board, &Square{8, 5})
-							Expect(err).ToNot(HaveOccurred())
+							realMoves := GetLegalMovesForKing(board)
 							for _, realMove := range *realMoves {
 								Expect(realMove.EndSquare.EqualTo(&Square{8, 3})).To(BeFalse())
 							}
@@ -836,8 +824,7 @@ var _ = Describe("GameHelpers", func() {
 				Context("and the king is black", func() {
 					It("returns a move to castle queenside", func() {
 						board, _ := BoardFromFEN("r3kb2/3ppp2/8/8/8/8/3PPP2/R3KB2 b Qq - 1 1")
-						realMoves, err := GetLegalMovesForKing(board, &Square{8, 5})
-						Expect(err).ToNot(HaveOccurred())
+						realMoves := GetLegalMovesForKing(board)
 						foundCastleMove := false
 						for _, realMove := range *realMoves {
 							if realMove.EndSquare.EqualTo(&Square{8, 3}) {
@@ -848,6 +835,61 @@ var _ = Describe("GameHelpers", func() {
 						Expect(foundCastleMove).To(BeTrue())
 					})
 				})
+			})
+		})
+	})
+	Describe("#GetLegalMoves", func() {
+		When("the board is the initialize board", func() {
+			var board *Board
+			var boardMoves *[8][8][]*Move
+			var movesCount uint8
+			BeforeEach(func() {
+				board = GetInitBoard()
+				boardMoves, movesCount = GetLegalMoves(board, false)
+			})
+			It("returns the total legal moves for white", func() {
+				Expect(movesCount).To(Equal(uint8(20)))
+			})
+			DescribeTable("returns the correct length of moves for a square",
+				func(r int, c int, expMoveLength int) {
+					squareMoves := boardMoves[r][c]
+					Expect(squareMoves).To(HaveLen(expMoveLength))
+				},
+				Entry("A-pawn has two moves", 1, 0, 2),
+				Entry("B-pawn has two moves", 1, 1, 2),
+				Entry("C-pawn has two moves", 1, 2, 2),
+				Entry("D-pawn has two moves", 1, 3, 2),
+				Entry("E-pawn has two moves", 1, 4, 2),
+				Entry("F-pawn has two moves", 1, 5, 2),
+				Entry("G-pawn has two moves", 1, 6, 2),
+				Entry("H-pawn has two moves", 1, 7, 2),
+				Entry("queens rook has no moves", 0, 0, 0),
+				Entry("queens knight has two moves", 0, 1, 2),
+				Entry("queens bishop has no moves", 0, 2, 0),
+				Entry("queen has no moves", 0, 3, 0),
+				Entry("king has no moves", 0, 4, 0),
+				Entry("king's bishop has no moves", 0, 5, 0),
+				Entry("king's knight has two moves", 0, 6, 2),
+				Entry("king's rook has no moves", 0, 7, 0),
+			)
+			It("returns no moves for the non-active player", func() {
+				for r := 6; r < 8; r++ {
+					for c := 0; c < 8; c++ {
+						blackPieceMoves := boardMoves[r][c]
+						Expect(blackPieceMoves).To(BeEmpty())
+					}
+				}
+			})
+			It("returns no moves for empty squares", func() {
+				for r := 0; r < 8; r++ {
+					for c := 0; c < 8; c++ {
+						square := Square{uint8(r + 1), uint8(c + 1)}
+						if piece := board.GetPieceOnSquare(&square); piece == EMPTY {
+							squareMoves := boardMoves[r][c]
+							Expect(squareMoves).To(BeEmpty())
+						}
+					}
+				}
 			})
 		})
 	})

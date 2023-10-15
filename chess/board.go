@@ -201,11 +201,8 @@ func (board *Board) GetPieceOnSquare(square *Square) Piece {
 	return board.Pieces[square.Rank-1][square.File-1]
 }
 
-func (board *Board) IsForcedDraw() bool {
-	if board.optMaterialCount == nil {
-		board.ComputeMaterialCount(true)
-	}
-	mat := board.optMaterialCount
+func (board *Board) IsForcedDrawByMaterial() bool {
+	mat := board.ComputeMaterialCount()
 	if mat.WhitePawnCount > 0 || mat.BlackPawnCount > 0 {
 		return false
 	}
@@ -237,7 +234,43 @@ func (board *Board) IsForcedDraw() bool {
 	return true
 }
 
-func (board *Board) ComputeMaterialCount(includeKings bool) *MaterialCount {
+func (board *Board) HasLegalNextMove() bool {
+	moves := GetLegalMovesForKing(board)
+	if len(*moves) == 0 {
+		checkingSquares := GetCheckingSquares(board, board.IsWhiteTurn)
+		if len(*checkingSquares) > 1 {
+			return false
+		}
+	}
+	_, legalMovesCount := GetLegalMoves(board, true)
+	return legalMovesCount > 1
+}
+
+func (board *Board) ComputeKingPositions() (*Square, *Square) {
+	if board.optWhiteKingSquare != nil && board.optBlackKingSquare != nil {
+		return board.optWhiteKingSquare, board.optBlackKingSquare
+	}
+
+	for r := uint8(0); r < 8; r++ {
+		for c := uint8(0); c < 8; c++ {
+			piece := board.Pieces[r][c]
+			if piece == WHITE_KING {
+				board.optWhiteKingSquare = &Square{r + 1, c + 1}
+				if board.optBlackKingSquare != nil {
+					return board.optWhiteKingSquare, board.optBlackKingSquare
+				}
+			} else if piece == BLACK_KING {
+				board.optBlackKingSquare = &Square{r + 1, c + 1}
+				if board.optWhiteKingSquare != nil {
+					return board.optWhiteKingSquare, board.optBlackKingSquare
+				}
+			}
+		}
+	}
+	return board.optWhiteKingSquare, board.optBlackKingSquare
+}
+
+func (board *Board) ComputeMaterialCount() *MaterialCount {
 	if board.optMaterialCount != nil {
 		return board.optMaterialCount
 	}
@@ -261,8 +294,6 @@ func (board *Board) ComputeMaterialCount(includeKings bool) *MaterialCount {
 				materialCount.WhiteRookCount++
 			} else if piece == WHITE_QUEEN {
 				materialCount.WhiteQueenCount++
-			} else if piece == WHITE_KING {
-				board.optWhiteKingSquare = &Square{Rank: r + 1, File: c + 1}
 			} else if piece == BLACK_PAWN {
 				materialCount.BlackPawnCount++
 			} else if piece == BLACK_KNIGHT {
@@ -278,8 +309,6 @@ func (board *Board) ComputeMaterialCount(includeKings bool) *MaterialCount {
 				materialCount.BlackRookCount++
 			} else if piece == BLACK_QUEEN {
 				materialCount.BlackQueenCount++
-			} else if piece == BLACK_KING && includeKings {
-				board.optBlackKingSquare = &Square{Rank: r + 1, File: c + 1}
 			}
 		}
 	}
@@ -287,30 +316,12 @@ func (board *Board) ComputeMaterialCount(includeKings bool) *MaterialCount {
 	return &materialCount
 }
 
-func (board *Board) ComputeKingSquares() {
-	for r := uint8(0); r < 8; r++ {
-		for c := uint8(0); c < 8; c++ {
-			piece := board.Pieces[r][c]
-			if piece == WHITE_KING {
-				square := Square{Rank: r + 1, File: c + 1}
-				board.optWhiteKingSquare = &square
-			}
-			if piece == BLACK_KING {
-				square := Square{Rank: r + 1, File: c + 1}
-				board.optBlackKingSquare = &square
-			}
-		}
-	}
-}
-
 func (board *Board) GetKingSquare(isWhiteKing bool) *Square {
-	if board.optWhiteKingSquare == nil || board.optBlackKingSquare == nil {
-		board.ComputeKingSquares()
-	}
+	whiteSquare, blackSquare := board.ComputeKingPositions()
 	if isWhiteKing {
-		return board.optWhiteKingSquare
+		return whiteSquare
 	} else {
-		return board.optBlackKingSquare
+		return blackSquare
 	}
 }
 

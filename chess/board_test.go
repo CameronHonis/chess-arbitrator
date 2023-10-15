@@ -7,45 +7,45 @@ import (
 )
 
 var _ = Describe("Board", func() {
-	Describe("::IsForcedDraw", func() {
+	Describe("::IsForcedDrawByMaterial", func() {
 		When("the remaining material forces a draw", func() {
 			When("only the kings are on the board", func() {
 				It("returns true", func() {
 					board, _ := BoardFromFEN("8/8/8/8/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeTrue())
+					Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 				})
 			})
 			When("only one bishop exists", func() {
 				Context("and its a white bishop", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/4B3/8/8/7K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 				Context("and its a black bishop", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/4b3/8/8/7K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 			})
 			When("both players have one bishop", func() {
 				It("returns true", func() {
 					board, _ := BoardFromFEN("8/4B3/8/8/7K/8/3b4/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeTrue())
+					Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 				})
 			})
 			When("a player has two same colored bishops", func() {
 				Context("and the bishops are white", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/4B3/3B4/8/7K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 				Context("and the bishops are black", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/5b2/4b3/8/7K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 			})
@@ -53,20 +53,20 @@ var _ = Describe("Board", func() {
 				Context("and the knight is white", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/8/8/8/4N2K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 				Context("and the knight is black", func() {
 					It("returns true", func() {
 						board, _ := BoardFromFEN("8/8/4n3/8/7K/8/8/k7 w - - 0 1")
-						Expect(board.IsForcedDraw()).To(BeTrue())
+						Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 					})
 				})
 			})
 			When("both players have only one knight", func() {
 				It("returns true", func() {
 					board, _ := BoardFromFEN("5n2/8/8/8/4N2K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeTrue())
+					Expect(board.IsForcedDrawByMaterial()).To(BeTrue())
 				})
 			})
 		})
@@ -74,45 +74,53 @@ var _ = Describe("Board", func() {
 			When("only one rook exists", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/2R5/8/8/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
 			When("only one queen exists", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/8/4q3/8/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
 			When("only one pawn exists", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/8/8/6P1/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
 			When("a player has two different colored bishops", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/4B3/4B3/8/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
 			When("only one player has a bishop and knight", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/4B3/4N3/8/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
 			When("only one player has two knights", func() {
 				It("returns false", func() {
 					board, _ := BoardFromFEN("8/8/4n3/4n3/7K/8/8/k7 w - - 0 1")
-					Expect(board.IsForcedDraw()).To(BeFalse())
+					Expect(board.IsForcedDrawByMaterial()).To(BeFalse())
 				})
 			})
+		})
+	})
+	Describe("::HasLegalMoves", func() {
+		When("the board represents a stalemate", func() {
+
+		})
+		When("the board does not represent a stalemate", func() {
+
 		})
 	})
 	Describe("::getMaterialCount", func() {
 		It("counts material of the initiate board", func() {
 			board := GetInitBoard()
-			materialCount := board.ComputeMaterialCount(true)
+			materialCount := board.ComputeMaterialCount()
 			Expect(materialCount.WhitePawnCount).To(Equal(uint8(8)))
 			Expect(materialCount.WhiteKnightCount).To(Equal(uint8(2)))
 			Expect(materialCount.WhiteLightBishopCount).To(Equal(uint8(1)))
