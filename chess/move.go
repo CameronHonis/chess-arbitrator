@@ -47,3 +47,10 @@ func (move *Move) DoesAllowEnPassant() bool {
 	dis := math.Abs(float64(int(move.EndSquare.Rank) - int(move.StartSquare.Rank)))
 	return dis > 1
 }
+
+func (move *Move) IsCastles() bool {
+	if !move.Piece.IsKing() {
+		return false
+	}
+	return move.StartSquare.File == 5 && (move.EndSquare.File == 3 || move.EndSquare.File == 7)
+}

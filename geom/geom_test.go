@@ -5,6 +5,7 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/geom"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"time"
 )
 
 var _ = Describe("Geom", func() {
@@ -33,4 +34,8 @@ var _ = Describe("Geom", func() {
 		d[0][0] = 1337
 		fmt.Sprintf("asdf %d", a[0])
 	})
+	FIt("should lock the goroutine when waiting on unbuffered channel", func() {
+		geom.TestGoRoutines()
+
+	}, NodeTimeout(time.Second*10))
 })

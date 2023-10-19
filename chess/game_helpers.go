@@ -511,9 +511,9 @@ func UpdateBoardFromMove(board *Board, move *Move) {
 	UpdateBoardEnPassantSquare(board, move)
 	board.IsWhiteTurn = !board.IsWhiteTurn
 
-	UpdateCastleRights(board, move)
-	UpdateRepetitionsByFENMap(board, move)
-	UpdateBoardIsTerminal(board)
+	castleRightsChanged := UpdateCastleRights(board, move)
+	repetitions := UpdateRepetitionsByFENMap(board, move, castleRightsChanged)
+	UpdateBoardIsTerminal(board, repetitions)
 }
 
 func UpdateBoardPiecesFromMove(board *Board, move *Move) {
@@ -543,7 +543,7 @@ func UpdateBoardPiecesFromMove(board *Board, move *Move) {
 			board.SetPieceOnSquare(EMPTY, &Square{1, 1})
 		}
 	} else if move.Piece == BLACK_KING {
-		board.optWhiteKingSquare = move.EndSquare
+		board.optBlackKingSquare = move.EndSquare
 		if move.EndSquare.EqualTo(&Square{8, 7}) {
 			board.SetPieceOnSquare(BLACK_ROOK, &Square{8, 6})
 			board.SetPieceOnSquare(EMPTY, &Square{8, 8})
@@ -572,42 +572,58 @@ func UpdateBoardEnPassantSquare(board *Board, move *Move) {
 		}
 	}
 }
-func UpdateCastleRights(board *Board, move *Move) {
+func UpdateCastleRights(board *Board, move *Move) bool {
 	if !move.Piece.IsKing() && !move.Piece.IsRook() {
-		return
+		return false
 	}
+	castleRightsChanged := false
 	if move.Piece.IsRook() {
-		if move.StartSquare.EqualTo(&Square{1, 1}) {
+		if board.CanWhiteCastleQueenside && move.StartSquare.EqualTo(&Square{1, 1}) {
 			board.CanWhiteCastleQueenside = false
-		} else if move.StartSquare.EqualTo(&Square{1, 8}) {
+			castleRightsChanged = true
+		} else if board.CanWhiteCastleKingside && move.StartSquare.EqualTo(&Square{1, 8}) {
 			board.CanWhiteCastleKingside = false
-		} else if move.StartSquare.EqualTo(&Square{8, 1}) {
+			castleRightsChanged = true
+		} else if board.CanBlackCastleQueenside && move.StartSquare.EqualTo(&Square{8, 1}) {
 			board.CanBlackCastleQueenside = false
-		} else if move.StartSquare.EqualTo(&Square{8, 8}) {
+			castleRightsChanged = true
+		} else if board.CanBlackCastleKingside && move.StartSquare.EqualTo(&Square{8, 8}) {
 			board.CanBlackCastleKingside = false
+			castleRightsChanged = true
 		}
 	} else if move.Piece.IsKing() {
-		if move.Piece.IsWhite() {
+		if move.Piece.IsWhite() && (board.CanWhiteCastleKingside || board.CanWhiteCastleQueenside) {
 			board.CanWhiteCastleKingside = false
 			board.CanWhiteCastleQueenside = false
-		} else {
+			castleRightsChanged = true
+		} else if board.CanBlackCastleKingside || board.CanBlackCastleQueenside {
 			board.CanBlackCastleKingside = false
 			board.CanBlackCastleQueenside = false
+			castleRightsChanged = true
 		}
 	}
+	return castleRightsChanged
 }
 
-func UpdateRepetitionsByFENMap(board *Board, move *Move) {
+func UpdateRepetitionsByFENMap(board *Board, move *Move, castleRightsChanged bool) uint8 {
+	if move.Piece.IsPawn() || move.CapturedPiece != EMPTY || castleRightsChanged {
+		board.RepetitionsByMiniFEN = make(map[string]uint8)
+	}
 	miniFEN := board.ToMiniFEN()
 	repetitions, _ := board.RepetitionsByMiniFEN[miniFEN]
 	board.RepetitionsByMiniFEN[miniFEN] = repetitions + 1
+	return repetitions + 1
 }
 
-func UpdateBoardIsTerminal(board *Board) {
+func UpdateBoardIsTerminal(board *Board, repetitions uint8) {
+	if board.IsForcedDrawByMaterial() || board.HalfMoveClockCount >= 50 || repetitions >= 3 {
+		board.IsTerminal = true
+		return
+	}
 	if !board.HasLegalNextMove() {
 		board.IsTerminal = true
 		checkingSquares := GetCheckingSquares(board, board.IsWhiteTurn)
-		if len(*checkingSquares) > 1 {
+		if len(*checkingSquares) > 0 {
 			if board.IsWhiteTurn {
 				board.IsBlackWinner = true
 			} else {
@@ -616,9 +632,4 @@ func UpdateBoardIsTerminal(board *Board) {
 		}
 		return
 	}
-	if board.IsForcedDrawByMaterial() || board.HalfMoveClockCount >= 50 {
-		board.IsTerminal = true
-		return
-	}
-	// TODO: check for board repeats
 }
