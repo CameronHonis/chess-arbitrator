@@ -21,7 +21,6 @@ func upgradeToWSCon(w http.ResponseWriter, r *http.Request) (*websocket.Conn, er
 
 func listenOnWsCon(con *websocket.Conn) {
 	msg := AuthMessageContent{
-		Topic:      AUTH,
 		PublicKey:  "asdf",
 		PrivateKey: "some-private-key",
 	}
@@ -50,6 +49,7 @@ func listenOnWsCon(con *websocket.Conn) {
 }
 
 func StartWSServer() {
+	//userClientsManager := NewUserClientsManager()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		con, _ := upgradeToWSCon(w, r)
 		go listenOnWsCon(con)

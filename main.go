@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/server"
 	"time"
 )
 
 func main() {
-	//server.StartWSServer()
+	server.StartWSServer()
 	testSelectChannel()
 }
 

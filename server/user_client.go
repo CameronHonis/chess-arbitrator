@@ -1,52 +1,54 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"log"
 	"sync"
 )
 
-type Message struct {
-	Topic   MessageTopic
-	Content interface{}
-}
-
 type UserClient struct {
-	publicKey   string
-	privateKey  string
-	channel     chan Message
-	stdoutMutex *sync.Mutex
-	conn        *websocket.Conn
-	cleanup     func(*UserClient)
+	publicKey     string
+	privateKey    string
+	serverChannel chan *Prompt
+	stdoutMutex   *sync.Mutex
+	conn          *websocket.Conn
+	cleanup       func(*UserClient)
 }
 
-func NewUserClient(stdoutMutex *sync.Mutex, ch chan Message, conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
+func NewUserClient(stdoutMutex *sync.Mutex, ch chan *Prompt, conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
 	pubKey, priKey := generateKeyset()
 	uc := UserClient{
-		publicKey:   pubKey,
-		privateKey:  priKey,
-		channel:     ch,
-		stdoutMutex: stdoutMutex,
-		conn:        conn,
-		cleanup:     cleanup,
+		publicKey:     pubKey,
+		privateKey:    priKey,
+		serverChannel: ch,
+		stdoutMutex:   stdoutMutex,
+		conn:          conn,
+		cleanup:       cleanup,
 	}
-	uc.listenOnChannel()
+	clientInitPrompt := Prompt{
+		Type: PROMPT_TYPE_INIT_CLIENT,
+		Content: &InitClientPromptContent{
+			PublicKey: pubKey,
+		},
+	}
+	ch <- &clientInitPrompt
+	uc.listenOnServerChannel()
 	uc.listenOnWebsocket()
 	return &uc
 }
 
-func (uc *UserClient) listenOnChannel() {
+func (uc *UserClient) listenOnServerChannel() {
 	for {
-		msg := <-uc.channel
-		msgJson, jsonParseErr := json.Marshal(msg)
-		if jsonParseErr != nil {
-			log.Fatal(jsonParseErr)
-		}
+		msg := <-uc.serverChannel
+		//msgJson, jsonParseErr := json.Marshal(msg)
+		//if jsonParseErr != nil {
+		//	log.Fatal(jsonParseErr)
+		//}
+		//uc.stdoutMutex.Lock()
+		//fmt.Println("Arbitrator >> ", string(msgJson))
+		//uc.stdoutMutex.Unlock()
 		uc.stdoutMutex.Lock()
-		fmt.Println("Arbitrator >> ", string(msgJson))
-		uc.stdoutMutex.Unlock()
+		fmt.Println("Server >> ", msg)
 	}
 }
 
@@ -59,6 +61,8 @@ func (uc *UserClient) listenOnWebsocket() {
 			uc.cleanup(uc)
 			return
 		}
-
+		uc.stdoutMutex.Lock()
+		fmt.Println(uc.publicKey, " >> ", string(msg))
+		uc.stdoutMutex.Unlock()
 	}
 }
