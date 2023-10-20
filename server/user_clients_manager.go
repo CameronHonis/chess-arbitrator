@@ -31,18 +31,31 @@ func (ucm *UserClientsManager) RemoveClient(clientKey string) error {
 	return nil
 }
 
-func (ucm *UserClientsManager) SubscribeClientTo(clientKey string, topic MessageTopic) {
+func (ucm *UserClientsManager) SubscribeClientTo(clientKey string, topic MessageTopic) error {
 	subbedTopics := ucm.GetSubscribedTopics(clientKey)
+	if subbedTopics.Has(topic) {
+		return fmt.Errorf("client %s already subscribed to topic %d", clientKey, topic)
+	}
 	subbedTopics.Add(topic)
+	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(topic)
+	subbedClientKeys.Add(clientKey)
+	return nil
 }
 
-func (ucm *UserClientsManager) UnsubClientFrom(clientKey string, topic MessageTopic) {
+func (ucm *UserClientsManager) UnsubClientFrom(clientKey string, topic MessageTopic) error {
 	subbedTopics := ucm.GetSubscribedTopics(clientKey)
+	if !subbedTopics.Has(topic) {
+		return fmt.Errorf("client %s is not subscribed to %d", clientKey, topic)
+	}
 	subbedTopics.Remove(topic)
+	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(topic)
+	subbedClientKeys.Remove(clientKey)
+	return nil
 }
 
 func (ucm *UserClientsManager) UnsubClientFromAll(clientKey string) {
-	for _, topic := range ucm.subscribedTopicsByClientKey[clientKey].Flatten() {
+	subbedTopics := ucm.GetSubscribedTopics(clientKey)
+	for _, topic := range subbedTopics.Flatten() {
 		ucm.subscriberClientKeysByTopic[topic].Remove(clientKey)
 	}
 	ucm.subscribedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
@@ -51,6 +64,7 @@ func (ucm *UserClientsManager) UnsubClientFromAll(clientKey string) {
 func (ucm *UserClientsManager) GetSubscribedTopics(clientKey string) *Set[MessageTopic] {
 	subbedTopics, ok := ucm.subscribedTopicsByClientKey[clientKey]
 	if !ok {
+		subbedTopics = EmptySet[MessageTopic]()
 		ucm.subscribedTopicsByClientKey[clientKey] = subbedTopics
 	}
 	return subbedTopics
