@@ -1,10 +1,22 @@
 package server
 
 type Prompt struct {
-	Type    PromptType
-	Content interface{}
+	Type      PromptType
+	SenderKey string
+	Content   interface{}
 }
 
 type InitClientPromptContent struct {
-	PublicKey string
+}
+
+type SubscribeToTopicPromptContent struct {
+	Topic MessageTopic
+}
+
+type UnsubscribeToTopicPromptContent struct {
+	Topic MessageTopic
+}
+
+type TransferMessagePromptContent struct {
+	Message *Message
 }

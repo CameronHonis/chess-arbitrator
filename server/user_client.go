@@ -92,10 +92,6 @@ func (uc *UserClient) listenOnWebsocket() {
 }
 
 func (uc *UserClient) handlePrompt(prompt *Prompt) {
-	uc.stdoutMutex.Lock()
-	fmt.Println("Server >> ", prompt)
-	uc.stdoutMutex.Unlock()
-
 	switch prompt.Type {
 	case PROMPT_TYPE_INIT_CLIENT:
 

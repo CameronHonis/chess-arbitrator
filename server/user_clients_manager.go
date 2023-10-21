@@ -7,7 +7,10 @@ import (
 	"sync"
 )
 
+var userClientsManager *UserClientsManager
+
 type UserClientsManager struct {
+	stdoutMutex                 *sync.Mutex
 	clientByPublicKey           map[string]*UserClient
 	subscriberClientKeysByTopic []*Set[string]
 	subscribedTopicsByClientKey map[string]*Set[MessageTopic]
@@ -15,8 +18,7 @@ type UserClientsManager struct {
 
 func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
 	clientChannel := make(chan *Prompt)
-	stdoutMutex := sync.Mutex{}
-	client := NewUserClient(&stdoutMutex, clientChannel, conn, func(client *UserClient) {})
+	client := NewUserClient(ucm.stdoutMutex, clientChannel, conn, func(client *UserClient) {})
 
 	err := ucm.AddClient(client)
 	if err != nil {
@@ -132,6 +134,7 @@ func NewUserClientsManager() (*UserClientsManager, error) {
 		return nil, fmt.Errorf("singleton UserClientsManager already instantiated")
 	}
 	ucm := UserClientsManager{
+		stdoutMutex:                 &sync.Mutex{},
 		clientByPublicKey:           make(map[string]*UserClient),
 		subscriberClientKeysByTopic: make([]*Set[string], 50),
 		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
