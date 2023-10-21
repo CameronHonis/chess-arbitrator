@@ -7,35 +7,6 @@ import (
 import "fmt"
 import "github.com/gorilla/websocket"
 
-func listenOnWsCon(con *websocket.Conn) {
-	msg := AuthMessageContent{
-		PublicKey:  "asdf",
-		PrivateKey: "some-private-key",
-	}
-	msgJsonBytes, jsonParseErr := msg.toJsonBytes()
-	if jsonParseErr != nil {
-		fmt.Println(jsonParseErr)
-		return
-	}
-	writeBytesErr := con.WriteMessage(websocket.TextMessage, msgJsonBytes)
-	if writeBytesErr != nil {
-		fmt.Println(writeBytesErr)
-		return
-	}
-	for {
-		messageType, p, err := con.ReadMessage()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Println(messageType, string(p))
-		if err := con.WriteMessage(websocket.TextMessage, p); err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-}
-
 func StartWSServer() {
 	userClientsManager, _ = NewUserClientsManager()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -51,14 +22,11 @@ func StartWSServer() {
 		}
 	})
 
-	go func() {
-		err := http.ListenAndServe(":8080", nil)
-		fmt.Println("asdf")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}()
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func upgradeToWSCon(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
@@ -74,15 +42,16 @@ func upgradeToWSCon(w http.ResponseWriter, r *http.Request) (*websocket.Conn, er
 	return con, nil
 }
 
-func handlePrompt(prompt *Prompt) error {
-	if LOG_PROMPTS {
+func handlePrompt(prompt *Prompt) {
+	if LOG_INCOMING_PROMPTS {
 		promptJson, err := json.Marshal(*prompt)
 		userClientsManager.stdoutMutex.Lock()
 		if err != nil {
-			fmt.Println("could not marshal json for ", *prompt)
+			fmt.Println("could not marshal json for ", *prompt, " while logging incoming prompt")
 		} else {
-			fmt.Println(prompt.SenderKey, " >> ", string(promptJson))
+			fmt.Println("[SERVER]", prompt.SenderKey, " >> ", string(promptJson))
 		}
+		userClientsManager.stdoutMutex.Unlock()
 	}
 	parsedContent := false
 	switch prompt.Type {
@@ -102,35 +71,64 @@ func handlePrompt(prompt *Prompt) error {
 			parsedContent = true
 		}
 	case PROMPT_TYPE_TRANSFER_MESSAGE:
-		if content, ok := prompt.Content.(TransferMessagePromptContent); ok {
-			handleTransferMessagePrompt(prompt.SenderKey, &content)
+		if content, ok := prompt.Content.(*TransferMessagePromptContent); ok {
+			handleTransferMessagePrompt(prompt.SenderKey, content)
 			parsedContent = true
 		}
 	default:
-		return fmt.Errorf("unhandled prompt type %d", prompt.Type)
+		userClientsManager.stdoutMutex.Lock()
+		fmt.Printf("unhandled prompt type %d\n", prompt.Type)
+		userClientsManager.stdoutMutex.Unlock()
+		return
 	}
 	if !parsedContent {
-		return fmt.Errorf("could not parse prompt content for prompt type %d", prompt.Type)
+		userClientsManager.stdoutMutex.Lock()
+		fmt.Println("could not parse prompt content for prompt type ", prompt.Type)
+		userClientsManager.stdoutMutex.Unlock()
+		return
 	}
-	return nil
 }
 
 func handleInitClientPrompt(clientKey string, content *InitClientPromptContent) {
-	if LOG_PROMPTS {
+	userClientsManager.stdoutMutex.Lock()
+	fmt.Println("initialized client with key ", clientKey)
+	userClientsManager.stdoutMutex.Unlock()
+}
+
+func handleSubscribeToTopicPrompt(clientKey string, content *SubscribeToTopicPromptContent) {
+	alreadySubbedErr := userClientsManager.SubscribeClientTo(clientKey, content.Topic)
+	if alreadySubbedErr != nil {
 		userClientsManager.stdoutMutex.Lock()
-		fmt.Println("initialized client with key ", clientKey)
+		fmt.Println(alreadySubbedErr)
 		userClientsManager.stdoutMutex.Unlock()
 	}
 }
 
-func handleSubscribeToTopicPrompt(clientKey string, content *SubscribeToTopicPromptContent) {
-
-}
-
 func handleUnsubscribeToTopicPrompt(clientKey string, content *UnsubscribeToTopicPromptContent) {
-
+	err := userClientsManager.UnsubClientFrom(clientKey, content.Topic)
+	if err != nil {
+		userClientsManager.stdoutMutex.Lock()
+		fmt.Println(err)
+		userClientsManager.stdoutMutex.Unlock()
+	}
 }
 
 func handleTransferMessagePrompt(clientKey string, content *TransferMessagePromptContent) {
-
+	subbedClientKeys := userClientsManager.GetClientKeysSubscribedToTopic(content.Message.Topic)
+	for _, subbedClientKey := range subbedClientKeys.Flatten() {
+		if subbedClientKey != clientKey {
+			subbedClient, err := userClientsManager.GetClientFromKey(subbedClientKey)
+			if err != nil {
+				userClientsManager.stdoutMutex.Lock()
+				fmt.Println(err)
+				userClientsManager.stdoutMutex.Unlock()
+				continue
+			}
+			subbedClient.InChannel() <- &Prompt{
+				Type:      PROMPT_TYPE_TRANSFER_MESSAGE,
+				SenderKey: clientKey,
+				Content:   content,
+			}
+		}
+	}
 }

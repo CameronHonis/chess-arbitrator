@@ -13,7 +13,7 @@ var _ = Describe("UserClientsManager", func() {
 	BeforeEach(func() {
 		userClientsManager = nil
 		NewUserClientsManager()
-		client = NewUserClient(nil, make(chan *Prompt), nil, nil)
+		client = NewUserClient(nil, nil, func(client *UserClient) {})
 		client.publicKey = "some-public-key"
 		clientKey = client.publicKey
 	})
@@ -27,7 +27,8 @@ var _ = Describe("UserClientsManager", func() {
 				Expect(ok).To(BeTrue())
 				Expect(*client).To(BeAssignableToTypeOf(UserClient{}))
 				Expect(client.publicKey).To(Equal(clientKey))
-				Expect(client.serverChannel).ToNot(BeNil())
+				Expect(client.inChannel).ToNot(BeNil())
+				Expect(client.outChannel).ToNot(BeNil())
 			})
 		})
 		When("the client already exists", func() {
@@ -107,7 +108,7 @@ var _ = Describe("UserClientsManager", func() {
 		var topicB MessageTopic
 		BeforeEach(func() {
 			topicA = MESSAGE_TOPIC_AUTH
-			topicB = MESSAGE_TOPIC_MATCHMAKING
+			topicB = MESSAGE_TOPIC_INIT_BOT_MATCH
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
 			err := userClientsManager.SubscribeClientTo(clientKey, topicA)
@@ -181,6 +182,23 @@ var _ = Describe("UserClientsManager", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(fmt.Errorf("client with key %s isn't an established client", clientKey)))
 			})
+		})
+	})
+	Describe("::GetAllOutChannels", func() {
+		var otherClient *UserClient
+		BeforeEach(func() {
+			addClientErr := userClientsManager.AddClient(client)
+			Expect(addClientErr).ToNot(HaveOccurred())
+			otherClient = NewUserClient(nil, nil, func(client *UserClient) {})
+			otherClient.publicKey = "other-public-key"
+			addClientErr = userClientsManager.AddClient(otherClient)
+			Expect(addClientErr).ToNot(HaveOccurred())
+		})
+		It("returns a slice of all client channels", func() {
+			channels := userClientsManager.GetAllOutChannels()
+			Expect(channels).To(HaveLen(2))
+			Expect(&channels[0]).To(Equal(&client.outChannel))
+			Expect(&channels[1]).To(Equal(&otherClient.outChannel))
 		})
 	})
 })
