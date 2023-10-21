@@ -3,31 +3,43 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/chess-arbitrator/set"
+	"github.com/gorilla/websocket"
+	"sync"
 )
 
 type UserClientsManager struct {
-	clientKeys                  *Set[string]
-	channelByClientKey          map[string]chan *Prompt
+	clientByPublicKey           map[string]*UserClient
 	subscriberClientKeysByTopic []*Set[string]
 	subscribedTopicsByClientKey map[string]*Set[MessageTopic]
 }
 
-func (ucm *UserClientsManager) AddClient(clientKey string, ch chan *Prompt) error {
-	if ucm.clientKeys.Has(clientKey) {
-		return fmt.Errorf("client %s already exists", clientKey)
+func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
+	clientChannel := make(chan *Prompt)
+	stdoutMutex := sync.Mutex{}
+	client := NewUserClient(&stdoutMutex, clientChannel, conn, func(client *UserClient) {})
+
+	err := ucm.AddClient(client)
+	if err != nil {
+		return nil, err
+	} else {
+		return client, nil
 	}
-	ucm.clientKeys.Add(clientKey)
-	ucm.channelByClientKey[clientKey] = ch
+}
+
+func (ucm *UserClientsManager) AddClient(client *UserClient) error {
+	if _, ok := ucm.clientByPublicKey[client.PublicKey()]; ok {
+		return fmt.Errorf("client with key %s already exists", client.PublicKey())
+	}
+	ucm.clientByPublicKey[client.PublicKey()] = client
 	return nil
 }
 
-func (ucm *UserClientsManager) RemoveClient(clientKey string) error {
-	if !ucm.clientKeys.Has(clientKey) {
-		return fmt.Errorf("client %s isn't in the clientKey set", clientKey)
+func (ucm *UserClientsManager) RemoveClient(client *UserClient) error {
+	if _, ok := ucm.clientByPublicKey[client.PublicKey()]; !ok {
+		return fmt.Errorf("client with key %s isn't an established client", client.PublicKey())
 	}
-	ucm.clientKeys.Remove(clientKey)
-	delete(ucm.channelByClientKey, clientKey)
-	ucm.UnsubClientFromAll(clientKey)
+	delete(ucm.clientByPublicKey, client.PublicKey())
+	ucm.UnsubClientFromAll(client.PublicKey())
 	return nil
 }
 
@@ -61,6 +73,14 @@ func (ucm *UserClientsManager) UnsubClientFromAll(clientKey string) {
 	ucm.subscribedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
 }
 
+func (ucm *UserClientsManager) GetClientFromKey(clientKey string) (*UserClient, error) {
+	client, ok := ucm.clientByPublicKey[clientKey]
+	if !ok {
+		return nil, fmt.Errorf("no client with public key %s", clientKey)
+	}
+	return client, nil
+}
+
 func (ucm *UserClientsManager) GetSubscribedTopics(clientKey string) *Set[MessageTopic] {
 	subbedTopics, ok := ucm.subscribedTopicsByClientKey[clientKey]
 	if !ok {
@@ -79,15 +99,44 @@ func (ucm *UserClientsManager) GetClientKeysSubscribedToTopic(topic MessageTopic
 	return subbedClients
 }
 
-func (ucm *UserClientsManager) GetChannelByClientKey(clientKey string) chan *Prompt {
-	return ucm.channelByClientKey[clientKey]
+func (ucm *UserClientsManager) GetAllChannels() []chan *Prompt {
+	channels := make([]chan *Prompt, len(ucm.clientByPublicKey))
+	for _, client := range ucm.clientByPublicKey {
+		channels = append(channels, client.ServerChannel())
+	}
+	return channels
 }
 
-func NewUserClientsManager() *UserClientsManager {
-	return &UserClientsManager{
-		clientKeys:                  EmptySet[string](),
-		channelByClientKey:          make(map[string]chan *Prompt),
+func (ucm *UserClientsManager) GetChannelByClientKey(clientKey string) (chan *Prompt, error) {
+	client, ok := ucm.clientByPublicKey[clientKey]
+	if !ok {
+		return nil, fmt.Errorf("client with key %s does not exist", clientKey)
+	}
+	return client.ServerChannel(), nil
+}
+func (ucm *UserClientsManager) listenOnUserClientChannels() {
+	for {
+		for _, channel := range ucm.GetAllChannels() {
+			select {
+			case prompt := <-channel:
+				handlePrompt(prompt)
+			default:
+				continue
+			}
+		}
+	}
+}
+
+func NewUserClientsManager() (*UserClientsManager, error) {
+	if userClientsManager != nil {
+		return nil, fmt.Errorf("singleton UserClientsManager already instantiated")
+	}
+	ucm := UserClientsManager{
+		clientByPublicKey:           make(map[string]*UserClient),
 		subscriberClientKeysByTopic: make([]*Set[string], 50),
 		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
 	}
+	go ucm.listenOnUserClientChannels()
+	userClientsManager = &ucm
+	return &ucm, nil
 }
