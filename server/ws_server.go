@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 )
 import "fmt"
@@ -43,16 +42,7 @@ func upgradeToWSCon(w http.ResponseWriter, r *http.Request) (*websocket.Conn, er
 }
 
 func handlePrompt(prompt *Prompt) {
-	if LOG_INCOMING_PROMPTS {
-		promptJson, err := json.Marshal(*prompt)
-		userClientsManager.stdoutMutex.Lock()
-		if err != nil {
-			fmt.Println("could not marshal json for ", *prompt, " while logging incoming prompt")
-		} else {
-			fmt.Println("[SERVER]", prompt.SenderKey, " >> ", string(promptJson))
-		}
-		userClientsManager.stdoutMutex.Unlock()
-	}
+	GetLogManager().LogPrompt("server", prompt.SenderKey, prompt)
 	parsedContent := false
 	switch prompt.Type {
 	case PROMPT_TYPE_INIT_CLIENT:
@@ -76,40 +66,30 @@ func handlePrompt(prompt *Prompt) {
 			parsedContent = true
 		}
 	default:
-		userClientsManager.stdoutMutex.Lock()
-		fmt.Printf("unhandled prompt type %d\n", prompt.Type)
-		userClientsManager.stdoutMutex.Unlock()
+		GetLogManager().Log("server", fmt.Sprintf("unhandled prompt type %d", prompt.Type))
 		return
 	}
 	if !parsedContent {
-		userClientsManager.stdoutMutex.Lock()
-		fmt.Println("could not parse prompt content for prompt type ", prompt.Type)
-		userClientsManager.stdoutMutex.Unlock()
+		GetLogManager().Log("server", fmt.Sprintf("could not parse prompt content for prompt type %d", prompt.Type))
 		return
 	}
 }
 
 func handleInitClientPrompt(clientKey string, content *InitClientPromptContent) {
-	userClientsManager.stdoutMutex.Lock()
-	fmt.Println("initialized client with key ", clientKey)
-	userClientsManager.stdoutMutex.Unlock()
+	GetLogManager().Log("server", fmt.Sprintf("handling init client prompt for client %s", clientKey))
 }
 
 func handleSubscribeToTopicPrompt(clientKey string, content *SubscribeToTopicPromptContent) {
 	alreadySubbedErr := userClientsManager.SubscribeClientTo(clientKey, content.Topic)
 	if alreadySubbedErr != nil {
-		userClientsManager.stdoutMutex.Lock()
-		fmt.Println(alreadySubbedErr)
-		userClientsManager.stdoutMutex.Unlock()
+		GetLogManager().Log("server", alreadySubbedErr)
 	}
 }
 
 func handleUnsubscribeToTopicPrompt(clientKey string, content *UnsubscribeToTopicPromptContent) {
 	err := userClientsManager.UnsubClientFrom(clientKey, content.Topic)
 	if err != nil {
-		userClientsManager.stdoutMutex.Lock()
-		fmt.Println(err)
-		userClientsManager.stdoutMutex.Unlock()
+		GetLogManager().Log("server", err)
 	}
 }
 
@@ -119,9 +99,7 @@ func handleTransferMessagePrompt(clientKey string, content *TransferMessagePromp
 		if subbedClientKey != clientKey {
 			subbedClient, err := userClientsManager.GetClientFromKey(subbedClientKey)
 			if err != nil {
-				userClientsManager.stdoutMutex.Lock()
-				fmt.Println(err)
-				userClientsManager.stdoutMutex.Unlock()
+				GetLogManager().Log("server", err)
 				continue
 			}
 			subbedClient.InChannel() <- &Prompt{

@@ -11,7 +11,6 @@ import (
 var userClientsManager *UserClientsManager
 
 type UserClientsManager struct {
-	stdoutMutex                 *sync.Mutex
 	interactMutex               *sync.Mutex
 	clientByPublicKey           map[string]*UserClient
 	subscriberClientKeysByTopic []*Set[string]
@@ -19,7 +18,7 @@ type UserClientsManager struct {
 }
 
 func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
-	client := NewUserClient(ucm.stdoutMutex, conn, func(client *UserClient) {})
+	client := NewUserClient(conn, func(client *UserClient) {})
 
 	err := ucm.AddClient(client)
 	if err != nil {
@@ -174,7 +173,6 @@ func NewUserClientsManager() (*UserClientsManager, error) {
 		return nil, fmt.Errorf("singleton UserClientsManager already instantiated")
 	}
 	ucm := UserClientsManager{
-		stdoutMutex:                 &sync.Mutex{},
 		interactMutex:               &sync.Mutex{},
 		clientByPublicKey:           make(map[string]*UserClient),
 		subscriberClientKeysByTopic: make([]*Set[string], 50),

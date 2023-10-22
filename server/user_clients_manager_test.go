@@ -13,7 +13,7 @@ var _ = Describe("UserClientsManager", func() {
 	BeforeEach(func() {
 		userClientsManager = nil
 		NewUserClientsManager()
-		client = NewUserClient(nil, nil, func(client *UserClient) {})
+		client = NewUserClient(nil, func(client *UserClient) {})
 		client.publicKey = "some-public-key"
 		clientKey = client.publicKey
 	})
@@ -189,7 +189,7 @@ var _ = Describe("UserClientsManager", func() {
 		BeforeEach(func() {
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
-			otherClient = NewUserClient(nil, nil, func(client *UserClient) {})
+			otherClient = NewUserClient(nil, func(client *UserClient) {})
 			otherClient.publicKey = "other-public-key"
 			addClientErr = userClientsManager.AddClient(otherClient)
 			Expect(addClientErr).ToNot(HaveOccurred())

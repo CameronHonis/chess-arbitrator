@@ -3,35 +3,32 @@ package server
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"sync"
 	"time"
 )
 
 type UserClient struct {
-	active      bool //assumed that cleanup already ran if set to true
-	publicKey   string
-	privateKey  string
-	inChannel   chan *Prompt
-	outChannel  chan *Prompt
-	stdoutMutex *sync.Mutex
-	conn        *websocket.Conn
-	cleanup     func(*UserClient)
+	active     bool //assumed that cleanup already ran if set to true
+	publicKey  string
+	privateKey string
+	inChannel  chan *Prompt
+	outChannel chan *Prompt
+	conn       *websocket.Conn
+	cleanup    func(*UserClient)
 }
 
-func NewUserClient(stdoutMutex *sync.Mutex, conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
+func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
 	pubKey, priKey := generateKeyset()
 	inChannel := make(chan *Prompt)
 	outChannel := make(chan *Prompt)
 
 	uc := UserClient{
-		active:      true,
-		publicKey:   pubKey,
-		privateKey:  priKey,
-		inChannel:   inChannel,
-		outChannel:  outChannel,
-		stdoutMutex: stdoutMutex,
-		conn:        conn,
-		cleanup:     cleanup,
+		active:     true,
+		publicKey:  pubKey,
+		privateKey: priKey,
+		inChannel:  inChannel,
+		outChannel: outChannel,
+		conn:       conn,
+		cleanup:    cleanup,
 	}
 	//clientInitPrompt := Prompt{
 	//	Type: PROMPT_TYPE_INIT_CLIENT,
@@ -87,20 +84,14 @@ func (uc *UserClient) listenOnWebsocket() {
 			userClientsManager.RemoveClient(uc)
 			return
 		}
-		if LOG_INCOMING_MESSAGES {
-			uc.stdoutMutex.Lock()
-			fmt.Println("[CLIENT | ", uc.publicKey, "] >> ", string(rawMsg))
-			uc.stdoutMutex.Unlock()
-		}
+		GetLogManager().LogMessage("client", uc.publicKey, string(rawMsg))
 
-		//msg, unmarshalErr := UnmarshalToMessage(rawMsg)
-		//if unmarshalErr != nil {
-		//	uc.stdoutMutex.Lock()
-		//	fmt.Println(unmarshalErr)
-		//	uc.stdoutMutex.Unlock()
-		//	continue
-		//}
-		//uc.handleMessage(msg)
+		msg, unmarshalErr := UnmarshalToMessage(rawMsg)
+		if unmarshalErr != nil {
+			GetLogManager().Log("client", fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
+			continue
+		}
+		uc.handleMessage(msg)
 	}
 }
 
