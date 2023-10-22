@@ -120,11 +120,10 @@ func (uc *UserClient) handlePrompt(prompt *Prompt) {
 }
 
 func (uc *UserClient) handleMessage(msg *Message) {
-	switch msg.Topic {
-	case MESSAGE_TOPIC_INIT_BOT_MATCH:
-		uc.handleInitBotMatchMessage(msg.Content.(*InitBotMatchMessageContent))
-	}
-	if !msg.IsPrivate() {
+	if msg.IsPrivate() {
+		switch msg.Topic {
+		}
+	} else {
 		uc.outChannel <- &Prompt{
 			Type:      PROMPT_TYPE_TRANSFER_MESSAGE,
 			SenderKey: uc.publicKey,
@@ -136,9 +135,8 @@ func (uc *UserClient) handleMessage(msg *Message) {
 }
 
 func (uc *UserClient) handleTransferMessagePrompt(content *TransferMessagePromptContent) {
-
-}
-
-func (uc *UserClient) handleInitBotMatchMessage(content *InitBotMatchMessageContent) {
-
+	err := uc.SendMessage(content.Message)
+	if err != nil {
+		GetLogManager().Log("client", fmt.Sprintf("could not send message: %s", err))
+	}
 }
