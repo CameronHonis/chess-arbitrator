@@ -22,10 +22,33 @@ func GetLogManager() *LogManager {
 	}
 }
 
-func (lm *LogManager) Log(env string, msg interface{}) {
+func (lm *LogManager) formatMessage(env string, msg ...interface{}) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("[%s] ", strings.ToUpper(env)))
+	for _, m := range msg {
+		sb.WriteString(fmt.Sprintf("%v", m))
+	}
+	return sb.String()
+}
+
+func (lm *LogManager) logWithLock(logMsg string) {
 	lm.mu.Lock()
-	fmt.Println("[", strings.ToUpper(env), "] ", msg)
+	fmt.Println(logMsg)
 	lm.mu.Unlock()
+}
+
+func (lm *LogManager) Log(env string, msg ...interface{}) {
+	lm.logWithLock(lm.formatMessage(env, msg...))
+}
+
+func (lm *LogManager) LogRed(env string, msg ...interface{}) {
+	coloredString := fmt.Sprintf("\x1b[31m%s\x1b[0m", lm.formatMessage(env, msg...))
+	lm.logWithLock(coloredString)
+}
+
+func (lm *LogManager) LogGreen(env string, msg ...interface{}) {
+	coloredString := fmt.Sprintf("\x1b[32m%s\x1b[0m", lm.formatMessage(env, msg...))
+	lm.logWithLock(coloredString)
 }
 
 func (lm *LogManager) LogPrompt(env string, origin string, prompt *Prompt) {
