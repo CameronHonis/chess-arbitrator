@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -49,19 +48,6 @@ func (lm *LogManager) LogRed(env string, msg ...interface{}) {
 func (lm *LogManager) LogGreen(env string, msg ...interface{}) {
 	coloredString := fmt.Sprintf("\x1b[32m%s\x1b[0m", lm.formatMessage(env, msg...))
 	lm.logWithLock(coloredString)
-}
-
-func (lm *LogManager) LogPrompt(env string, origin string, prompt *Prompt) {
-	if LOG_INCOMING_PROMPTS {
-		promptJson, err := json.Marshal(*prompt)
-		lm.mu.Lock()
-		if err != nil {
-			fmt.Println("could not marshal json for ", *prompt, " while logging incoming prompt")
-		} else {
-			fmt.Println("[", strings.ToUpper(env), "] ", origin, " >> ", string(promptJson))
-		}
-		lm.mu.Unlock()
-	}
 }
 
 func (lm *LogManager) LogMessage(env string, origin string, msg string) {

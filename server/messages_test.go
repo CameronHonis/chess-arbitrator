@@ -13,13 +13,14 @@ var _ = Describe("Messages", func() {
 
 	BeforeEach(func() {
 		message = &Message{
-			Topic: MESSAGE_TOPIC_AUTH,
+			Topic:       "auth",
+			ContentType: CONTENT_TYPE_AUTH,
 			Content: &AuthMessageContent{
 				PublicKey:  "some-public-key",
 				PrivateKey: "some-private-key",
 			},
 		}
-		messageJson = []byte(`{"topic":1,"content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
+		messageJson = []byte(`{"topic":"auth","contentType":"AUTH","content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
 	})
 	Describe("marshalling a message to JSON", func() {
 		It("converts the Message into JSON", func() {
@@ -31,32 +32,44 @@ var _ = Describe("Messages", func() {
 	Describe("unmarshalling JSON to a message", func() {
 		When("the json is missing a topic", func() {
 			BeforeEach(func() {
-				messageJson = []byte(`{"content":{"publicKey":"some-public-key","privateKey": "some-private-key"}}`)
+				messageJson = []byte(`{"contentType": "AUTH", "content":{"publicKey":"some-public-key","privateKey": "some-private-key"}}`)
+			})
+			It("does not return an error", func() {
+				_, err := UnmarshalToMessage(messageJson)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+		When("the json is missing a content type", func() {
+			BeforeEach(func() {
+				messageJson = []byte(`{"topic": "auth", "content":{"publicKey":"some-public-key","privateKey": "some-private-key"}}`)
 			})
 			It("returns an error", func() {
 				_, err := UnmarshalToMessage(messageJson)
-				Expect(err).To(Equal(fmt.Errorf("could not determine required field 'Topic' from %s while constructing Message", string(messageJson))))
+				expErr := fmt.Errorf("could not extract content type from %s while constructing Message content", string(messageJson))
+				Expect(err).To(Equal(expErr))
 			})
 		})
 		When("the json is missing content", func() {
 			BeforeEach(func() {
-				messageJson = []byte(`{"topic": 1}`)
+				messageJson = []byte(`{"topic": "auth", "contentType": "AUTH"}`)
 			})
 			It("returns an error", func() {
 				_, err := UnmarshalToMessage(messageJson)
-				Expect(err).To(Equal(fmt.Errorf("could not extract content map from %s while constructing Message content", string(messageJson))))
+				expErr := fmt.Errorf("could not extract content map from %s while constructing Message content", string(messageJson))
+				Expect(err).To(Equal(expErr))
 			})
 		})
 		When("when the message type is MESSAGE_TOPIC_AUTH", func() {
 			BeforeEach(func() {
 				message = &Message{
-					Topic: MESSAGE_TOPIC_AUTH,
+					Topic:       "auth",
+					ContentType: CONTENT_TYPE_AUTH,
 					Content: &AuthMessageContent{
 						PublicKey:  "some-public-key",
 						PrivateKey: "some-private-key",
 					},
 				}
-				messageJson = []byte(`{"topic":1,"content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
+				messageJson = []byte(`{"topic": "auth", "contentType": "AUTH", "content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
 			})
 			It("returns a message with its Content as a AuthMessageContent", func() {
 				realMessage, err := UnmarshalToMessage(messageJson)

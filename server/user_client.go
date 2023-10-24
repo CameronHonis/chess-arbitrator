@@ -10,16 +10,16 @@ type UserClient struct {
 	active     bool //assumed that cleanup already ran if set to true
 	publicKey  string
 	privateKey string
-	inChannel  chan *Prompt
-	outChannel chan *Prompt
+	inChannel  chan *Message
+	outChannel chan *Message
 	conn       *websocket.Conn
 	cleanup    func(*UserClient)
 }
 
 func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
 	pubKey, priKey := generateKeyset()
-	inChannel := make(chan *Prompt)
-	outChannel := make(chan *Prompt)
+	inChannel := make(chan *Message)
+	outChannel := make(chan *Message)
 
 	uc := UserClient{
 		active:     true,
@@ -30,13 +30,6 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 		conn:       conn,
 		cleanup:    cleanup,
 	}
-	//clientInitPrompt := Prompt{
-	//	Type: PROMPT_TYPE_INIT_CLIENT,
-	//	Content: &InitClientPromptContent{
-	//		PublicKey: pubKey,
-	//	},
-	//}
-	//ch <- &clientInitPrompt
 	go uc.listenOnServerChannel()
 	go uc.listenOnWebsocket()
 	return &uc
@@ -46,11 +39,11 @@ func (uc *UserClient) PublicKey() string {
 	return uc.publicKey
 }
 
-func (uc *UserClient) InChannel() chan *Prompt {
+func (uc *UserClient) InChannel() chan *Message {
 	return uc.inChannel
 }
 
-func (uc *UserClient) OutChannel() chan *Prompt {
+func (uc *UserClient) OutChannel() chan *Message {
 	return uc.outChannel
 }
 
@@ -58,8 +51,11 @@ func (uc *UserClient) listenOnServerChannel() {
 	for {
 		time.Sleep(time.Millisecond * 1)
 		select {
-		case prompt := <-uc.inChannel:
-			uc.handlePrompt(prompt)
+		case message := <-uc.inChannel:
+			sendErr := uc.SendMessage(message)
+			if sendErr != nil {
+				fmt.Println("error sending message to client: ", sendErr)
+			}
 		default:
 			if !uc.active {
 				return
@@ -81,7 +77,7 @@ func (uc *UserClient) listenOnWebsocket() {
 		if readErr != nil {
 			fmt.Println("error reading message from websocket: ", readErr)
 			// assume all readErrs are disconnects
-			userClientsManager.RemoveClient(uc)
+			_ = userClientsManager.RemoveClient(uc)
 			return
 		}
 		GetLogManager().LogMessage("client", uc.publicKey, string(rawMsg))
@@ -91,7 +87,7 @@ func (uc *UserClient) listenOnWebsocket() {
 			GetLogManager().Log("client", fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
 			continue
 		}
-		uc.handleMessage(msg)
+		uc.outChannel <- msg
 	}
 }
 
@@ -111,32 +107,4 @@ func (uc *UserClient) Kill() {
 	uc.cleanup(uc)
 
 	uc.active = false
-}
-
-func (uc *UserClient) handlePrompt(prompt *Prompt) {
-	switch prompt.Type {
-	case PROMPT_TYPE_TRANSFER_MESSAGE:
-	}
-}
-
-func (uc *UserClient) handleMessage(msg *Message) {
-	if msg.IsPrivate() {
-		switch msg.Topic {
-		}
-	} else {
-		uc.outChannel <- &Prompt{
-			Type:      PROMPT_TYPE_TRANSFER_MESSAGE,
-			SenderKey: uc.publicKey,
-			Content: &TransferMessagePromptContent{
-				Message: msg,
-			},
-		}
-	}
-}
-
-func (uc *UserClient) handleTransferMessagePrompt(content *TransferMessagePromptContent) {
-	err := uc.SendMessage(content.Message)
-	if err != nil {
-		GetLogManager().Log("client", fmt.Sprintf("could not send message: %s", err))
-	}
 }

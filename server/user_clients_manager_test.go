@@ -46,7 +46,7 @@ var _ = Describe("UserClientsManager", func() {
 	Describe("::SubscribeClientTo", func() {
 		var topic MessageTopic
 		BeforeEach(func() {
-			topic = MESSAGE_TOPIC_AUTH
+			topic = "auth"
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
 			Expect(userClientsManager.GetSubscribedTopics(clientKey).Size()).To(Equal(0))
@@ -68,14 +68,14 @@ var _ = Describe("UserClientsManager", func() {
 			It("returns an error", func() {
 				err := userClientsManager.SubscribeClientTo(clientKey, topic)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(fmt.Errorf("client %s already subscribed to topic %d", clientKey, topic)))
+				Expect(err).To(Equal(fmt.Errorf("client %s already subscribed to topic %s", clientKey, topic)))
 			})
 		})
 	})
 	Describe("::UnsubClientFrom", func() {
 		var topic MessageTopic
 		BeforeEach(func() {
-			topic = MESSAGE_TOPIC_AUTH
+			topic = "auth"
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
 			err := userClientsManager.SubscribeClientTo(clientKey, topic)
@@ -99,7 +99,7 @@ var _ = Describe("UserClientsManager", func() {
 			It("returns an error", func() {
 				err := userClientsManager.UnsubClientFrom(clientKey, topic)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(fmt.Errorf("client %s is not subscribed to %d", clientKey, topic)))
+				Expect(err).To(Equal(fmt.Errorf("client %s is not subscribed to %s", clientKey, topic)))
 			})
 		})
 	})
@@ -107,8 +107,8 @@ var _ = Describe("UserClientsManager", func() {
 		var topicA MessageTopic
 		var topicB MessageTopic
 		BeforeEach(func() {
-			topicA = MESSAGE_TOPIC_AUTH
-			topicB = MESSAGE_TOPIC_INIT_BOT_MATCH
+			topicA = "auth"
+			topicB = "findMatch"
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
 			err := userClientsManager.SubscribeClientTo(clientKey, topicA)
@@ -130,7 +130,7 @@ var _ = Describe("UserClientsManager", func() {
 	Describe("::GetClientKeysSubscribedToTopic", func() {
 		When("the topic has never been subscribed to", func() {
 			It("initializes an empty set and returns it", func() {
-				subbedClientKeys := userClientsManager.GetClientKeysSubscribedToTopic(MESSAGE_TOPIC_AUTH)
+				subbedClientKeys := userClientsManager.GetClientKeysSubscribedToTopic("auth")
 				Expect(*subbedClientKeys).To(BeAssignableToTypeOf(set.Set[string]{}))
 				Expect(subbedClientKeys.Size()).To(Equal(0))
 			})
@@ -153,7 +153,7 @@ var _ = Describe("UserClientsManager", func() {
 		var topic MessageTopic
 		When("a player was added", func() {
 			BeforeEach(func() {
-				topic = MESSAGE_TOPIC_AUTH
+				topic = "auth"
 				addClientErr := userClientsManager.AddClient(client)
 				Expect(addClientErr).ToNot(HaveOccurred())
 				_, ok := userClientsManager.clientByPublicKey[clientKey]
@@ -185,6 +185,7 @@ var _ = Describe("UserClientsManager", func() {
 		})
 	})
 	Describe("::GetAllOutChannels", func() {
+		// is this flakey?
 		var otherClient *UserClient
 		BeforeEach(func() {
 			addClientErr := userClientsManager.AddClient(client)
@@ -197,8 +198,8 @@ var _ = Describe("UserClientsManager", func() {
 		It("returns a slice of all client channels", func() {
 			channels := userClientsManager.GetAllOutChannels()
 			Expect(channels).To(HaveLen(2))
-			Expect(&channels[0]).To(Equal(&client.outChannel))
-			Expect(&channels[1]).To(Equal(&otherClient.outChannel))
+			Expect(channels[0]).To(Equal(client.outChannel))
+			Expect(channels[1]).To(Equal(otherClient.outChannel))
 		})
 	})
 })
