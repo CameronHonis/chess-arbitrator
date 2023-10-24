@@ -12,7 +12,7 @@ var _ = Describe("UserClientsManager", func() {
 	var clientKey string
 	BeforeEach(func() {
 		userClientsManager = nil
-		NewUserClientsManager()
+		GetUserClientsManager()
 		client = NewUserClient(nil, func(client *UserClient) {})
 		client.publicKey = "some-public-key"
 		clientKey = client.publicKey

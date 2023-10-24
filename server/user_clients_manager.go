@@ -168,9 +168,9 @@ func (ucm *UserClientsManager) listenOnUserClientChannels() {
 	}
 }
 
-func NewUserClientsManager() (*UserClientsManager, error) {
+func GetUserClientsManager() *UserClientsManager {
 	if userClientsManager != nil {
-		return nil, fmt.Errorf("singleton UserClientsManager already instantiated")
+		return userClientsManager
 	}
 	ucm := UserClientsManager{
 		interactMutex:               &sync.Mutex{},
@@ -180,5 +180,5 @@ func NewUserClientsManager() (*UserClientsManager, error) {
 	}
 	go ucm.listenOnUserClientChannels()
 	userClientsManager = &ucm
-	return &ucm, nil
+	return &ucm
 }

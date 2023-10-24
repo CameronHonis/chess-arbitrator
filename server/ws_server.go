@@ -7,14 +7,13 @@ import "fmt"
 import "github.com/gorilla/websocket"
 
 func StartWSServer() {
-	userClientsManager, _ = NewUserClientsManager()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, connErr := upgradeToWSCon(w, r)
 		if connErr != nil {
 			fmt.Println(connErr)
 			return
 		}
-		_, addClientErr := userClientsManager.AddNewClient(conn)
+		_, addClientErr := GetUserClientsManager().AddNewClient(conn)
 		if addClientErr != nil {
 			fmt.Println(addClientErr)
 			return
@@ -80,24 +79,24 @@ func handleInitClientPrompt(clientKey string, content *InitClientPromptContent) 
 }
 
 func handleSubscribeToTopicPrompt(clientKey string, content *SubscribeToTopicPromptContent) {
-	alreadySubbedErr := userClientsManager.SubscribeClientTo(clientKey, content.Topic)
+	alreadySubbedErr := GetUserClientsManager().SubscribeClientTo(clientKey, content.Topic)
 	if alreadySubbedErr != nil {
 		GetLogManager().Log("server", alreadySubbedErr)
 	}
 }
 
 func handleUnsubscribeToTopicPrompt(clientKey string, content *UnsubscribeToTopicPromptContent) {
-	err := userClientsManager.UnsubClientFrom(clientKey, content.Topic)
+	err := GetUserClientsManager().UnsubClientFrom(clientKey, content.Topic)
 	if err != nil {
 		GetLogManager().Log("server", err)
 	}
 }
 
 func handleTransferMessagePrompt(clientKey string, content *TransferMessagePromptContent) {
-	subbedClientKeys := userClientsManager.GetClientKeysSubscribedToTopic(content.Message.Topic)
+	subbedClientKeys := GetUserClientsManager().GetClientKeysSubscribedToTopic(content.Message.Topic)
 	for _, subbedClientKey := range subbedClientKeys.Flatten() {
 		if subbedClientKey != clientKey {
-			subbedClient, err := userClientsManager.GetClientFromKey(subbedClientKey)
+			subbedClient, err := GetUserClientsManager().GetClientFromKey(subbedClientKey)
 			if err != nil {
 				GetLogManager().Log("server", err)
 				continue
