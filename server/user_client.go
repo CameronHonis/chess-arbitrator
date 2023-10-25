@@ -32,6 +32,17 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	}
 	go uc.listenOnServerChannel()
 	go uc.listenOnWebsocket()
+	sendAuthErr := uc.SendMessage(&Message{
+		Topic:       "auth",
+		ContentType: CONTENT_TYPE_AUTH,
+		Content: &AuthMessageContent{
+			PublicKey:  uc.publicKey,
+			PrivateKey: uc.privateKey,
+		},
+	})
+	if sendAuthErr != nil {
+		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr))
+	}
 	return &uc
 }
 
