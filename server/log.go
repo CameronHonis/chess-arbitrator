@@ -53,7 +53,7 @@ func (lm *LogManager) LogGreen(env string, msg ...interface{}) {
 func (lm *LogManager) LogMessage(env string, origin string, msg string) {
 	if LOG_INCOMING_MESSAGES {
 		lm.mu.Lock()
-		fmt.Println("[", strings.ToUpper(env), "] ", origin, " >> ", msg)
+		fmt.Println(fmt.Sprintf("[%s] %s >> %s", strings.ToUpper(env), origin, msg))
 		lm.mu.Unlock()
 	}
 }

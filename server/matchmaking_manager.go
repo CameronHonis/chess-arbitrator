@@ -24,7 +24,13 @@ func GetMatchmakingManager() *MatchmakingManager {
 }
 
 func (mm *MatchmakingManager) AddClient(client *ClientProfile) error {
-	return mm.pool.AddClient(client)
+	GetLogManager().Log("matchmaking", fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+	addErr := mm.pool.AddClient(client)
+	if addErr != nil {
+		return addErr
+	}
+	GetLogManager().Log("matchmaking", fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	return nil
 }
 
 func (mm *MatchmakingManager) RemoveClient(client *ClientProfile) error {
@@ -34,6 +40,9 @@ func (mm *MatchmakingManager) RemoveClient(client *ClientProfile) error {
 func (mm *MatchmakingManager) loopMatchmaking() {
 	for {
 		time.Sleep(time.Second)
+		if mm.pool.head == mm.pool.tail {
+			continue
+		}
 		currPoolNode := mm.pool.head
 		for currPoolNode != nil {
 			waitTime := time.Now().Unix() - currPoolNode.timeJoined

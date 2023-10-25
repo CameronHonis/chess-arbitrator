@@ -3,6 +3,7 @@ package server
 import "fmt"
 
 func HandleMessage(msg *Message, clientKey string) {
+	GetLogManager().Log("server", fmt.Sprintf("handling message %s", msg))
 	var handleMsgErr error
 	switch msg.ContentType {
 	case CONTENT_TYPE_FIND_MATCH:
