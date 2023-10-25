@@ -130,17 +130,15 @@ func (ucm *UserClientsManager) GetClientKeysSubscribedToTopic(topic MessageTopic
 	return subbedClients
 }
 
-func (ucm *UserClientsManager) GetAllOutChannels() []chan *Message {
+func (ucm *UserClientsManager) GetAllOutChannels() map[string]chan *Message {
 	defer ucm.interactMutex.Unlock()
 	ucm.interactMutex.Lock()
 	if len(ucm.clientByPublicKey) == 0 {
-		return []chan *Message{}
+		return make(map[string]chan *Message)
 	}
-	channels := make([]chan *Message, len(ucm.clientByPublicKey))
-	channelIdx := 0
+	channels := make(map[string]chan *Message)
 	for _, client := range ucm.clientByPublicKey {
-		channels[channelIdx] = client.OutChannel()
-		channelIdx++
+		channels[client.PublicKey()] = client.OutChannel()
 	}
 	return channels
 }
@@ -157,10 +155,10 @@ func (ucm *UserClientsManager) GetInChannelByClientKey(clientKey string) (<-chan
 func (ucm *UserClientsManager) listenOnUserClientChannels() {
 	for {
 		time.Sleep(time.Millisecond * 1)
-		for _, channel := range ucm.GetAllOutChannels() {
+		for clientKey, channel := range ucm.GetAllOutChannels() {
 			select {
 			case message := <-channel:
-				go HandleMessage(message)
+				go HandleMessage(message, clientKey)
 			default:
 				continue
 			}

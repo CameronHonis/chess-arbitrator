@@ -51,10 +51,10 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 		msgContent = &AuthMessageContent{}
 		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
 	case CONTENT_TYPE_FIND_BOT_MATCH:
-		msgContent = &InitBotMatchMessageContent{}
+		msgContent = &FindBotMatchMessageContent{}
 		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
 	case CONTENT_TYPE_FIND_MATCH:
-		msgContent = &InitMatchMessageContent{}
+		msgContent = &FindMatchMessageContent{}
 		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
 	case CONTENT_TYPE_MATCH_UPDATE:
 		msgContent = &MatchUpdateMessageContent{}
@@ -89,17 +89,16 @@ type AuthMessageContent struct {
 	PrivateKey string `json:"privateKey"`
 }
 
-type InitBotMatchMessageContent struct {
+type FindBotMatchMessageContent struct {
 	MatchKey string `json:"matchKey"`
 	BotName  string `json:"botType"`
 }
 
-type InitMatchMessageContent struct {
-	RequesterElo int `json:"requesterElo"`
+type FindMatchMessageContent struct {
 }
 
 type MatchUpdateMessageContent struct {
-	Match Match `json:"match"`
+	Match *Match `json:"match"`
 }
 
 type MoveMessageContent struct {

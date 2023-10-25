@@ -198,8 +198,8 @@ var _ = Describe("UserClientsManager", func() {
 		It("returns a slice of all client channels", func() {
 			channels := userClientsManager.GetAllOutChannels()
 			Expect(channels).To(HaveLen(2))
-			Expect(channels[0]).To(Equal(client.outChannel))
-			Expect(channels[1]).To(Equal(otherClient.outChannel))
+			Expect(channels[client.PublicKey()]).To(Equal(client.outChannel))
+			Expect(channels[otherClient.PublicKey()]).To(Equal(otherClient.outChannel))
 		})
 	})
 })

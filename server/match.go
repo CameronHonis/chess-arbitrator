@@ -8,35 +8,36 @@ import (
 )
 
 type Match struct {
-	MatchId            string
+	Uuid               string
 	board              *chess.Board
 	WhiteClientId      string
 	WhiteTimeRemaining float64
 	BlackClientId      string
 	BlackTimeRemaining float64
+	TimeControl        *TimeControl
 }
 
-func NewMatch(clientId string) *Match {
+func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *Match {
 	rand.Seed(time.Now().UnixNano())
-	clientIsWhite := rand.Intn(2) == 0
+	clientAIsWhite := rand.Intn(2) == 0
 	matchId := uuid.New().String()
-	if clientIsWhite {
+	if clientAIsWhite {
 		return &Match{
-			MatchId:            matchId,
+			Uuid:               matchId,
 			board:              chess.GetInitBoard(),
-			WhiteClientId:      clientId,
-			WhiteTimeRemaining: 300,
-			BlackClientId:      "",
-			BlackTimeRemaining: 300,
+			WhiteClientId:      clientAKey,
+			WhiteTimeRemaining: float64(timeControl.InitialTimeSeconds),
+			BlackClientId:      clientBKey,
+			BlackTimeRemaining: float64(timeControl.InitialTimeSeconds),
 		}
 	} else {
 		return &Match{
-			MatchId:            matchId,
+			Uuid:               matchId,
 			board:              chess.GetInitBoard(),
-			WhiteClientId:      "",
-			WhiteTimeRemaining: 300,
-			BlackClientId:      clientId,
-			BlackTimeRemaining: 300,
+			WhiteClientId:      clientBKey,
+			WhiteTimeRemaining: float64(timeControl.InitialTimeSeconds),
+			BlackClientId:      clientAKey,
+			BlackTimeRemaining: float64(timeControl.InitialTimeSeconds),
 		}
 	}
 }

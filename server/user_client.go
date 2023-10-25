@@ -66,7 +66,7 @@ func (uc *UserClient) listenOnServerChannel() {
 
 func (uc *UserClient) listenOnWebsocket() {
 	if uc.conn == nil {
-		fmt.Println("cannot listen on websocket, connection is nil")
+		GetLogManager().Log("client", "cannot listen on websocket, connection is nil")
 		return
 	}
 	for {
@@ -75,7 +75,7 @@ func (uc *UserClient) listenOnWebsocket() {
 			return
 		}
 		if readErr != nil {
-			fmt.Println("error reading message from websocket: ", readErr)
+			GetLogManager().LogRed("client", fmt.Sprintf("error reading message from websocket: %s", readErr))
 			// assume all readErrs are disconnects
 			_ = userClientsManager.RemoveClient(uc)
 			return

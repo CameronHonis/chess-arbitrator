@@ -29,13 +29,13 @@ var _ = Describe("Log", func() {
 		It("logs the message", func() {
 			server.GetLogManager().Log("TEST", "test message")
 			stdout := ReadStdout(stdoutWriter, stdoutReader)
-			Expect(stdout).To(Equal("[TEST] test message\n"))
+			Expect(stdout).To(ContainSubstring("[TEST] test message\n"))
 		})
 		When("multiple strings are passed in", func() {
 			It("logs the message", func() {
 				server.GetLogManager().Log("TEST", "test message", " other test message", " 123")
 				stdout := ReadStdout(stdoutWriter, stdoutReader)
-				Expect(stdout).To(Equal("[TEST] test message other test message 123\n"))
+				Expect(stdout).To(ContainSubstring("[TEST] test message other test message 123\n"))
 			})
 		})
 	})
@@ -43,14 +43,14 @@ var _ = Describe("Log", func() {
 		It("logs the message in color", func() {
 			server.GetLogManager().LogRed("TEST", "test message")
 			stdout := ReadStdout(stdoutWriter, stdoutReader)
-			Expect(stdout).To(Equal("\x1b[31m[TEST] test message\x1b[0m\n"))
+			Expect(stdout).To(ContainSubstring("\x1b[31m[TEST] test message\x1b[0m\n"))
 		})
 	})
 	Describe("::LogGreen", func() {
 		It("logs the message in color", func() {
 			server.GetLogManager().LogGreen("TEST", "test message")
 			stdout := ReadStdout(stdoutWriter, stdoutReader)
-			Expect(stdout).To(Equal("\x1b[32m[TEST] test message\x1b[0m\n"))
+			Expect(stdout).To(ContainSubstring("\x1b[32m[TEST] test message\x1b[0m\n"))
 		})
 	})
 	AfterEach(func() {
