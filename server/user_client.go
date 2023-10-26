@@ -17,7 +17,7 @@ type UserClient struct {
 }
 
 func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
-	pubKey, priKey := generateKeyset()
+	pubKey, priKey := GenerateKeyset()
 	inChannel := make(chan *Message)
 	outChannel := make(chan *Message)
 
@@ -103,6 +103,9 @@ func (uc *UserClient) listenOnWebsocket() {
 }
 
 func (uc *UserClient) SendMessage(msg *Message) error {
+	if uc.conn == nil {
+		return fmt.Errorf("cannot send message, connection is nil: %s", msg)
+	}
 	msgJson, jsonErr := msg.Marshal()
 	if jsonErr != nil {
 		return jsonErr

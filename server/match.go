@@ -9,7 +9,7 @@ import (
 
 type Match struct {
 	Uuid               string
-	board              *chess.Board
+	Board              *chess.Board
 	WhiteClientId      string
 	WhiteTimeRemaining float64
 	BlackClientId      string
@@ -24,20 +24,22 @@ func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *M
 	if clientAIsWhite {
 		return &Match{
 			Uuid:               matchId,
-			board:              chess.GetInitBoard(),
+			Board:              chess.GetInitBoard(),
 			WhiteClientId:      clientAKey,
 			WhiteTimeRemaining: float64(timeControl.InitialTimeSeconds),
 			BlackClientId:      clientBKey,
 			BlackTimeRemaining: float64(timeControl.InitialTimeSeconds),
+			TimeControl:        timeControl,
 		}
 	} else {
 		return &Match{
 			Uuid:               matchId,
-			board:              chess.GetInitBoard(),
+			Board:              chess.GetInitBoard(),
 			WhiteClientId:      clientBKey,
 			WhiteTimeRemaining: float64(timeControl.InitialTimeSeconds),
 			BlackClientId:      clientAKey,
 			BlackTimeRemaining: float64(timeControl.InitialTimeSeconds),
+			TimeControl:        timeControl,
 		}
 	}
 }

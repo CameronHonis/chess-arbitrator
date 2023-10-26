@@ -26,7 +26,7 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 	var msg Message
 	jsonParseErr := json.Unmarshal(msgJson, &msg)
 	if jsonParseErr != nil {
-		return nil, fmt.Errorf("could not unmarshal json \n\t%s\n\twhile constructing Message", string(msgJson))
+		return nil, fmt.Errorf("could not unmarshal json... \n\n\t     %s \n\n\t ...while constructing Message", string(msgJson))
 	}
 
 	if msg.ContentType == CONTENT_TYPE_EMPTY && msg.Content != nil {

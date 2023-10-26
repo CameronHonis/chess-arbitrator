@@ -34,7 +34,7 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	mm.matchByMatchId[match.Uuid] = match
 	mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
 	mm.matchIdByClientId[match.BlackClientId] = match.Uuid
-	matchTopic := MessageTopic(match.Uuid)
+	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 	subErr := GetUserClientsManager().SubscribeClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
 		GetLogManager().LogRed("matchmaking", fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))

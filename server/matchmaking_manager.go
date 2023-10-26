@@ -44,7 +44,7 @@ func (mm *MatchmakingManager) loopMatchmaking() {
 			continue
 		}
 		currPoolNode := mm.pool.head
-		for currPoolNode != nil {
+		for currPoolNode != nil && currPoolNode.next != nil {
 			waitTime := time.Now().Unix() - currPoolNode.timeJoined
 			bestMatchPoolNode := currPoolNode.next
 			bestMatchWeight := float64(10000000000)
