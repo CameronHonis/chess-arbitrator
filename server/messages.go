@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/chess"
+	"github.com/CameronHonis/chess"
 )
 
 type MessageTopic string

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/chess"
+	"github.com/CameronHonis/chess"
 	"github.com/google/uuid"
 	"math/rand"
 	"time"
