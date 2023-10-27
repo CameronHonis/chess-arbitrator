@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/CameronHonis/chess v0.0.0-20231026001700-1bce8cf416e4
-	github.com/FlxOne/golang-encrypted-uuid v0.0.0-20190328123256-c181b1fdc40e
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/onsi/ginkgo/v2 v2.13.0
@@ -16,8 +15,6 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
-	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect

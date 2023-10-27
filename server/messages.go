@@ -90,8 +90,8 @@ type AuthMessageContent struct {
 }
 
 type FindBotMatchMessageContent struct {
-	MatchKey string `json:"matchKey"`
-	BotName  string `json:"botType"`
+	PlayerKey string `json:"playerKey"`
+	BotName   string `json:"botName"`
 }
 
 type FindMatchMessageContent struct {
