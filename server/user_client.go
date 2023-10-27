@@ -41,7 +41,7 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 		},
 	})
 	if sendAuthErr != nil {
-		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr))
+		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
 	}
 	return &uc
 }
@@ -65,7 +65,7 @@ func (uc *UserClient) listenOnServerChannel() {
 		case message := <-uc.inChannel:
 			sendErr := uc.SendMessage(message)
 			if sendErr != nil {
-				fmt.Println("error sending message to client: ", sendErr)
+				GetLogManager().LogRed("client", fmt.Sprintf("error sending message to client: %s", sendErr), ALL_BUT_TEST_ENV)
 			}
 		default:
 			if !uc.active {
@@ -77,7 +77,7 @@ func (uc *UserClient) listenOnServerChannel() {
 
 func (uc *UserClient) listenOnWebsocket() {
 	if uc.conn == nil {
-		GetLogManager().Log("client", "cannot listen on websocket, connection is nil")
+		GetLogManager().Log("client", "cannot listen on websocket, connection is nil", ALL_BUT_TEST_ENV)
 		return
 	}
 	for {
