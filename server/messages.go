@@ -57,6 +57,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED: &SubscribeRequestDeniedMessageContent{},
 		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:   &FindBotMatchNoBotsMessageContent{},
 		CONTENT_TYPE_ECHO:                     &EchoMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:     &UpgradeAuthRequestMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
 	if !ok {
@@ -82,6 +83,9 @@ const (
 	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED = "SUBSCRIBE_REQUEST_DENIED"
 	CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS   = "FIND_BOT_MATCH_NO_BOTS"
 	CONTENT_TYPE_ECHO                     = "ECHO"
+	CONTENT_TYPE_UPGRADE_AUTH_REQUEST     = "UPGRADE_AUTH_REQUEST"
+	CONTENT_TYPE_UPGRADE_AUTH_GRANTED     = "UPGRADE_AUTH_GRANTED"
+	CONTENT_TYPE_UPGRADE_AUTH_DENIED      = "UPGRADE_AUTH_DENIED"
 )
 
 type AuthMessageContent struct {
@@ -119,4 +123,16 @@ type SubscribeRequestDeniedMessageContent struct {
 
 type EchoMessageContent struct {
 	Message string `json:"message"`
+}
+
+type UpgradeAuthRequestMessageContent struct {
+	Secret string `json:"secret"`
+}
+
+type UpgradeAuthGrantedMessageContent struct {
+	UpgradedToRole string `json:"upgradedToRole"`
+}
+
+type UpgradeAuthDeniedMessageContent struct {
+	Reason string `json:"reason"`
 }

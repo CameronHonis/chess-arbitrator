@@ -27,6 +27,13 @@ func HandleMessage(msg *Message, clientKey string) {
 			break
 		}
 		handleMsgErr = HandleSubscribeRequestMessage(clientKey, msgContent.Topic)
+	case CONTENT_TYPE_UPGRADE_AUTH_REQUEST:
+		msgContent, ok := msg.Content.(*UpgradeAuthRequestMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
+			break
+		}
+		handleMsgErr = HandleRequestUpgradeAuthMessage(clientKey, msgContent.Secret)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -89,4 +96,26 @@ func HandleEchoMessage(clientKey string, msg string) error {
 		},
 	}
 	return GetUserClientsManager().DirectMessage(&echoMsg, clientKey)
+}
+
+func HandleRequestUpgradeAuthMessage(clientKey string, secret string) error {
+	upgradedToRole, upgradeErr := GetAuthManager().UpgradeAuth(clientKey, secret)
+	if upgradeErr != nil {
+		msg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_UPGRADE_AUTH_DENIED,
+			Content: &UpgradeAuthDeniedMessageContent{
+				Reason: upgradeErr.Error(),
+			},
+		}
+		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+	}
+	msg := Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
+		Content: &UpgradeAuthGrantedMessageContent{
+			UpgradedToRole: upgradedToRole,
+		},
+	}
+	return GetUserClientsManager().DirectMessage(&msg, clientKey)
 }
