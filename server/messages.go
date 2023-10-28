@@ -102,5 +102,5 @@ type MatchUpdateMessageContent struct {
 }
 
 type MoveMessageContent struct {
-	Move chess.Move `json:"move"`
+	Move *chess.Move `json:"move"`
 }
