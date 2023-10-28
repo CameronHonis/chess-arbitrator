@@ -38,7 +38,7 @@ func HandleMessage(msg *Message, clientKey string) {
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
 	}
-	GetUserClientsManager().BroadcastMessage(msg)
+	GetUserClientsManager().BroadcastMessage(*msg)
 }
 
 func HandleFindMatchMessage(clientKey string) error {

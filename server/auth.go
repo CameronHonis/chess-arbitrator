@@ -49,3 +49,11 @@ func ValidatePrivateKey(publicKey string, privateKey string) bool {
 	publicKeyFromPrivateKey := sha256.Sum256([]byte(privateKey))
 	return hex.EncodeToString(publicKeyFromPrivateKey[:]) == publicKey
 }
+
+func (am *AuthManager) ValidateAuthInMessage(msg *Message) error {
+	isValidAuth := ValidatePrivateKey(msg.SenderKey, msg.PrivateKey)
+	if !isValidAuth {
+		return fmt.Errorf("invalid auth")
+	}
+	return nil
+}

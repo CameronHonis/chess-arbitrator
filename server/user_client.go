@@ -98,6 +98,11 @@ func (uc *UserClient) listenOnWebsocket() {
 			GetLogManager().Log("client", fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
 			continue
 		}
+		authErr := GetAuthManager().ValidateAuthInMessage(msg)
+		if authErr != nil {
+			GetLogManager().Log("client", fmt.Sprintf("auth error: %s", authErr))
+			continue
+		}
 		uc.outChannel <- msg
 	}
 }

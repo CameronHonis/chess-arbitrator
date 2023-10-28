@@ -9,6 +9,8 @@ import (
 type MessageTopic string
 
 type Message struct {
+	SenderKey   string       `json:"sender"`
+	PrivateKey  string       `json:"privateKey"`
 	Topic       MessageTopic `json:"topic"`
 	ContentType ContentType  `json:"contentType"`
 	Content     interface{}  `json:"content"`
@@ -58,6 +60,8 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:   &FindBotMatchNoBotsMessageContent{},
 		CONTENT_TYPE_ECHO:                     &EchoMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:     &UpgradeAuthRequestMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:     &UpgradeAuthGrantedMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_DENIED:      &UpgradeAuthDeniedMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
 	if !ok {
@@ -94,8 +98,7 @@ type AuthMessageContent struct {
 }
 
 type FindBotMatchMessageContent struct {
-	PlayerKey string `json:"playerKey"`
-	BotName   string `json:"botName"`
+	BotName string `json:"botName"`
 }
 
 type FindBotMatchNoBotsMessageContent struct {
