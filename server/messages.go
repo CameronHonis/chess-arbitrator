@@ -38,50 +38,50 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 	}
 	contentJson, _ := json.Marshal(contentMap)
 
-	var msgContent interface{}
 	var contentJsonParseErr error
-	switch msg.ContentType {
-	case CONTENT_TYPE_EMPTY:
-		if msg.Content != nil {
-			return nil, fmt.Errorf("message with content type %s has non-nil content", CONTENT_TYPE_EMPTY)
-		}
-	}
-	switch msg.ContentType {
-	case CONTENT_TYPE_AUTH:
-		msgContent = &AuthMessageContent{}
-		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
-	case CONTENT_TYPE_FIND_BOT_MATCH:
-		msgContent = &FindBotMatchMessageContent{}
-		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
-	case CONTENT_TYPE_FIND_MATCH:
-		msgContent = &FindMatchMessageContent{}
-		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
-	case CONTENT_TYPE_MATCH_UPDATE:
-		msgContent = &MatchUpdateMessageContent{}
-		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
-	case CONTENT_TYPE_MOVE:
-		msgContent = &MoveMessageContent{}
-		contentJsonParseErr = json.Unmarshal(contentJson, msgContent)
-	default:
-		contentJsonParseErr = fmt.Errorf("could not extract content type from %s while constructing Message content", msgJson)
-	}
+	msg.Content, contentJsonParseErr = UnmarshalMessageContent(msg.ContentType, contentJson)
 	if contentJsonParseErr != nil {
 		return nil, contentJsonParseErr
 	}
-
-	msg.Content = msgContent
 	return &msg, nil
+}
+
+func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
+	contentStructMap := map[ContentType]interface{}{
+		CONTENT_TYPE_AUTH:                     &AuthMessageContent{},
+		CONTENT_TYPE_FIND_BOT_MATCH:           &FindBotMatchMessageContent{},
+		CONTENT_TYPE_FIND_MATCH:               &FindMatchMessageContent{},
+		CONTENT_TYPE_MATCH_UPDATE:             &MatchUpdateMessageContent{},
+		CONTENT_TYPE_MOVE:                     &MoveMessageContent{},
+		CONTENT_TYPE_SUBSCRIBE_REQUEST:        &SubscribeRequestMessageContent{},
+		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED: &SubscribeRequestDeniedMessageContent{},
+		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:   &FindBotMatchNoBotsMessageContent{},
+		CONTENT_TYPE_ECHO:                     &EchoMessageContent{},
+	}
+	msgContent, ok := contentStructMap[contentType]
+	if !ok {
+		return nil, fmt.Errorf("could not extract content type from %s while constructing Message content", contentJson)
+	}
+	contentJsonParseErr := json.Unmarshal(contentJson, msgContent)
+	if contentJsonParseErr != nil {
+		return nil, contentJsonParseErr
+	}
+	return msgContent, nil
 }
 
 type ContentType string
 
 const (
-	CONTENT_TYPE_EMPTY          = "EMPTY"
-	CONTENT_TYPE_AUTH           = "AUTH"
-	CONTENT_TYPE_FIND_BOT_MATCH = "FIND_BOT_MATCH"
-	CONTENT_TYPE_FIND_MATCH     = "FIND_MATCH"
-	CONTENT_TYPE_MATCH_UPDATE   = "MATCH_UPDATE"
-	CONTENT_TYPE_MOVE           = "MOVE"
+	CONTENT_TYPE_EMPTY                    = "EMPTY"
+	CONTENT_TYPE_AUTH                     = "AUTH"
+	CONTENT_TYPE_FIND_BOT_MATCH           = "FIND_BOT_MATCH"
+	CONTENT_TYPE_FIND_MATCH               = "FIND_MATCH"
+	CONTENT_TYPE_MATCH_UPDATE             = "MATCH_UPDATE"
+	CONTENT_TYPE_MOVE                     = "MOVE"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST        = "SUBSCRIBE_REQUEST"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED = "SUBSCRIBE_REQUEST_DENIED"
+	CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS   = "FIND_BOT_MATCH_NO_BOTS"
+	CONTENT_TYPE_ECHO                     = "ECHO"
 )
 
 type AuthMessageContent struct {
@@ -94,6 +94,9 @@ type FindBotMatchMessageContent struct {
 	BotName   string `json:"botName"`
 }
 
+type FindBotMatchNoBotsMessageContent struct {
+}
+
 type FindMatchMessageContent struct {
 }
 
@@ -103,4 +106,17 @@ type MatchUpdateMessageContent struct {
 
 type MoveMessageContent struct {
 	Move *chess.Move `json:"move"`
+}
+
+type SubscribeRequestMessageContent struct {
+	Topic MessageTopic `json:"topic"`
+}
+
+type SubscribeRequestDeniedMessageContent struct {
+	Topic  MessageTopic `json:"topic"`
+	Reason string       `json:"reason"`
+}
+
+type EchoMessageContent struct {
+	Message string `json:"message"`
 }

@@ -178,6 +178,18 @@ func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
 	}
 }
 
+func (ucm *UserClientsManager) DirectMessage(message *Message, clientKey string) error {
+	if message.Topic != "directMessage" || message.ContentType != "" {
+		return fmt.Errorf("direct messages expected to not have a topic, given %s", message.Topic)
+	}
+	client, err := ucm.GetClientFromKey(clientKey)
+	if err != nil {
+		return err
+	}
+	client.InChannel() <- message
+	return nil
+}
+
 func GetUserClientsManager() *UserClientsManager {
 	if userClientsManager != nil {
 		return userClientsManager

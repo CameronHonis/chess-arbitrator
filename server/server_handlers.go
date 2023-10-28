@@ -1,6 +1,9 @@
 package server
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/set"
+)
 
 func HandleMessage(msg *Message, clientKey string) {
 	GetLogManager().Log("server", fmt.Sprintf("handling message %s", msg))
@@ -8,6 +11,22 @@ func HandleMessage(msg *Message, clientKey string) {
 	switch msg.ContentType {
 	case CONTENT_TYPE_FIND_MATCH:
 		handleMsgErr = HandleFindMatchMessage(clientKey)
+	case CONTENT_TYPE_FIND_BOT_MATCH:
+		handleMsgErr = HandleFindBotMatchMessage(clientKey)
+	case CONTENT_TYPE_ECHO:
+		msgContent, ok := msg.Content.(*EchoMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to EchoMessageContent")
+			break
+		}
+		handleMsgErr = HandleEchoMessage(clientKey, msgContent.Message)
+	case CONTENT_TYPE_SUBSCRIBE_REQUEST:
+		msgContent, ok := msg.Content.(*SubscribeRequestMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
+			break
+		}
+		handleMsgErr = HandleSubscribeRequestMessage(clientKey, msgContent.Topic)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -27,4 +46,47 @@ func HandleFindMatchMessage(clientKey string) error {
 		return fmt.Errorf("could not add client %s to matchmaking pool: %s", clientKey, addClientErr)
 	}
 	return nil
+}
+
+func HandleFindBotMatchMessage(clientKey string) error {
+	subbedKeys := GetUserClientsManager().GetClientKeysSubscribedToTopic("findBotMatch")
+	if len(subbedKeys.Flatten()) == 0 {
+		msg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS,
+			Content:     &FindBotMatchNoBotsMessageContent{},
+		}
+		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+	}
+	return nil
+}
+
+func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
+	// TODO: add auth groups - including one for bots client
+	topicWhitelist := set.EmptySet[string]()
+	topicWhitelist.Add("findBotMatch")
+
+	if !topicWhitelist.Has(string(topic)) {
+		msg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED,
+			Content: &SubscribeRequestDeniedMessageContent{
+				Topic:  topic,
+				Reason: "topic not whitelisted to public",
+			},
+		}
+		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+	}
+	return GetUserClientsManager().SubscribeClientTo(clientKey, topic)
+}
+
+func HandleEchoMessage(clientKey string, msg string) error {
+	echoMsg := Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_ECHO,
+		Content: &EchoMessageContent{
+			Message: msg,
+		},
+	}
+	return GetUserClientsManager().DirectMessage(&echoMsg, clientKey)
 }
