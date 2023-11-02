@@ -20,7 +20,7 @@ var _ = Describe("Messages", func() {
 				PrivateKey: "some-private-key",
 			},
 		}
-		messageJson = []byte(`{"topic":"auth","contentType":"AUTH","content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
+		messageJson = []byte(`{"senderKey":"","privateKey":"","topic":"auth","contentType":"AUTH","content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
 	})
 	Describe("marshalling a message to JSON", func() {
 		It("converts the Message into JSON", func() {

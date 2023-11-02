@@ -34,6 +34,20 @@ func HandleMessage(msg *Message, clientKey string) {
 			break
 		}
 		handleMsgErr = HandleRequestUpgradeAuthMessage(clientKey, msgContent.Secret)
+	case CONTENT_TYPE_INIT_BOT_SUCCESS:
+		msgContent, ok := msg.Content.(*InitBotSuccessMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to InitBotSuccessMessageContent")
+			break
+		}
+		handleMsgErr = HandleInitBotSuccessMessage(msgContent)
+	case CONTENT_TYPE_INIT_BOT_FAILURE:
+		msgContent, ok := msg.Content.(*InitBotFailureMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to InitBotFailureMessageContent")
+			break
+		}
+		handleMsgErr = HandleInitBotMatchFailureMessage(msgContent)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -84,7 +98,18 @@ func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
 		}
 		return GetUserClientsManager().DirectMessage(&msg, clientKey)
 	}
-	return GetUserClientsManager().SubscribeClientTo(clientKey, topic)
+	subErr := GetUserClientsManager().SubscribeClientTo(clientKey, topic)
+	if subErr != nil {
+		return fmt.Errorf("could not subscribe client %s to topic %s: %s", clientKey, topic, subErr)
+	}
+	subGrantedMsg := &Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED,
+		Content: &SubscribeRequestGrantedMessageContent{
+			Topic: topic,
+		},
+	}
+	return GetUserClientsManager().DirectMessage(subGrantedMsg, clientKey)
 }
 
 func HandleEchoMessage(clientKey string, msg string) error {
@@ -118,4 +143,40 @@ func HandleRequestUpgradeAuthMessage(clientKey string, secret string) error {
 		},
 	}
 	return GetUserClientsManager().DirectMessage(&msg, clientKey)
+}
+
+func HandleInitBotSuccessMessage(msgContent *InitBotSuccessMessageContent) error {
+	match := NewMatch(msgContent.RequesterClientKey, GetAuthManager().chessBotKey, &TimeControl{
+		InitialTimeSeconds:  300,
+		IncrementSeconds:    0,
+		TimeAfterMovesCount: 0,
+		SecondsAfterMoves:   0,
+	})
+	addMatchErr := GetMatchManager().AddMatch(match)
+	if addMatchErr != nil {
+		return fmt.Errorf("could not init bot match requested by %s: %s", msgContent.RequesterClientKey, addMatchErr)
+	}
+	// NOTE: probably a bad idea to not establish a topic with a single subscriber (the requester) and broadcast this over the topic
+	// 		 but this seemed faster to implement
+	return GetUserClientsManager().DirectMessage(
+		&Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_INIT_BOT_SUCCESS,
+			Content:     msgContent,
+		},
+		msgContent.RequesterClientKey,
+	)
+}
+
+func HandleInitBotMatchFailureMessage(msgContent *InitBotFailureMessageContent) error {
+	// NOTE: probably a bad idea to not establish a topic with a single subscriber (the requester) and broadcast this over the topic
+	// 		 but this seemed faster to implement
+	return GetUserClientsManager().DirectMessage(
+		&Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_INIT_BOT_FAILURE,
+			Content:     msgContent,
+		},
+		msgContent.RequesterClientKey,
+	)
 }

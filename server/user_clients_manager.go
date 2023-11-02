@@ -18,7 +18,7 @@ type UserClientsManager struct {
 }
 
 func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
-	client := NewUserClient(conn, func(client *UserClient) {})
+	client := NewUserClient(conn, CleanupClient)
 
 	err := ucm.AddClient(client)
 	if err != nil {
@@ -172,7 +172,7 @@ func (ucm *UserClientsManager) BroadcastMessage(message Message) {
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := ucm.GetClientFromKey(clientKey)
 		if err != nil {
-			fmt.Println("error getting client from key: ", err)
+			GetLogManager().LogRed("server", fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
 		client.InChannel() <- &message
@@ -205,4 +205,11 @@ func GetUserClientsManager() *UserClientsManager {
 	go ucm.listenOnUserClientChannels()
 	userClientsManager = &ucm
 	return &ucm
+}
+
+func CleanupClient(userClient *UserClient) {
+	am := GetAuthManager()
+	if am.chessBotKey == userClient.PublicKey() {
+		am.chessBotKey = ""
+	}
 }

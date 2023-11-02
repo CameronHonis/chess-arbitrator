@@ -9,7 +9,7 @@ import (
 type MessageTopic string
 
 type Message struct {
-	SenderKey   string       `json:"sender"`
+	SenderKey   string       `json:"senderKey"`
 	PrivateKey  string       `json:"privateKey"`
 	Topic       MessageTopic `json:"topic"`
 	ContentType ContentType  `json:"contentType"`
@@ -33,6 +33,8 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 
 	if msg.ContentType == CONTENT_TYPE_EMPTY && msg.Content != nil {
 		return nil, fmt.Errorf("message with content type %s has non-nil content", CONTENT_TYPE_EMPTY)
+	} else if msg.ContentType == "" {
+		return nil, fmt.Errorf("could not extract content type from %s while constructing Message content", string(msgJson))
 	}
 	contentMap, isMap := msg.Content.(map[string]interface{})
 	if !isMap {
@@ -50,22 +52,25 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 
 func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
 	contentStructMap := map[ContentType]interface{}{
-		CONTENT_TYPE_AUTH:                     &AuthMessageContent{},
-		CONTENT_TYPE_FIND_BOT_MATCH:           &FindBotMatchMessageContent{},
-		CONTENT_TYPE_FIND_MATCH:               &FindMatchMessageContent{},
-		CONTENT_TYPE_MATCH_UPDATE:             &MatchUpdateMessageContent{},
-		CONTENT_TYPE_MOVE:                     &MoveMessageContent{},
-		CONTENT_TYPE_SUBSCRIBE_REQUEST:        &SubscribeRequestMessageContent{},
-		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED: &SubscribeRequestDeniedMessageContent{},
-		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:   &FindBotMatchNoBotsMessageContent{},
-		CONTENT_TYPE_ECHO:                     &EchoMessageContent{},
-		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:     &UpgradeAuthRequestMessageContent{},
-		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:     &UpgradeAuthGrantedMessageContent{},
-		CONTENT_TYPE_UPGRADE_AUTH_DENIED:      &UpgradeAuthDeniedMessageContent{},
+		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
+		CONTENT_TYPE_FIND_BOT_MATCH:            &FindBotMatchMessageContent{},
+		CONTENT_TYPE_FIND_MATCH:                &FindMatchMessageContent{},
+		CONTENT_TYPE_MATCH_UPDATE:              &MatchUpdateMessageContent{},
+		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
+		CONTENT_TYPE_SUBSCRIBE_REQUEST:         &SubscribeRequestMessageContent{},
+		CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED: &SubscribeRequestGrantedMessageContent{},
+		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED:  &SubscribeRequestDeniedMessageContent{},
+		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:    &FindBotMatchNoBotsMessageContent{},
+		CONTENT_TYPE_ECHO:                      &EchoMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
+		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
+		CONTENT_TYPE_INIT_BOT_SUCCESS:          &InitBotSuccessMessageContent{},
+		CONTENT_TYPE_INIT_BOT_FAILURE:          &InitBotFailureMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
 	if !ok {
-		return nil, fmt.Errorf("could not extract content type from %s while constructing Message content", contentJson)
+		return nil, fmt.Errorf("contentStructMap does not specify map between content type %s and existing struct", contentType)
 	}
 	contentJsonParseErr := json.Unmarshal(contentJson, msgContent)
 	if contentJsonParseErr != nil {
@@ -77,19 +82,22 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 type ContentType string
 
 const (
-	CONTENT_TYPE_EMPTY                    = "EMPTY"
-	CONTENT_TYPE_AUTH                     = "AUTH"
-	CONTENT_TYPE_FIND_BOT_MATCH           = "FIND_BOT_MATCH"
-	CONTENT_TYPE_FIND_MATCH               = "FIND_MATCH"
-	CONTENT_TYPE_MATCH_UPDATE             = "MATCH_UPDATE"
-	CONTENT_TYPE_MOVE                     = "MOVE"
-	CONTENT_TYPE_SUBSCRIBE_REQUEST        = "SUBSCRIBE_REQUEST"
-	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED = "SUBSCRIBE_REQUEST_DENIED"
-	CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS   = "FIND_BOT_MATCH_NO_BOTS"
-	CONTENT_TYPE_ECHO                     = "ECHO"
-	CONTENT_TYPE_UPGRADE_AUTH_REQUEST     = "UPGRADE_AUTH_REQUEST"
-	CONTENT_TYPE_UPGRADE_AUTH_GRANTED     = "UPGRADE_AUTH_GRANTED"
-	CONTENT_TYPE_UPGRADE_AUTH_DENIED      = "UPGRADE_AUTH_DENIED"
+	CONTENT_TYPE_EMPTY                     = "EMPTY"
+	CONTENT_TYPE_AUTH                      = "AUTH"
+	CONTENT_TYPE_FIND_BOT_MATCH            = "FIND_BOT_MATCH"
+	CONTENT_TYPE_FIND_MATCH                = "FIND_MATCH"
+	CONTENT_TYPE_MATCH_UPDATE              = "MATCH_UPDATE"
+	CONTENT_TYPE_MOVE                      = "MOVE"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST         = "SUBSCRIBE_REQUEST"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED = "SUBSCRIBE_REQUEST_GRANTED"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED  = "SUBSCRIBE_REQUEST_DENIED"
+	CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS    = "FIND_BOT_MATCH_NO_BOTS"
+	CONTENT_TYPE_ECHO                      = "ECHO"
+	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
+	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
+	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
+	CONTENT_TYPE_INIT_BOT_SUCCESS          = "INIT_BOT_MATCH_SUCCESS"
+	CONTENT_TYPE_INIT_BOT_FAILURE          = "INIT_BOT_MATCH_FAILURE"
 )
 
 type AuthMessageContent struct {
@@ -119,6 +127,10 @@ type SubscribeRequestMessageContent struct {
 	Topic MessageTopic `json:"topic"`
 }
 
+type SubscribeRequestGrantedMessageContent struct {
+	Topic MessageTopic `json:"topic"`
+}
+
 type SubscribeRequestDeniedMessageContent struct {
 	Topic  MessageTopic `json:"topic"`
 	Reason string       `json:"reason"`
@@ -138,4 +150,15 @@ type UpgradeAuthGrantedMessageContent struct {
 
 type UpgradeAuthDeniedMessageContent struct {
 	Reason string `json:"reason"`
+}
+
+type InitBotSuccessMessageContent struct {
+	BotName            string `json:"botType"`
+	RequesterClientKey string `json:"requesterClientKey"`
+}
+
+type InitBotFailureMessageContent struct {
+	BotName            string `json:"botType"`
+	RequesterClientKey string `json:"requesterClientKey"`
+	Reason             string `json:"reason"`
 }

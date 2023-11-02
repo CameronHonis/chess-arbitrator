@@ -91,7 +91,7 @@ func (uc *UserClient) listenOnWebsocket() {
 			_ = userClientsManager.RemoveClient(uc)
 			return
 		}
-		GetLogManager().LogMessage("client", uc.publicKey, string(rawMsg))
+		GetLogManager().LogMessage(uc.publicKey, true, string(rawMsg))
 
 		msg, unmarshalErr := UnmarshalToMessage(rawMsg)
 		if unmarshalErr != nil {
@@ -115,6 +115,7 @@ func (uc *UserClient) SendMessage(msg *Message) error {
 	if jsonErr != nil {
 		return jsonErr
 	}
+	GetLogManager().LogMessage(uc.publicKey, false, string(msgJson))
 	writeErr := uc.conn.WriteMessage(websocket.TextMessage, msgJson)
 	if writeErr != nil {
 		return writeErr

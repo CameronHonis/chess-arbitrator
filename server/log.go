@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 type Log struct {
@@ -14,11 +15,27 @@ type Log struct {
 	Options      []LogOption
 }
 
+func (l *Log) formatEnv() string {
+	upperEnv := strings.ToUpper(l.Env)
+	if upperEnv == "SERVER" {
+		return WrapGreen(fmt.Sprintf("[%s]", upperEnv))
+	} else if upperEnv == "CLIENT" {
+		return WrapBlue(fmt.Sprintf("[%s]", upperEnv))
+	} else if upperEnv == "MATCHMAKING" {
+		return WrapMagenta(fmt.Sprintf("[%s]", upperEnv))
+	} else if utf8.RuneCountInString(upperEnv) == 64 {
+		envChars := []rune(l.Env)
+		shortenedEnv := fmt.Sprintf("[%s..%s]", string(envChars[:4]), string(envChars[60:]))
+		return WrapCyan(shortenedEnv)
+	}
+	return fmt.Sprintf("[%s]", upperEnv)
+}
+
 func (l *Log) String() string {
 	if l.ColorWrapper == nil {
-		return fmt.Sprintf("[%s] %s", strings.ToUpper(l.Env), l.Msg)
+		return fmt.Sprintf("%s %s", l.formatEnv(), l.Msg)
 	} else {
-		return l.ColorWrapper(fmt.Sprintf("[%s] %s", strings.ToUpper(l.Env), l.Msg))
+		return fmt.Sprintf("%s %s", l.formatEnv(), l.ColorWrapper(l.Msg))
 	}
 }
 
@@ -119,7 +136,7 @@ func (lm *LogManager) LogRed(env string, msgs ...interface{}) {
 	if !lm.canPrintInEnv(msgs...) {
 		return
 	}
-	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(lm.WrapRed).Build()
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapRed).Build()
 	lm.logLogWithLock(log)
 }
 
@@ -127,30 +144,102 @@ func (lm *LogManager) LogGreen(env string, msgs ...interface{}) {
 	if !lm.canPrintInEnv(msgs...) {
 		return
 	}
-	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(lm.WrapGreen).Build()
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapGreen).Build()
 	lm.logLogWithLock(log)
 }
 
-func (lm *LogManager) LogMessage(env string, origin string, msg string) {
-	if LOG_INCOMING_MESSAGES {
-		lm.mu.Lock()
-		fmt.Println(fmt.Sprintf("[%s] %s >> %s", strings.ToUpper(env), origin, msg))
-		lm.mu.Unlock()
+func (lm *LogManager) LogBlue(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapBlue).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogYellow(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapYellow).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogMagenta(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapMagenta).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogCyan(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapCyan).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogOrange(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapOrange).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogBrown(env string, msgs ...interface{}) {
+	if !lm.canPrintInEnv(msgs...) {
+		return
+	}
+	log := NewLogBuilder().Env(env).Msgs(msgs...).ColorWrapper(WrapBrown).Build()
+	lm.logLogWithLock(log)
+}
+
+func (lm *LogManager) LogMessage(remote string, isIncoming bool, msg string) {
+	if isIncoming {
+		if LOG_INCOMING_MESSAGES {
+			log := NewLogBuilder().Msg(fmt.Sprintf(">> %s", msg)).Env(remote).Build()
+			lm.logLogWithLock(log)
+		}
+	} else {
+		if LOG_OUTGOING_MESSAGES {
+			log := NewLogBuilder().Msg(fmt.Sprintf("<< %s", msg)).Env(remote).Build()
+			lm.logLogWithLock(log)
+		}
 	}
 }
 
-func (lm *LogManager) LogClientActivity(env string, clientKey string, msg string) {
-	lm.mu.Lock()
-	fmt.Println("[", strings.ToUpper(env), "] ", clientKey, msg)
-	lm.mu.Unlock()
-}
-
-func (lm *LogManager) WrapGreen(msg string) string {
+func WrapGreen(msg string) string {
 	return fmt.Sprintf("\x1b[32m%s\x1b[0m", msg)
 }
 
-func (lm *LogManager) WrapRed(msg string) string {
+func WrapRed(msg string) string {
 	return fmt.Sprintf("\x1b[31m%s\x1b[0m", msg)
+}
+
+func WrapYellow(msg string) string {
+	return fmt.Sprintf("\x1b[33m%s\x1b[0m", msg)
+}
+
+func WrapBlue(msg string) string {
+	return fmt.Sprintf("\x1b[34m%s\x1b[0m", msg)
+}
+
+func WrapMagenta(msg string) string {
+	return fmt.Sprintf("\x1b[35m%s\x1b[0m", msg)
+}
+
+func WrapCyan(msg string) string {
+	return fmt.Sprintf("\x1b[36m%s\x1b[0m", msg)
+}
+
+func WrapOrange(msg string) string {
+	return fmt.Sprintf("\x1b[38;5;208m%s\x1b[0m", msg)
+}
+
+func WrapBrown(msg string) string {
+	return fmt.Sprintf("\x1b[38;5;130m%s\x1b[0m", msg)
 }
 
 type LogOption string
