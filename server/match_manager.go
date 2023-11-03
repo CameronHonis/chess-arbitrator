@@ -67,3 +67,15 @@ func (mm *MatchManager) RemoveMatch(match *Match) error {
 	delete(mm.matchByMatchId, match.Uuid)
 	return nil
 }
+
+func (mm *MatchManager) GetMatchByClientId(clientId string) (*Match, error) {
+	matchId, ok := mm.matchIdByClientId[clientId]
+	if !ok {
+		return nil, fmt.Errorf("client %s not in match", clientId)
+	}
+	match, ok := mm.matchByMatchId[matchId]
+	if !ok {
+		return nil, fmt.Errorf("match with id %s not found", matchId)
+	}
+	return match, nil
+}

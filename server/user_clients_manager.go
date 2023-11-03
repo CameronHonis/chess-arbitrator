@@ -166,7 +166,7 @@ func (ucm *UserClientsManager) listenOnUserClientChannels() {
 	}
 }
 
-func (ucm *UserClientsManager) BroadcastMessage(message Message) {
+func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
 	message.PrivateKey = ""
 	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(message.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
@@ -175,7 +175,7 @@ func (ucm *UserClientsManager) BroadcastMessage(message Message) {
 			GetLogManager().LogRed("server", fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
-		client.InChannel() <- &message
+		client.InChannel() <- message
 	}
 }
 

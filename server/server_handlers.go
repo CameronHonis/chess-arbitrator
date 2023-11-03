@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/set"
 )
 
@@ -48,11 +49,18 @@ func HandleMessage(msg *Message, clientKey string) {
 			break
 		}
 		handleMsgErr = HandleInitBotMatchFailureMessage(msgContent)
+	case CONTENT_TYPE_MOVE:
+		msgContent, ok := msg.Content.(*MoveMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to MoveMessageContent")
+			break
+		}
+		handleMsgErr = HandleMoveMessage(clientKey, msgContent.Move)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
 	}
-	GetUserClientsManager().BroadcastMessage(*msg)
+	GetUserClientsManager().BroadcastMessage(msg)
 }
 
 func HandleFindMatchMessage(clientKey string) error {
@@ -179,4 +187,12 @@ func HandleInitBotMatchFailureMessage(msgContent *InitBotFailureMessageContent) 
 		},
 		msgContent.RequesterClientKey,
 	)
+}
+
+func HandleMoveMessage(clientKey string, move *chess.Move) error {
+	match, getMatchErr := GetMatchManager().GetMatchByClientId(clientKey)
+	if getMatchErr != nil {
+		return fmt.Errorf("could not get match for client %s: %s", clientKey, getMatchErr)
+	}
+	return match.ExecuteMove(move)
 }
