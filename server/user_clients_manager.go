@@ -167,15 +167,16 @@ func (ucm *UserClientsManager) listenOnUserClientChannels() {
 }
 
 func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
-	message.PrivateKey = ""
-	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(message.Topic)
+	msgCopy := *message
+	msgCopy.PrivateKey = ""
+	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := ucm.GetClientFromKey(clientKey)
 		if err != nil {
 			GetLogManager().LogRed("server", fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
-		client.InChannel() <- message
+		client.InChannel() <- &msgCopy
 	}
 }
 
@@ -183,12 +184,13 @@ func (ucm *UserClientsManager) DirectMessage(message *Message, clientKey string)
 	if message.Topic != "directMessage" && message.Topic != "" {
 		return fmt.Errorf("direct messages expected to not have a topic, given %s", message.Topic)
 	}
-	message.Topic = "directMessage"
+	msgCopy := *message
+	msgCopy.Topic = "directMessage"
 	client, err := ucm.GetClientFromKey(clientKey)
 	if err != nil {
 		return err
 	}
-	client.InChannel() <- message
+	client.InChannel() <- &msgCopy
 	return nil
 }
 
