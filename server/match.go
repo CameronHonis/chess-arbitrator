@@ -9,13 +9,13 @@ import (
 )
 
 type Match struct {
-	Uuid               string
-	Board              *chess.Board
-	WhiteClientId      string
-	WhiteTimeRemaining float64
-	BlackClientId      string
-	BlackTimeRemaining float64
-	TimeControl        *TimeControl
+	Uuid               string       `json:"uuid"`
+	Board              *chess.Board `json:"board"`
+	WhiteClientId      string       `json:"whiteClientId"`
+	WhiteTimeRemaining float64      `json:"whiteTimeRemaining"`
+	BlackClientId      string       `json:"blackClientId"`
+	BlackTimeRemaining float64      `json:"blackTimeRemaining"`
+	TimeControl        *TimeControl `json:"timeControl"`
 }
 
 func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *Match {

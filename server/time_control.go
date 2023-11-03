@@ -1,8 +1,8 @@
 package server
 
 type TimeControl struct {
-	InitialTimeSeconds  int64
-	IncrementSeconds    int64
-	TimeAfterMovesCount int64
-	SecondsAfterMoves   int64
+	InitialTimeSeconds  int64 `json:"initialTimeSeconds"`
+	IncrementSeconds    int64 `json:"incrementSeconds"`
+	TimeAfterMovesCount int64 `json:"timeAfterMovesCount"`
+	SecondsAfterMoves   int64 `json:"secondsAfterMoves"`
 }
