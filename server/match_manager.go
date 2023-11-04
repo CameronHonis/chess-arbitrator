@@ -32,8 +32,12 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		return fmt.Errorf("client %s (black) already in match", match.WhiteClientId)
 	}
 	mm.matchByMatchId[match.Uuid] = match
-	mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
-	mm.matchIdByClientId[match.BlackClientId] = match.Uuid
+	if GetAuthManager().chessBotKey != match.WhiteClientId {
+		mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
+	}
+	if GetAuthManager().chessBotKey != match.BlackClientId {
+		mm.matchIdByClientId[match.BlackClientId] = match.Uuid
+	}
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 	subErr := GetUserClientsManager().SubscribeClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
