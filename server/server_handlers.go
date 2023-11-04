@@ -35,17 +35,17 @@ func HandleMessage(msg *Message, clientKey string) {
 			break
 		}
 		handleMsgErr = HandleRequestUpgradeAuthMessage(clientKey, msgContent.Secret)
-	case CONTENT_TYPE_INIT_BOT_SUCCESS:
-		msgContent, ok := msg.Content.(*InitBotSuccessMessageContent)
+	case CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS:
+		msgContent, ok := msg.Content.(*InitBotMatchSuccessMessageContent)
 		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to InitBotSuccessMessageContent")
+			handleMsgErr = fmt.Errorf("could not cast message to InitBotMatchSuccessMessageContent")
 			break
 		}
 		handleMsgErr = HandleInitBotSuccessMessage(msgContent)
-	case CONTENT_TYPE_INIT_BOT_FAILURE:
-		msgContent, ok := msg.Content.(*InitBotFailureMessageContent)
+	case CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:
+		msgContent, ok := msg.Content.(*InitBotMatchFailureMessageContent)
 		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to InitBotFailureMessageContent")
+			handleMsgErr = fmt.Errorf("could not cast message to InitBotMatchFailureMessageContent")
 			break
 		}
 		handleMsgErr = HandleInitBotMatchFailureMessage(msgContent)
@@ -153,7 +153,7 @@ func HandleRequestUpgradeAuthMessage(clientKey string, secret string) error {
 	return GetUserClientsManager().DirectMessage(&msg, clientKey)
 }
 
-func HandleInitBotSuccessMessage(msgContent *InitBotSuccessMessageContent) error {
+func HandleInitBotSuccessMessage(msgContent *InitBotMatchSuccessMessageContent) error {
 	match := NewMatch(msgContent.RequesterClientKey, GetAuthManager().chessBotKey, &TimeControl{
 		InitialTimeSeconds:  300,
 		IncrementSeconds:    0,
@@ -169,20 +169,20 @@ func HandleInitBotSuccessMessage(msgContent *InitBotSuccessMessageContent) error
 	return GetUserClientsManager().DirectMessage(
 		&Message{
 			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_INIT_BOT_SUCCESS,
+			ContentType: CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS,
 			Content:     msgContent,
 		},
 		msgContent.RequesterClientKey,
 	)
 }
 
-func HandleInitBotMatchFailureMessage(msgContent *InitBotFailureMessageContent) error {
+func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageContent) error {
 	// NOTE: probably a bad idea to not establish a topic with a single subscriber (the requester) and broadcast this over the topic
 	// 		 but this seemed faster to implement
 	return GetUserClientsManager().DirectMessage(
 		&Message{
 			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_INIT_BOT_FAILURE,
+			ContentType: CONTENT_TYPE_INIT_BOT_MATCH_FAILURE,
 			Content:     msgContent,
 		},
 		msgContent.RequesterClientKey,

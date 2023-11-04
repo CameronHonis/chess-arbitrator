@@ -3,12 +3,14 @@ module github.com/CameronHonis/chess-arbitrator
 go 1.18
 
 require (
-	github.com/CameronHonis/chess v0.0.0-20231103001456-f5db2e734a3b
+	github.com/CameronHonis/chess v0.0.0-20231104040721-1fa63f099091
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.29.0
 )
+
+replace github.com/CameronHonis/chess => ../chess
 
 require (
 	github.com/go-logr/logr v1.3.0 // indirect

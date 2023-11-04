@@ -65,8 +65,8 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
-		CONTENT_TYPE_INIT_BOT_SUCCESS:          &InitBotSuccessMessageContent{},
-		CONTENT_TYPE_INIT_BOT_FAILURE:          &InitBotFailureMessageContent{},
+		CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS:    &InitBotMatchSuccessMessageContent{},
+		CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:    &InitBotMatchFailureMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
 	if !ok {
@@ -96,8 +96,8 @@ const (
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
 	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
-	CONTENT_TYPE_INIT_BOT_SUCCESS          = "INIT_BOT_MATCH_SUCCESS"
-	CONTENT_TYPE_INIT_BOT_FAILURE          = "INIT_BOT_MATCH_FAILURE"
+	CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS    = "INIT_BOT_MATCH_SUCCESS"
+	CONTENT_TYPE_INIT_BOT_MATCH_FAILURE    = "INIT_BOT_MATCH_FAILURE"
 )
 
 type AuthMessageContent struct {
@@ -152,12 +152,12 @@ type UpgradeAuthDeniedMessageContent struct {
 	Reason string `json:"reason"`
 }
 
-type InitBotSuccessMessageContent struct {
+type InitBotMatchSuccessMessageContent struct {
 	BotName            string `json:"botType"`
 	RequesterClientKey string `json:"requesterClientKey"`
 }
 
-type InitBotFailureMessageContent struct {
+type InitBotMatchFailureMessageContent struct {
 	BotName            string `json:"botType"`
 	RequesterClientKey string `json:"requesterClientKey"`
 	Reason             string `json:"reason"`
