@@ -13,7 +13,12 @@ func HandleMessage(msg *Message, clientKey string) {
 	case CONTENT_TYPE_FIND_MATCH:
 		handleMsgErr = HandleFindMatchMessage(clientKey)
 	case CONTENT_TYPE_FIND_BOT_MATCH:
-		handleMsgErr = HandleFindBotMatchMessage(clientKey)
+		msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to FindBotMatchMessageContent")
+			break
+		}
+		handleMsgErr = HandleFindBotMatchMessage(clientKey, msgContent.BotName)
 	case CONTENT_TYPE_ECHO:
 		msgContent, ok := msg.Content.(*EchoMessageContent)
 		if !ok {
@@ -41,7 +46,7 @@ func HandleMessage(msg *Message, clientKey string) {
 			handleMsgErr = fmt.Errorf("could not cast message to InitBotMatchSuccessMessageContent")
 			break
 		}
-		handleMsgErr = HandleInitBotSuccessMessage(msgContent)
+		handleMsgErr = HandleInitBotMatchSuccessMessage(msgContent)
 	case CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:
 		msgContent, ok := msg.Content.(*InitBotMatchFailureMessageContent)
 		if !ok {
@@ -55,7 +60,7 @@ func HandleMessage(msg *Message, clientKey string) {
 			handleMsgErr = fmt.Errorf("could not cast message to MoveMessageContent")
 			break
 		}
-		handleMsgErr = HandleMoveMessage(clientKey, msgContent.Move)
+		handleMsgErr = HandleMoveMessage(msgContent.MatchId, msgContent.Move)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -77,17 +82,33 @@ func HandleFindMatchMessage(clientKey string) error {
 	return nil
 }
 
-func HandleFindBotMatchMessage(clientKey string) error {
-	subbedKeys := GetUserClientsManager().GetClientKeysSubscribedToTopic("findBotMatch")
-	if len(subbedKeys.Flatten()) == 0 {
-		msg := Message{
+func HandleFindBotMatchMessage(clientKey string, botName string) error {
+	botClientKey := GetAuthManager().chessBotKey
+	if botClientKey == "" {
+		msg := &Message{
 			Topic:       "directMessage",
 			ContentType: CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS,
 			Content:     &FindBotMatchNoBotsMessageContent{},
 		}
-		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+		return GetUserClientsManager().DirectMessage(msg, clientKey)
 	}
-	return nil
+
+	match := NewMatch(clientKey, botClientKey, &TimeControl{
+		InitialTimeSeconds:  300,
+		IncrementSeconds:    0,
+		TimeAfterMovesCount: 0,
+		SecondsAfterMoves:   0,
+	})
+	GetMatchManager().StageMatch(match)
+	msg := &Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_INIT_BOT_MATCH,
+		Content: &InitBotMatchMessageContent{
+			BotName: botName,
+			MatchId: match.Uuid,
+		},
+	}
+	return GetUserClientsManager().DirectMessage(msg, botClientKey)
 }
 
 func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
@@ -153,46 +174,38 @@ func HandleRequestUpgradeAuthMessage(clientKey string, secret string) error {
 	return GetUserClientsManager().DirectMessage(&msg, clientKey)
 }
 
-func HandleInitBotSuccessMessage(msgContent *InitBotMatchSuccessMessageContent) error {
-	match := NewMatch(msgContent.RequesterClientKey, GetAuthManager().chessBotKey, &TimeControl{
-		InitialTimeSeconds:  300,
-		IncrementSeconds:    0,
-		TimeAfterMovesCount: 0,
-		SecondsAfterMoves:   0,
-	})
-	addMatchErr := GetMatchManager().AddMatch(match)
-	if addMatchErr != nil {
-		return fmt.Errorf("could not init bot match requested by %s: %s", msgContent.RequesterClientKey, addMatchErr)
-	}
-	// NOTE: probably a bad idea to not establish a topic with a single subscriber (the requester) and broadcast this over the topic
-	// 		 but this seemed faster to implement
-	return GetUserClientsManager().DirectMessage(
-		&Message{
-			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS,
-			Content:     msgContent,
-		},
-		msgContent.RequesterClientKey,
-	)
+func HandleInitBotMatchSuccessMessage(msgContent *InitBotMatchSuccessMessageContent) error {
+	return GetMatchManager().AddMatchFromStaged(msgContent.MatchId)
 }
 
 func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageContent) error {
-	// NOTE: probably a bad idea to not establish a topic with a single subscriber (the requester) and broadcast this over the topic
-	// 		 but this seemed faster to implement
+	stagedMatch, fetchStagedMatchErr := GetMatchManager().GetStagedMatchById(msgContent.MatchId)
+	if fetchStagedMatchErr != nil {
+		return fmt.Errorf("could not fetch staged match with id %s: %s", msgContent.MatchId, fetchStagedMatchErr)
+	}
+	var clientKey string
+	if stagedMatch.WhiteClientId != GetAuthManager().chessBotKey {
+		clientKey = stagedMatch.WhiteClientId
+	} else {
+		clientKey = stagedMatch.BlackClientId
+	}
+
+	GetMatchManager().UnstageMatch(msgContent.MatchId)
+
 	return GetUserClientsManager().DirectMessage(
 		&Message{
 			Topic:       "directMessage",
 			ContentType: CONTENT_TYPE_INIT_BOT_MATCH_FAILURE,
 			Content:     msgContent,
 		},
-		msgContent.RequesterClientKey,
+		clientKey,
 	)
 }
 
-func HandleMoveMessage(clientKey string, move *chess.Move) error {
-	match, getMatchErr := GetMatchManager().GetMatchByClientId(clientKey)
+func HandleMoveMessage(matchId string, move *chess.Move) error {
+	match, getMatchErr := GetMatchManager().GetMatchById(matchId)
 	if getMatchErr != nil {
-		return fmt.Errorf("could not get match for client %s: %s", clientKey, getMatchErr)
+		return fmt.Errorf("could not get match from id %s: %s", matchId, getMatchErr)
 	}
 	return match.ExecuteMove(move)
 }

@@ -65,6 +65,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
+		CONTENT_TYPE_INIT_BOT_MATCH:            &InitBotMatchMessageContent{},
 		CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS:    &InitBotMatchSuccessMessageContent{},
 		CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:    &InitBotMatchFailureMessageContent{},
 	}
@@ -96,6 +97,7 @@ const (
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
 	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
+	CONTENT_TYPE_INIT_BOT_MATCH            = "INIT_BOT_MATCH"
 	CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS    = "INIT_BOT_MATCH_SUCCESS"
 	CONTENT_TYPE_INIT_BOT_MATCH_FAILURE    = "INIT_BOT_MATCH_FAILURE"
 )
@@ -120,7 +122,8 @@ type MatchUpdateMessageContent struct {
 }
 
 type MoveMessageContent struct {
-	Move *chess.Move `json:"move"`
+	MatchId string      `json:"matchId"`
+	Move    *chess.Move `json:"move"`
 }
 
 type SubscribeRequestMessageContent struct {
@@ -152,13 +155,18 @@ type UpgradeAuthDeniedMessageContent struct {
 	Reason string `json:"reason"`
 }
 
+type InitBotMatchMessageContent struct {
+	BotName string `json:"botName"`
+	MatchId string `json:"matchId"`
+}
+
 type InitBotMatchSuccessMessageContent struct {
-	BotName            string `json:"botType"`
-	RequesterClientKey string `json:"requesterClientKey"`
+	BotName string `json:"botType"`
+	MatchId string `json:"matchId"`
 }
 
 type InitBotMatchFailureMessageContent struct {
-	BotName            string `json:"botType"`
-	RequesterClientKey string `json:"requesterClientKey"`
-	Reason             string `json:"reason"`
+	BotName string `json:"botType"`
+	MatchId string `json:"matchId"`
+	Reason  string `json:"reason"`
 }

@@ -9,6 +9,7 @@ var matchManager *MatchManager
 type MatchManager struct {
 	matchByMatchId    map[string]*Match
 	matchIdByClientId map[string]string
+	stagedMatchById   map[string]*Match //only for bot matches currently
 }
 
 func GetMatchManager() *MatchManager {
@@ -16,6 +17,7 @@ func GetMatchManager() *MatchManager {
 		matchManager = &MatchManager{
 			matchByMatchId:    make(map[string]*Match),
 			matchIdByClientId: make(map[string]string),
+			stagedMatchById:   make(map[string]*Match),
 		}
 	}
 	return matchManager
@@ -54,7 +56,36 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 			Match: match,
 		},
 	}
-	HandleMessage(msg, "")
+	GetUserClientsManager().BroadcastMessage(msg)
+	return nil
+}
+
+func (mm *MatchManager) StageMatch(match *Match) {
+	mm.stagedMatchById[match.Uuid] = match
+}
+
+func (mm *MatchManager) GetStagedMatchById(matchId string) (*Match, error) {
+	match, ok := mm.stagedMatchById[matchId]
+	if !ok {
+		return nil, fmt.Errorf("match with id %s not staged", matchId)
+	}
+	return match, nil
+}
+
+func (mm *MatchManager) UnstageMatch(matchId string) {
+	delete(mm.stagedMatchById, matchId)
+}
+
+func (mm *MatchManager) AddMatchFromStaged(matchId string) error {
+	stagedMatch, fetchStagedMatchErr := mm.GetStagedMatchById(matchId)
+	if fetchStagedMatchErr != nil {
+		return fetchStagedMatchErr
+	}
+	addMatchErr := mm.AddMatch(stagedMatch)
+	if addMatchErr != nil {
+		return fmt.Errorf("could not add staged match with id %s: %s", matchId, addMatchErr)
+	}
+	mm.UnstageMatch(matchId)
 	return nil
 }
 
@@ -72,10 +103,18 @@ func (mm *MatchManager) RemoveMatch(match *Match) error {
 	return nil
 }
 
-func (mm *MatchManager) GetMatchByClientId(clientId string) (*Match, error) {
-	matchId, ok := mm.matchIdByClientId[clientId]
+func (mm *MatchManager) GetMatchById(matchId string) (*Match, error) {
+	match, ok := mm.matchByMatchId[matchId]
 	if !ok {
-		return nil, fmt.Errorf("client %s not in match", clientId)
+		return nil, fmt.Errorf("match with id %s not found", matchId)
+	}
+	return match, nil
+}
+
+func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
+	matchId, ok := mm.matchIdByClientId[clientKey]
+	if !ok {
+		return nil, fmt.Errorf("client %s not in match", clientKey)
 	}
 	match, ok := mm.matchByMatchId[matchId]
 	if !ok {
