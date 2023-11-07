@@ -1,0 +1,17 @@
+1. Add pawn promotion options to frontend
+1. Handle terminal states
+    - Front end displays an end-of-match screen, prompts a rematch
+    - Back end flushes the match
+1. Enforce time limits
+    - Front end displays timers
+    - Back end enforces timers
+1. Handle disconnections
+    - Front end shows disconnected notif and retries connection on loop
+    - Back end updates player status (requires add of player status)
+1. Add animations to front-end, so it doesn't look like a 90s website
+    - shows pieces moving
+1. Add authentication
+    - Options to log in with OAuth or username/password
+    - Back end verifies credentials
+1. Add database and user accounts
+    - Back end stores user data associated to
