@@ -92,13 +92,7 @@ func HandleFindBotMatchMessage(clientKey string, botName string) error {
 		}
 		return GetUserClientsManager().DirectMessage(msg, clientKey)
 	}
-
-	match := NewMatch(clientKey, botClientKey, &TimeControl{
-		InitialTimeSeconds:  300,
-		IncrementSeconds:    0,
-		TimeAfterMovesCount: 0,
-		SecondsAfterMoves:   0,
-	})
+	match := NewMatch(clientKey, botClientKey, NewBulletTimeControl())
 	GetMatchManager().StageMatch(match)
 	msg := &Message{
 		Topic:       "directMessage",
@@ -203,9 +197,5 @@ func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageCont
 }
 
 func HandleMoveMessage(matchId string, move *chess.Move) error {
-	match, getMatchErr := GetMatchManager().GetMatchById(matchId)
-	if getMatchErr != nil {
-		return fmt.Errorf("could not get match from id %s: %s", matchId, getMatchErr)
-	}
-	return match.ExecuteMove(move)
+	return GetMatchManager().ExecuteMatchMove(matchId, move)
 }

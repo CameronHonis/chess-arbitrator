@@ -81,12 +81,7 @@ func (mm *MatchmakingManager) matchClients(clientA *ClientProfile, clientB *Clie
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
-	match := NewMatch(clientA.ClientKey, clientB.ClientKey, &TimeControl{
-		InitialTimeSeconds:  300,
-		IncrementSeconds:    0,
-		TimeAfterMovesCount: 0,
-		SecondsAfterMoves:   0,
-	})
+	match := NewMatch(clientA.ClientKey, clientB.ClientKey, NewBulletTimeControl())
 	addMatchErr := GetMatchManager().AddMatch(match)
 	if addMatchErr != nil {
 		return fmt.Errorf("error adding match %s to match manager: %s", match.Uuid, addMatchErr)

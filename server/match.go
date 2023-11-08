@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/google/uuid"
 	"math/rand"
@@ -43,20 +42,4 @@ func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *M
 			TimeControl:        timeControl,
 		}
 	}
-}
-
-func (m *Match) ExecuteMove(move *chess.Move) error {
-	if !chess.IsLegalMove(m.Board, move) {
-		return fmt.Errorf("move %v is not legal", move)
-	}
-	chess.UpdateBoardFromMove(m.Board, move)
-	matchUpdateMsg := &Message{
-		Topic:       MessageTopic(fmt.Sprintf("match-%s", m.Uuid)),
-		ContentType: CONTENT_TYPE_MATCH_UPDATE,
-		Content: &MatchUpdateMessageContent{
-			Match: m,
-		},
-	}
-	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
-	return nil
 }
