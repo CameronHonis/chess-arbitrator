@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/set"
+	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

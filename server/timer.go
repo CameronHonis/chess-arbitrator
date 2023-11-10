@@ -1,29 +1,40 @@
 package server
 
 import (
+	"github.com/CameronHonis/chess"
+	. "github.com/CameronHonis/log"
 	"time"
 )
 
-func StartTimer(matchId string) {
-	go func() {
-		lastMoveTime, getLastMoveTimeErr := GetMatchManager().GetLastMoveOccurredTime(matchId)
-		if getLastMoveTimeErr != nil {
-			return
+func StartTimer(match *Match) {
+	var waitTime time.Duration
+	if match.Board.IsWhiteTurn {
+		waitTime = time.Duration(match.WhiteTimeRemaining) * time.Second
+	} else {
+		waitTime = time.Duration(match.BlackTimeRemaining) * time.Second
+	}
+
+	GetLogManager().Log("timer", "sleeping")
+	time.Sleep(waitTime)
+	GetLogManager().Log("timer", "checking match time")
+	currMatch, _ := GetMatchManager().GetMatchById(match.Uuid)
+	if currMatch == nil {
+		GetLogManager().LogRed("timer", "match not found")
+		return
+	}
+	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {
+		matchBuilder := NewMatchBuilder().FromMatch(match)
+		boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
+		boardBuilder.WithIsTerminal(true)
+		if match.Board.IsWhiteTurn {
+			matchBuilder.WithWhiteTimeRemaining(0)
+			boardBuilder.WithIsBlackWinner(true)
+		} else {
+			matchBuilder.WithBlackTimeRemaining(0)
+			boardBuilder.WithIsWhiteWinner(true)
 		}
-		for {
-			minTimeNanos, getMinTimeSecondsErr := GetMatchManager().GetMatchMinTimeout(matchId)
-			if getMinTimeSecondsErr != nil {
-				return
-			}
-			GetLogManager().Log("timer", "sleeping")
-			time.Sleep(*minTimeNanos)
-			GetLogManager().Log("timer", "checking match time")
-			newLastMoveTime, getNewLastMoveTimeErr := GetMatchManager().CheckMatchTime(matchId, *lastMoveTime)
-			if getNewLastMoveTimeErr != nil {
-				GetLogManager().LogRed("timer", getNewLastMoveTimeErr.Error())
-				return
-			}
-			lastMoveTime = newLastMoveTime
-		}
-	}()
+		matchBuilder.WithBoard(boardBuilder.Build())
+		newMatch := matchBuilder.Build()
+		_ = GetMatchManager().SetMatch(newMatch)
+	}
 }

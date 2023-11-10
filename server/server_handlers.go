@@ -3,7 +3,8 @@ package server
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
-	"github.com/CameronHonis/chess-arbitrator/set"
+	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/set"
 )
 
 func HandleMessage(msg *Message, clientKey string) {
@@ -107,7 +108,7 @@ func HandleFindBotMatchMessage(clientKey string, botName string) error {
 
 func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
 	// TODO: add auth groups - including one for bots client
-	topicWhitelist := set.EmptySet[string]()
+	topicWhitelist := EmptySet[string]()
 	topicWhitelist.Add("findBotMatch")
 
 	if !topicWhitelist.Has(string(topic)) {
@@ -197,5 +198,5 @@ func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageCont
 }
 
 func HandleMoveMessage(matchId string, move *chess.Move) error {
-	return GetMatchManager().ExecuteMatchMove(matchId, move)
+	return GetMatchManager().ExecuteMove(matchId, move)
 }

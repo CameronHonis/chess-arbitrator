@@ -2,7 +2,8 @@ package server
 
 import (
 	"fmt"
-	. "github.com/CameronHonis/chess-arbitrator/set"
+	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/set"
 	"github.com/gorilla/websocket"
 	"sync"
 	"time"

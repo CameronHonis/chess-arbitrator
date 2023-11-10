@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	. "github.com/CameronHonis/log"
 	"github.com/gorilla/websocket"
 	"time"
 )
@@ -45,6 +46,11 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	if sendAuthErr != nil {
 		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
 	}
+
+	logManagerConfig := NewLogManagerConfig()
+	logManagerConfig.DecoratorByEnv[pubKey] = WrapCyan
+	GetLogManager().InjectConfig(logManagerConfig)
+
 	return &uc
 }
 
@@ -93,7 +99,7 @@ func (uc *UserClient) listenOnWebsocket() {
 			_ = userClientsManager.RemoveClient(uc)
 			return
 		}
-		GetLogManager().LogMessage(uc.publicKey, true, string(rawMsg))
+		GetLogManager().Log(uc.publicKey, ">> ", string(rawMsg))
 
 		msg, unmarshalErr := UnmarshalToMessage(rawMsg)
 		if unmarshalErr != nil {
@@ -117,7 +123,7 @@ func (uc *UserClient) SendMessage(msg *Message) error {
 	if jsonErr != nil {
 		return jsonErr
 	}
-	GetLogManager().LogMessage(uc.publicKey, false, string(msgJson))
+	GetLogManager().Log(uc.publicKey, "<< ", string(msgJson))
 	writeErr := uc.conn.WriteMessage(websocket.TextMessage, msgJson)
 	if writeErr != nil {
 		return writeErr

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
+	. "github.com/CameronHonis/log"
 	"math"
 	"sync"
 	"time"
@@ -11,20 +12,18 @@ import (
 var matchManager *MatchManager
 
 type MatchManager struct {
-	matchByMatchId        map[string]*Match
-	lastMoveTimeByMatchId map[string]time.Time
-	matchIdByClientId     map[string]string
-	stagedMatchById       map[string]*Match //only for bot matches currently
-	mu                    sync.Mutex
+	matchByMatchId    map[string]*Match
+	matchIdByClientId map[string]string
+	stagedMatchById   map[string]*Match //only for bot matches currently
+	mu                sync.Mutex
 }
 
 func GetMatchManager() *MatchManager {
 	if matchManager == nil {
 		matchManager = &MatchManager{
-			matchByMatchId:        make(map[string]*Match),
-			lastMoveTimeByMatchId: make(map[string]time.Time),
-			matchIdByClientId:     make(map[string]string),
-			stagedMatchById:       make(map[string]*Match),
+			matchByMatchId:    make(map[string]*Match),
+			matchIdByClientId: make(map[string]string),
+			stagedMatchById:   make(map[string]*Match),
 		}
 	}
 	return matchManager
@@ -43,7 +42,6 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		return fmt.Errorf("client %s (black) already in match", match.WhiteClientId)
 	}
 	mm.matchByMatchId[match.Uuid] = match
-	mm.lastMoveTimeByMatchId[match.Uuid] = time.Now()
 	if GetAuthManager().chessBotKey != match.WhiteClientId {
 		mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
 	}
@@ -59,15 +57,17 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	if subErr != nil {
 		GetLogManager().LogRed("matchmaking", fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
-	msg := &Message{
+
+	go StartTimer(match)
+
+	matchUpdateMsg := &Message{
 		Topic:       matchTopic,
 		ContentType: CONTENT_TYPE_MATCH_UPDATE,
 		Content: &MatchUpdateMessageContent{
 			Match: match,
 		},
 	}
-	GetUserClientsManager().BroadcastMessage(msg)
-	StartTimer(match.Uuid)
+	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
 	return nil
 }
 
@@ -119,7 +119,6 @@ func (mm *MatchManager) RemoveMatch(match *Match) error {
 		delete(mm.matchIdByClientId, match.BlackClientId)
 	}
 	delete(mm.matchByMatchId, match.Uuid)
-	delete(mm.lastMoveTimeByMatchId, match.Uuid)
 	return nil
 }
 
@@ -131,6 +130,27 @@ func (mm *MatchManager) GetMatchById(matchId string) (*Match, error) {
 		return nil, fmt.Errorf("match with id %s not found", matchId)
 	}
 	return match, nil
+}
+
+func (mm *MatchManager) SetMatch(newMatch *Match) error {
+	_, fetchCurrMatchErr := mm.GetMatchById(newMatch.Uuid)
+	if fetchCurrMatchErr != nil {
+		return fetchCurrMatchErr
+	}
+	mm.mu.Lock()
+	mm.matchByMatchId[newMatch.Uuid] = newMatch
+	mm.mu.Unlock()
+
+	matchUpdateMsg := &Message{
+		Topic:       MessageTopic(fmt.Sprintf("match-%s", newMatch.Uuid)),
+		ContentType: CONTENT_TYPE_MATCH_UPDATE,
+		Content: &MatchUpdateMessageContent{
+			Match: newMatch,
+		},
+	}
+	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
+	GetLogManager().Log("match_manager", fmt.Sprintf("last move time %s", newMatch.LastMoveTime))
+	return nil
 }
 
 func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
@@ -147,28 +167,7 @@ func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
 	return match, nil
 }
 
-func (mm *MatchManager) GetLastMoveOccurredTime(matchId string) (*time.Time, error) {
-	mm.mu.Lock()
-	defer mm.mu.Unlock()
-	lastMoveTime, ok := mm.lastMoveTimeByMatchId[matchId]
-	if !ok {
-		return nil, fmt.Errorf("last move time for match with id %s not found", matchId)
-	}
-	return &lastMoveTime, nil
-}
-
-func (mm *MatchManager) SetLastMoveTimeToNow(matchId string) error {
-	mm.mu.Lock()
-	defer mm.mu.Unlock()
-	_, ok := mm.lastMoveTimeByMatchId[matchId]
-	if !ok {
-		return fmt.Errorf("last move time for match with id %s not found", matchId)
-	}
-	mm.lastMoveTimeByMatchId[matchId] = time.Now()
-	return nil
-}
-
-func (mm *MatchManager) ExecuteMatchMove(matchId string, move *chess.Move) error {
+func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 	match, getMatchErr := mm.GetMatchById(matchId)
 	if getMatchErr != nil {
 		return getMatchErr
@@ -176,78 +175,40 @@ func (mm *MatchManager) ExecuteMatchMove(matchId string, move *chess.Move) error
 	if !chess.IsLegalMove(match.Board, move) {
 		return fmt.Errorf("move %v is not legal", move)
 	}
-	lastMoveTime, getLastMoveNanosErr := mm.GetLastMoveOccurredTime(matchId)
-	if getLastMoveNanosErr != nil {
-		return getLastMoveNanosErr
-	}
 
-	mm.mu.Lock()
+	matchBuilder := NewMatchBuilder().FromMatch(match)
 	currTime := time.Now()
-	secondsSinceLastMove := math.Max(currTime.Sub(*lastMoveTime).Seconds(), 0.1)
+	matchBuilder.WithLastMoveTime(&currTime)
+	secondsSinceLastMove := math.Max(currTime.Sub(*match.LastMoveTime).Seconds(), 0.1)
 	if match.Board.IsWhiteTurn {
-		match.WhiteTimeRemaining -= secondsSinceLastMove
+		newWhiteTimeRemaining := match.WhiteTimeRemaining - math.Max(0.1, secondsSinceLastMove)
+		matchBuilder.WithWhiteTimeRemaining(math.Max(0, newWhiteTimeRemaining))
+		if newWhiteTimeRemaining == 0 {
+			boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
+			boardBuilder.WithIsTerminal(true)
+			boardBuilder.WithIsBlackWinner(true)
+			matchBuilder.WithBoard(boardBuilder.Build())
+		}
 	} else {
-		match.BlackTimeRemaining -= secondsSinceLastMove
-	}
-	chess.UpdateBoardFromMove(match.Board, move)
-	mm.mu.Unlock()
-
-	matchUpdateMsg := &Message{
-		Topic:       MessageTopic(fmt.Sprintf("match-%s", match.Uuid)),
-		ContentType: CONTENT_TYPE_MATCH_UPDATE,
-		Content: &MatchUpdateMessageContent{
-			Match: match,
-		},
-	}
-	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
-	return nil
-}
-
-func (mm *MatchManager) CheckMatchTime(matchId string, lastMoveTime time.Time) (*time.Time, error) {
-	match, getMatchErr := mm.GetMatchById(matchId)
-	if getMatchErr != nil {
-		return nil, getMatchErr
-	}
-	newLastMoveTime, getNewLastMoveTimeErr := mm.GetLastMoveOccurredTime(matchId)
-	if getNewLastMoveTimeErr != nil {
-		return nil, getNewLastMoveTimeErr
-	}
-	if lastMoveTime.Equal(*newLastMoveTime) {
-		isTimeout := match.WhiteTimeRemaining == match.BlackTimeRemaining
-		isTimeout = isTimeout || (match.WhiteTimeRemaining < match.BlackTimeRemaining && match.Board.IsWhiteTurn)
-		isTimeout = isTimeout || (match.BlackTimeRemaining < match.WhiteTimeRemaining && !match.Board.IsWhiteTurn)
-		if isTimeout {
-			mm.mu.Lock()
-			match.Board.IsTerminal = true
-			if match.Board.IsWhiteTurn {
-				match.Board.IsBlackWinner = true
-				match.WhiteTimeRemaining = 0
-			} else {
-				match.Board.IsWhiteWinner = true
-				match.BlackTimeRemaining = 0
-			}
-			mm.mu.Unlock()
-
-			msg := &Message{
-				Topic:       MessageTopic(fmt.Sprintf("match-%s", matchId)),
-				ContentType: CONTENT_TYPE_MATCH_UPDATE,
-				Content: &MatchUpdateMessageContent{
-					Match: match,
-				},
-			}
-			GetUserClientsManager().BroadcastMessage(msg)
-			_ = mm.RemoveMatch(match)
+		newBlackTimeRemaining := match.BlackTimeRemaining - math.Max(0.1, secondsSinceLastMove)
+		matchBuilder.WithWhiteTimeRemaining(math.Max(0, newBlackTimeRemaining))
+		if newBlackTimeRemaining == 0 {
+			boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
+			boardBuilder.WithIsTerminal(true)
+			boardBuilder.WithIsWhiteWinner(true)
+			matchBuilder.WithBoard(boardBuilder.Build())
 		}
 	}
-	return newLastMoveTime, nil
-}
+	newBoard := chess.GetBoardFromMove(match.Board, move)
+	matchBuilder.WithBoard(newBoard)
+	newMatch := matchBuilder.Build()
 
-func (mm *MatchManager) GetMatchMinTimeout(matchId string) (*time.Duration, error) {
-	match, getMatchErr := mm.GetMatchById(matchId)
-	if getMatchErr != nil {
-		return nil, getMatchErr
+	setMatchErr := mm.SetMatch(newMatch)
+	if setMatchErr != nil {
+		return setMatchErr
 	}
-	minRemainingSeconds := math.Min(match.WhiteTimeRemaining, match.BlackTimeRemaining)
-	minRemainingNanos := time.Duration(int64(1_000_000_000 * minRemainingSeconds))
-	return &minRemainingNanos, nil
+
+	go StartTimer(newMatch)
+
+	return nil
 }
