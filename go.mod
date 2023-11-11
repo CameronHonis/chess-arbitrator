@@ -11,11 +11,13 @@ require (
 )
 
 replace github.com/CameronHonis/chess => ../chess
+
 replace github.com/CameronHonis/log => ../log
+
 replace github.com/CameronHonis/set => ../set
 
 require (
-	github.com/CameronHonis/log v0.0.0-20231110054234-948147058d7f // indirect
+	github.com/CameronHonis/log v0.0.0-20231110230333-7c1ee849db4a // indirect
 	github.com/CameronHonis/set v0.0.0-20231110043107-dace21619137 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
