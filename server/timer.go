@@ -14,9 +14,7 @@ func StartTimer(match *Match) {
 		waitTime = time.Duration(match.BlackTimeRemaining) * time.Second
 	}
 
-	GetLogManager().Log("timer", "sleeping")
 	time.Sleep(waitTime)
-	GetLogManager().Log("timer", "checking match time")
 	currMatch, _ := GetMatchManager().GetMatchById(match.Uuid)
 	if currMatch == nil {
 		GetLogManager().LogRed("timer", "match not found")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	. "github.com/CameronHonis/log"
 	"github.com/gorilla/websocket"
+	"strings"
 	"time"
 )
 
@@ -34,6 +35,14 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	go uc.listenOnServerChannel()
 	go uc.listenOnWebsocket()
 
+	logManagerConfigBuilder := NewLogManagerConfigBuilder()
+	logManagerConfigBuilder.WithDecorator(pubKey, ClientKeyLogDecorator)
+	if GetLogManager().Config.IsEnvMuted(pubKey) {
+		logManagerConfigBuilder.WithMutedEnv(pubKey)
+	}
+	logConfig := logManagerConfigBuilder.Build()
+	GetLogManager().InjectConfig(logConfig)
+
 	msg := &Message{
 		Topic:       "auth",
 		ContentType: CONTENT_TYPE_AUTH,
@@ -46,11 +55,6 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	if sendAuthErr != nil {
 		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
 	}
-
-	logManagerConfig := NewLogManagerConfig()
-	logManagerConfig.DecoratorByEnv[pubKey] = WrapCyan
-	GetLogManager().InjectConfig(logManagerConfig)
-
 	return &uc
 }
 
@@ -135,4 +139,9 @@ func (uc *UserClient) Kill() {
 	uc.cleanup(uc)
 
 	uc.active = false
+}
+
+func ClientKeyLogDecorator(clientKey string) string {
+	concatKey := clientKey[:4] + ".." + clientKey[len(clientKey)-4:]
+	return WrapCyan(fmt.Sprintf("%s", strings.ToUpper(concatKey)))
 }

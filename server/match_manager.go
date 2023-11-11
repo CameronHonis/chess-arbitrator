@@ -149,7 +149,6 @@ func (mm *MatchManager) SetMatch(newMatch *Match) error {
 		},
 	}
 	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
-	GetLogManager().Log("match_manager", fmt.Sprintf("last move time %s", newMatch.LastMoveTime))
 	return nil
 }
 
@@ -191,7 +190,7 @@ func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 		}
 	} else {
 		newBlackTimeRemaining := match.BlackTimeRemaining - math.Max(0.1, secondsSinceLastMove)
-		matchBuilder.WithWhiteTimeRemaining(math.Max(0, newBlackTimeRemaining))
+		matchBuilder.WithBlackTimeRemaining(math.Max(0, newBlackTimeRemaining))
 		if newBlackTimeRemaining == 0 {
 			boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
 			boardBuilder.WithIsTerminal(true)
