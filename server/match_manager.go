@@ -30,6 +30,7 @@ func GetMatchManager() *MatchManager {
 }
 
 func (mm *MatchManager) AddMatch(match *Match) error {
+	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("adding match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	if _, ok := mm.matchByMatchId[match.Uuid]; ok {
@@ -51,11 +52,11 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 	subErr := GetUserClientsManager().SubscribeClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
+		GetLogManager().LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
 	}
 	subErr = GetUserClientsManager().SubscribeClientTo(match.BlackClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
+		GetLogManager().LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
 
 	go StartTimer(match)
@@ -72,6 +73,7 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 }
 
 func (mm *MatchManager) StageMatch(match *Match) {
+	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("staging match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	mm.stagedMatchById[match.Uuid] = match
@@ -88,6 +90,7 @@ func (mm *MatchManager) GetStagedMatchById(matchId string) (*Match, error) {
 }
 
 func (mm *MatchManager) UnstageMatch(matchId string) {
+	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("unstaging match %s", matchId))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	delete(mm.stagedMatchById, matchId)
@@ -107,6 +110,7 @@ func (mm *MatchManager) AddMatchFromStaged(matchId string) error {
 }
 
 func (mm *MatchManager) RemoveMatch(match *Match) error {
+	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("removing match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	if _, ok := mm.matchByMatchId[match.Uuid]; !ok {
