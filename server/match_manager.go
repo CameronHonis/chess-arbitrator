@@ -12,10 +12,11 @@ import (
 var matchManager *MatchManager
 
 type MatchManager struct {
-	matchByMatchId    map[string]*Match
-	matchIdByClientId map[string]string
-	stagedMatchById   map[string]*Match //only for bot matches currently
-	mu                sync.Mutex
+	matchByMatchId           map[string]*Match
+	matchIdByClientId        map[string]string
+	stagedMatchById          map[string]*Match //only for bot matches currently
+	challengeByChallengerKey map[string]*Challenge
+	mu                       sync.Mutex
 }
 
 func GetMatchManager() *MatchManager {
@@ -36,11 +37,11 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	if _, ok := mm.matchByMatchId[match.Uuid]; ok {
 		return fmt.Errorf("match with id %s already exists", match.Uuid)
 	}
-	if _, whiteInMatch := mm.matchIdByClientId[match.WhiteClientId]; whiteInMatch {
-		return fmt.Errorf("client %s (white) already in match", match.WhiteClientId)
+	if !mm.canStartMatchWithClientKey(match.WhiteClientId) {
+		return fmt.Errorf("client %s unavailable for match", match.WhiteClientId)
 	}
-	if _, blackInMatch := mm.matchIdByClientId[match.BlackClientId]; blackInMatch {
-		return fmt.Errorf("client %s (black) already in match", match.WhiteClientId)
+	if !mm.canStartMatchWithClientKey(match.BlackClientId) {
+		return fmt.Errorf("client %s unavailable for match", match.BlackClientId)
 	}
 	mm.matchByMatchId[match.Uuid] = match
 	if GetAuthManager().chessBotKey != match.WhiteClientId {
@@ -70,6 +71,15 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	}
 	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
 	return nil
+}
+
+func (mm *MatchManager) canStartMatchWithClientKey(clientKey string) bool {
+	_, isInMatch := mm.matchIdByClientId[clientKey]
+	if isInMatch {
+		return false
+	}
+	_, isChallenger := mm.challengeByChallengerKey[clientKey]
+	return !isChallenger
 }
 
 func (mm *MatchManager) StageMatch(match *Match) {
@@ -168,6 +178,28 @@ func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
 		return nil, fmt.Errorf("match with id %s not found", matchId)
 	}
 	return match, nil
+}
+
+func (mm *MatchManager) ChallengeClient(challenge *Challenge) error {
+	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("challenging client %s", challenge.ChallengerKey))
+	if mm.canStartMatchWithClientKey(challenge.ChallengerKey) {
+		return fmt.Errorf("client %s already in match", challenge.ChallengerKey)
+	}
+	mm.mu.Lock()
+	isChallengeBothWays := false
+	if reverseChallenge, ok := mm.challengeByChallengerKey[challenge.ChallengerKey]; ok {
+		isChallengeBothWays = reverseChallenge.ChallengedKey == challenge.ChallengerKey
+	}
+	if isChallengeBothWays {
+		delete(mm.challengeByChallengerKey, challenge.ChallengedKey)
+		mm.mu.Unlock()
+		match := NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl)
+		return mm.AddMatch(match)
+	} else {
+		mm.challengeByChallengerKey[challenge.ChallengerKey] = challenge
+		mm.mu.Unlock()
+	}
+	return nil
 }
 
 func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {

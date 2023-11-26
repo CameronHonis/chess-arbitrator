@@ -100,6 +100,7 @@ const (
 	CONTENT_TYPE_INIT_BOT_MATCH            = "INIT_BOT_MATCH"
 	CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS    = "INIT_BOT_MATCH_SUCCESS"
 	CONTENT_TYPE_INIT_BOT_MATCH_FAILURE    = "INIT_BOT_MATCH_FAILURE"
+	CONTENT_TYPE_CHALLENGE_PLAYER          = "CHALLENGE_PLAYER"
 )
 
 type AuthMessageContent struct {
@@ -169,4 +170,8 @@ type InitBotMatchFailureMessageContent struct {
 	BotName string `json:"botType"`
 	MatchId string `json:"matchId"`
 	Reason  string `json:"reason"`
+}
+
+type ChallengePlayerMessageContent struct {
+	Challenge *Challenge `json:"challenge"`
 }

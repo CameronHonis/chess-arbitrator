@@ -62,6 +62,13 @@ func HandleMessage(msg *Message, clientKey string) {
 			break
 		}
 		handleMsgErr = HandleMoveMessage(msgContent.MatchId, msgContent.Move)
+	case CONTENT_TYPE_CHALLENGE_PLAYER:
+		msgContent, ok := msg.Content.(*ChallengePlayerMessageContent)
+		if !ok {
+			handleMsgErr = fmt.Errorf("could not cast message to ChallengePlayerMessageContent")
+			break
+		}
+		handleMsgErr = HandleChallengePlayerMessage(msgContent)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -199,4 +206,8 @@ func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageCont
 
 func HandleMoveMessage(matchId string, move *chess.Move) error {
 	return GetMatchManager().ExecuteMove(matchId, move)
+}
+
+func HandleChallengePlayerMessage(msgContent *ChallengePlayerMessageContent) error {
+	return GetMatchManager().ChallengeClient(msgContent.Challenge)
 }
