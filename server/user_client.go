@@ -53,7 +53,7 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	}
 	sendAuthErr := uc.SendMessage(msg)
 	if sendAuthErr != nil {
-		GetLogManager().LogRed("client", fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
+		GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
 	}
 	return &uc
 }
@@ -77,7 +77,7 @@ func (uc *UserClient) listenOnServerChannel() {
 		case message := <-uc.inChannel:
 			sendErr := uc.SendMessage(message)
 			if sendErr != nil {
-				GetLogManager().LogRed("client", fmt.Sprintf("error sending message to client: %s", sendErr), ALL_BUT_TEST_ENV)
+				GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error sending message to client: %s", sendErr), ALL_BUT_TEST_ENV)
 			}
 		default:
 			if !uc.active {
@@ -89,7 +89,7 @@ func (uc *UserClient) listenOnServerChannel() {
 
 func (uc *UserClient) listenOnWebsocket() {
 	if uc.conn == nil {
-		GetLogManager().Log("client", "cannot listen on websocket, connection is nil", ALL_BUT_TEST_ENV)
+		GetLogManager().Log(ENV_CLIENT, "cannot listen on websocket, connection is nil", ALL_BUT_TEST_ENV)
 		return
 	}
 	for {
@@ -98,7 +98,7 @@ func (uc *UserClient) listenOnWebsocket() {
 			return
 		}
 		if readErr != nil {
-			GetLogManager().LogRed("client", fmt.Sprintf("error reading message from websocket: %s", readErr))
+			GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error reading message from websocket: %s", readErr))
 			// assume all readErrs are disconnects
 			_ = userClientsManager.RemoveClient(uc)
 			return
@@ -107,12 +107,12 @@ func (uc *UserClient) listenOnWebsocket() {
 
 		msg, unmarshalErr := UnmarshalToMessage(rawMsg)
 		if unmarshalErr != nil {
-			GetLogManager().Log("client", fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
+			GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
 			continue
 		}
 		authErr := GetAuthManager().ValidateAuthInMessage(msg)
 		if authErr != nil {
-			GetLogManager().Log("client", fmt.Sprintf("auth error: %s", authErr))
+			GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("auth error: %s", authErr))
 			continue
 		}
 		uc.outChannel <- msg

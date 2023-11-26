@@ -8,7 +8,7 @@ import (
 )
 
 func HandleMessage(msg *Message, clientKey string) {
-	GetLogManager().Log("server", fmt.Sprintf("handling message %s", msg))
+	GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
 	var handleMsgErr error
 	switch msg.ContentType {
 	case CONTENT_TYPE_FIND_MATCH:
@@ -64,7 +64,7 @@ func HandleMessage(msg *Message, clientKey string) {
 		handleMsgErr = HandleMoveMessage(msgContent.MatchId, msgContent.Move)
 	}
 	if handleMsgErr != nil {
-		GetLogManager().LogRed("server", fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
+		GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
 	}
 	GetUserClientsManager().BroadcastMessage(msg)
 }

@@ -17,7 +17,7 @@ func StartTimer(match *Match) {
 	time.Sleep(waitTime)
 	currMatch, _ := GetMatchManager().GetMatchById(match.Uuid)
 	if currMatch == nil {
-		GetLogManager().LogRed("timer", "match not found")
+		GetLogManager().LogRed(ENV_TIMER, "match not found")
 		return
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {

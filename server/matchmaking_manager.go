@@ -25,12 +25,12 @@ func GetMatchmakingManager() *MatchmakingManager {
 }
 
 func (mm *MatchmakingManager) AddClient(client *ClientProfile) error {
-	GetLogManager().Log("matchmaking", fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+	GetLogManager().Log(ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
 	addErr := mm.pool.AddClient(client)
 	if addErr != nil {
 		return addErr
 	}
-	GetLogManager().Log("matchmaking", fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	GetLogManager().Log(ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
 	return nil
 }
 
@@ -63,9 +63,9 @@ func (mm *MatchmakingManager) loopMatchmaking() {
 			if IsMatchable(clientA, clientB, waitTime) {
 				matchErr := mm.matchClients(clientA, clientB)
 				if matchErr != nil {
-					GetLogManager().LogRed("matchmaking", fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
+					GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
-					GetLogManager().LogGreen("matchmaking", fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
+					GetLogManager().LogGreen(ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
 				}
 			}
 			currPoolNode = currPoolNode.next

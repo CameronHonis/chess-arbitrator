@@ -51,11 +51,11 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 	subErr := GetUserClientsManager().SubscribeClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed("matchmaking", fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
+		GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
 	}
 	subErr = GetUserClientsManager().SubscribeClientTo(match.BlackClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed("matchmaking", fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
+		GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
 
 	go StartTimer(match)

@@ -174,7 +174,7 @@ func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := ucm.GetClientFromKey(clientKey)
 		if err != nil {
-			GetLogManager().LogRed("server", fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
+			GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
 		client.InChannel() <- &msgCopy
