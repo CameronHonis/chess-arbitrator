@@ -211,7 +211,11 @@ func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 		return setMatchErr
 	}
 
-	go StartTimer(newMatch)
+	if newMatch.Board.IsTerminal {
+		return mm.RemoveMatch(newMatch)
+	} else {
+		go StartTimer(newMatch)
+	}
 
 	return nil
 }
