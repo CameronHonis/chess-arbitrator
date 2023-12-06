@@ -9,6 +9,21 @@ import (
 	"time"
 )
 
+type MatchManagerI interface {
+	AddMatch(match *Match) error
+	StageMatch(match *Match)
+	GetStagedMatchById(matchId string) (*Match, error)
+	UnstageMatch(matchId string)
+	AddMatchFromStaged(matchId string) error
+	RemoveMatch(match *Match) error
+	GetMatchById(matchId string) (*Match, error)
+	SetMatch(newMatch *Match) error
+	GetMatchByClientKey(clientKey string) (*Match, error)
+	ChallengeClient(challenge *Challenge) error
+	ExecuteMove(matchId string, move *chess.Move) error
+	TerminateChallenge(challenge *Challenge, reason string) error
+}
+
 var matchManager *MatchManager
 
 type MatchManager struct {
@@ -268,4 +283,19 @@ func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 	}
 
 	return nil
+}
+
+func (mm *MatchManager) TerminateChallenge(challenge *Challenge, reason string) error {
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("failing challenge for client %s", challenge.ChallengerKey))
+	stagedMatch, fetchStagedMatchErr := mm.GetStagedMatchById(challenge.ChallengerKey)
+	if fetchStagedMatchErr != nil {
+		return fetchStagedMatchErr
+	}
+	mm.UnstageMatch(stagedMatch.Uuid)
+
+	return mm.userClientsManager.DirectMessage(&Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_CHALLENGE_TERMINATED,
+		Content:     &ChallengeTerminatedMessageContent{},
+	}, challenge.ChallengerKey)
 }

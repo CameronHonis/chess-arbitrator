@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type MatchmakingManagerI interface {
+	AddClient(client *ClientProfile) error
+	RemoveClient(client *ClientProfile) error
+}
+
 var matchmakingManager *MatchmakingManager
 
 type MatchmakingManager struct {

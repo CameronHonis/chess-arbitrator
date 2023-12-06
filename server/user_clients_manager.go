@@ -15,22 +15,39 @@ type UserClientsManagerI interface {
 	AddNewClient(conn *websocket.Conn) (*UserClient, error)
 	AddClient(client *UserClient) error
 	RemoveClient(client *UserClient) error
-	SubscribeClientTo(clientKey string, topic MessageTopic) error
-	UnsubClientFrom(clientKey string, topic MessageTopic) error
-	UnsubClientFromAll(clientKey string)
 	GetClientFromKey(clientKey string) (*UserClient, error)
-	GetSubscribedTopics(clientKey string) *Set[MessageTopic]
-	GetClientKeysSubscribedToTopic(topic MessageTopic) *Set[string]
 	GetAllOutChannels() map[string]chan *Message
 	GetInChannelByClientKey(clientKey string) (<-chan *Message, error)
 	BroadcastMessage(message *Message)
 	DirectMessage(message *Message, clientKey string) error
 }
+
 type UserClientsManager struct {
+	messageHandler      MessageHandlerI
+	logManager          LogManagerI
+	subscriptionManager SubscriptionManagerI
+
 	interactMutex               sync.Mutex
 	clientByPublicKey           map[string]*UserClient
 	subscriberClientKeysByTopic map[MessageTopic]*Set[string]
 	subscribedTopicsByClientKey map[string]*Set[MessageTopic]
+}
+
+func GetUserClientsManager() *UserClientsManager {
+	if userClientsManager != nil {
+		return userClientsManager
+	}
+	ucm := UserClientsManager{
+		messageHandler:              GetMessageHandler(),
+		logManager:                  GetLogManager(),
+		interactMutex:               sync.Mutex{},
+		clientByPublicKey:           make(map[string]*UserClient),
+		subscriberClientKeysByTopic: make(map[MessageTopic]*Set[string], 50),
+		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
+	}
+	go ucm.listenOnUserClientChannels()
+	userClientsManager = &ucm
+	return &ucm
 }
 
 func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
@@ -65,53 +82,8 @@ func (ucm *UserClientsManager) RemoveClient(client *UserClient) error {
 	ucm.interactMutex.Unlock()
 
 	client.Kill()
-	ucm.UnsubClientFromAll(client.PublicKey())
+	ucm.subscriptionManager.UnsubClientFromAll(client.PublicKey())
 	return nil
-}
-
-func (ucm *UserClientsManager) SubscribeClientTo(clientKey string, topic MessageTopic) error {
-	subbedTopics := ucm.GetSubscribedTopics(clientKey)
-	ucm.interactMutex.Lock()
-	if subbedTopics.Has(topic) {
-		return fmt.Errorf("client %s already subscribed to topic %s", clientKey, topic)
-	}
-	subbedTopics.Add(topic)
-	ucm.interactMutex.Unlock()
-
-	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(topic)
-
-	ucm.interactMutex.Lock()
-	subbedClientKeys.Add(clientKey)
-	ucm.interactMutex.Unlock()
-	return nil
-}
-
-func (ucm *UserClientsManager) UnsubClientFrom(clientKey string, topic MessageTopic) error {
-	defer ucm.interactMutex.Unlock()
-	subbedTopics := ucm.GetSubscribedTopics(clientKey)
-
-	ucm.interactMutex.Lock()
-	if !subbedTopics.Has(topic) {
-		return fmt.Errorf("client %s is not subscribed to %s", clientKey, topic)
-	}
-	subbedTopics.Remove(topic)
-	ucm.interactMutex.Unlock()
-
-	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(topic)
-
-	ucm.interactMutex.Lock()
-	subbedClientKeys.Remove(clientKey)
-	return nil
-}
-
-func (ucm *UserClientsManager) UnsubClientFromAll(clientKey string) {
-	defer ucm.interactMutex.Unlock()
-	subbedTopics := ucm.GetSubscribedTopics(clientKey)
-	ucm.interactMutex.Lock()
-	for _, topic := range subbedTopics.Flatten() {
-		ucm.subscriberClientKeysByTopic[topic].Remove(clientKey)
-	}
-	ucm.subscribedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
 }
 
 func (ucm *UserClientsManager) GetClientFromKey(clientKey string) (*UserClient, error) {
@@ -122,28 +94,6 @@ func (ucm *UserClientsManager) GetClientFromKey(clientKey string) (*UserClient, 
 		return nil, fmt.Errorf("no client with public key %s", clientKey)
 	}
 	return client, nil
-}
-
-func (ucm *UserClientsManager) GetSubscribedTopics(clientKey string) *Set[MessageTopic] {
-	defer ucm.interactMutex.Unlock()
-	ucm.interactMutex.Lock()
-	subbedTopics, ok := ucm.subscribedTopicsByClientKey[clientKey]
-	if !ok {
-		subbedTopics = EmptySet[MessageTopic]()
-		ucm.subscribedTopicsByClientKey[clientKey] = subbedTopics
-	}
-	return subbedTopics
-}
-
-func (ucm *UserClientsManager) GetClientKeysSubscribedToTopic(topic MessageTopic) *Set[string] {
-	defer ucm.interactMutex.Unlock()
-	ucm.interactMutex.Lock()
-	subbedClients := ucm.subscriberClientKeysByTopic[topic]
-	if subbedClients == nil {
-		subbedClients = EmptySet[string]()
-		ucm.subscriberClientKeysByTopic[topic] = subbedClients
-	}
-	return subbedClients
 }
 
 func (ucm *UserClientsManager) GetAllOutChannels() map[string]chan *Message {
@@ -168,13 +118,15 @@ func (ucm *UserClientsManager) GetInChannelByClientKey(clientKey string) (<-chan
 	}
 	return client.OutChannel(), nil
 }
+
 func (ucm *UserClientsManager) listenOnUserClientChannels() {
 	for {
 		time.Sleep(time.Millisecond * 1)
 		for clientKey, channel := range ucm.GetAllOutChannels() {
 			select {
 			case message := <-channel:
-				go HandleMessage(message, clientKey)
+				message.SenderKey = clientKey
+				go ucm.messageHandler.HandleMessage(message)
 			default:
 				continue
 			}
@@ -185,11 +137,11 @@ func (ucm *UserClientsManager) listenOnUserClientChannels() {
 func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
 	msgCopy := *message
 	msgCopy.PrivateKey = ""
-	subbedClientKeys := ucm.GetClientKeysSubscribedToTopic(msgCopy.Topic)
+	subbedClientKeys := ucm.subscriptionManager.GetClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := ucm.GetClientFromKey(clientKey)
 		if err != nil {
-			GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
+			ucm.logManager.LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
 		client.InChannel() <- &msgCopy
@@ -208,21 +160,6 @@ func (ucm *UserClientsManager) DirectMessage(message *Message, clientKey string)
 	}
 	client.InChannel() <- &msgCopy
 	return nil
-}
-
-func GetUserClientsManager() *UserClientsManager {
-	if userClientsManager != nil {
-		return userClientsManager
-	}
-	ucm := UserClientsManager{
-		interactMutex:               sync.Mutex{},
-		clientByPublicKey:           make(map[string]*UserClient),
-		subscriberClientKeysByTopic: make(map[MessageTopic]*Set[string], 50),
-		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
-	}
-	go ucm.listenOnUserClientChannels()
-	userClientsManager = &ucm
-	return &ucm
 }
 
 func CleanupClient(userClient *UserClient) {

@@ -6,37 +6,63 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"os"
+	"sync"
 )
+
+type AuthManagerI interface {
+	UpgradeAuth(clientKey string, secret string) error
+	ValidateAuthInMessage(msg *Message) error
+}
 
 var authManager *AuthManager
 
 type AuthManager struct {
+	userClientsManager UserClientsManagerI
+
 	chessBotKey string
+	mu          sync.Mutex
 }
 
 func GetAuthManager() *AuthManager {
 	if authManager == nil {
-		authManager = &AuthManager{}
+		authManager = &AuthManager{
+			userClientsManager: GetUserClientsManager(),
+		}
 	}
 	return authManager
 }
 
-func (am *AuthManager) UpgradeAuth(clientKey string, secret string) (string, error) {
+func (am *AuthManager) UpgradeAuth(clientKey string, secret string) error {
 	chessBotKey, ok := os.LookupEnv("BOT_CLIENT_SECRET")
 	if !ok {
-		return "", fmt.Errorf("could not determine chess bot secret")
+		return fmt.Errorf("could not determine chess bot secret")
 	}
 
 	switch secret {
 	case chessBotKey:
 		if am.chessBotKey != "" {
-			return "", fmt.Errorf("chess bot already authenticated")
+			return fmt.Errorf("chess bot already authenticated")
 		}
 		am.chessBotKey = clientKey
-		return "chessBot", nil
+		msg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
+			Content: &UpgradeAuthGrantedMessageContent{
+				UpgradedToRole: "chessBot",
+			},
+		}
+		return GetUserClientsManager().DirectMessage(&msg, clientKey)
 	default:
-		return "", fmt.Errorf("unrecognized secret")
+		msg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_UPGRADE_AUTH_DENIED,
+			Content: &UpgradeAuthDeniedMessageContent{
+				Reason: "unrecognized secret",
+			},
+		}
+		return GetUserClientsManager().DirectMessage(&msg, clientKey)
 	}
+
 }
 
 func GenerateKeyset() (string, string) {

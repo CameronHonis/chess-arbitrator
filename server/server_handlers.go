@@ -2,73 +2,60 @@ package server
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/set"
 )
 
-func HandleMessage(msg *Message, clientKey string) {
-	GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
+type MessageHandlerI interface {
+	HandleMessage(msg *Message)
+}
+
+var messageHandler *MessageHandler
+
+type MessageHandler struct {
+	logManager          LogManagerI
+	authManager         AuthManagerI
+	matchManager        MatchManagerI
+	matchmakingManager  MatchmakingManagerI
+	SubscriptionManager SubscriptionManagerI
+}
+
+func GetMessageHandler() *MessageHandler {
+	if messageHandler == nil {
+		messageHandler = &MessageHandler{
+			logManager:         GetLogManager(),
+			authManager:        GetAuthManager(),
+			matchManager:       GetMatchManager(),
+			matchmakingManager: GetMatchmakingManager(),
+		}
+	}
+	return messageHandler
+}
+
+func (mh *MessageHandler) HandleMessage(msg *Message) {
+	mh.logManager.Log(ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
 	var handleMsgErr error
 	switch msg.ContentType {
 	case CONTENT_TYPE_FIND_MATCH:
-		handleMsgErr = HandleFindMatchMessage(clientKey)
+		handleMsgErr = mh.HandleFindMatchMessage(msg)
 	case CONTENT_TYPE_FIND_BOT_MATCH:
-		msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to FindBotMatchMessageContent")
-			break
-		}
-		handleMsgErr = HandleFindBotMatchMessage(clientKey, msgContent.BotName)
+		handleMsgErr = mh.HandleFindBotMatchMessage(msg)
 	case CONTENT_TYPE_ECHO:
-		msgContent, ok := msg.Content.(*EchoMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to EchoMessageContent")
-			break
-		}
-		handleMsgErr = HandleEchoMessage(clientKey, msgContent.Message)
+		handleMsgErr = mh.HandleEchoMessage(msg)
 	case CONTENT_TYPE_SUBSCRIBE_REQUEST:
-		msgContent, ok := msg.Content.(*SubscribeRequestMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
-			break
-		}
-		handleMsgErr = HandleSubscribeRequestMessage(clientKey, msgContent.Topic)
+		handleMsgErr = mh.HandleSubscribeRequestMessage(msg)
 	case CONTENT_TYPE_UPGRADE_AUTH_REQUEST:
-		msgContent, ok := msg.Content.(*UpgradeAuthRequestMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
-			break
-		}
-		handleMsgErr = HandleRequestUpgradeAuthMessage(clientKey, msgContent.Secret)
+		handleMsgErr = mh.HandleRequestUpgradeAuthMessage(msg)
 	case CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS:
-		msgContent, ok := msg.Content.(*InitBotMatchSuccessMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to InitBotMatchSuccessMessageContent")
-			break
-		}
-		handleMsgErr = HandleInitBotMatchSuccessMessage(msgContent)
+		handleMsgErr = mh.HandleInitBotMatchSuccessMessage(msg)
 	case CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:
-		msgContent, ok := msg.Content.(*InitBotMatchFailureMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to InitBotMatchFailureMessageContent")
-			break
-		}
-		handleMsgErr = HandleInitBotMatchFailureMessage(msgContent)
+		handleMsgErr = mh.HandleInitBotMatchFailureMessage(msg)
 	case CONTENT_TYPE_MOVE:
-		msgContent, ok := msg.Content.(*MoveMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to MoveMessageContent")
-			break
-		}
-		handleMsgErr = HandleMoveMessage(msgContent.MatchId, msgContent.Move)
+		handleMsgErr = mh.HandleMoveMessage(msg)
 	case CONTENT_TYPE_CHALLENGE_PLAYER:
-		msgContent, ok := msg.Content.(*ChallengePlayerMessageContent)
-		if !ok {
-			handleMsgErr = fmt.Errorf("could not cast message to ChallengePlayerMessageContent")
-			break
-		}
-		handleMsgErr = HandleChallengePlayerMessage(msgContent)
+		handleMsgErr = mh.HandleChallengePlayerMessage(msg)
+	case CONTENT_TYPE_CHALLENGE_TERMINATED:
+		handleMsgErr = mh.HandleChallengeTerminatedMessage(msg)
 	}
 	if handleMsgErr != nil {
 		GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
@@ -76,7 +63,7 @@ func HandleMessage(msg *Message, clientKey string) {
 	GetUserClientsManager().BroadcastMessage(msg)
 }
 
-func HandleFindMatchMessage(clientKey string) error {
+func (mh *MessageHandler) HandleFindMatchMessage(msg *Message) error {
 	// TODO: query for elo, winStreak, lossStreak
 	addClientErr := GetMatchmakingManager().AddClient(&ClientProfile{
 		ClientKey:  clientKey,
@@ -90,7 +77,7 @@ func HandleFindMatchMessage(clientKey string) error {
 	return nil
 }
 
-func HandleFindBotMatchMessage(clientKey string, botName string) error {
+func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
 	botClientKey := GetAuthManager().chessBotKey
 	if botClientKey == "" {
 		msg := &Message{
@@ -113,7 +100,11 @@ func HandleFindBotMatchMessage(clientKey string, botName string) error {
 	return GetUserClientsManager().DirectMessage(msg, botClientKey)
 }
 
-func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
+func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
+	msgContent, ok := msg.Content.(*SubscribeRequestMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
+	}
 	// TODO: add auth groups - including one for bots client
 	topicWhitelist := EmptySet[string]()
 	topicWhitelist.Add("findBotMatch")
@@ -143,71 +134,64 @@ func HandleSubscribeRequestMessage(clientKey string, topic MessageTopic) error {
 	return GetUserClientsManager().DirectMessage(subGrantedMsg, clientKey)
 }
 
-func HandleEchoMessage(clientKey string, msg string) error {
+func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
+	msgContent, ok := msg.Content.(*EchoMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to EchoMessageContent")
+	}
 	echoMsg := Message{
 		Topic:       "directMessage",
 		ContentType: CONTENT_TYPE_ECHO,
 		Content: &EchoMessageContent{
-			Message: msg,
+			Message: msgContent.Message,
 		},
 	}
-	return GetUserClientsManager().DirectMessage(&echoMsg, clientKey)
+	return GetUserClientsManager().DirectMessage(&echoMsg, msg.SenderKey)
 }
 
-func HandleRequestUpgradeAuthMessage(clientKey string, secret string) error {
-	upgradedToRole, upgradeErr := GetAuthManager().UpgradeAuth(clientKey, secret)
-	if upgradeErr != nil {
-		msg := Message{
-			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_UPGRADE_AUTH_DENIED,
-			Content: &UpgradeAuthDeniedMessageContent{
-				Reason: upgradeErr.Error(),
-			},
-		}
-		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+func (mh *MessageHandler) HandleRequestUpgradeAuthMessage(msg *Message) error {
+	msgContent, ok := msg.Content.(*UpgradeAuthRequestMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	msg := Message{
-		Topic:       "directMessage",
-		ContentType: CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
-		Content: &UpgradeAuthGrantedMessageContent{
-			UpgradedToRole: upgradedToRole,
-		},
+	return mh.authManager.UpgradeAuth(msg.SenderKey, msgContent.Secret)
+}
+
+func (mh *MessageHandler) HandleInitBotMatchSuccessMessage(msg *Message) error {
+	_, ok := msg.Content.(*InitBotMatchSuccessMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to InitBotMatchSuccessMessageContent")
 	}
-	return GetUserClientsManager().DirectMessage(&msg, clientKey)
+	return nil
 }
 
-func HandleInitBotMatchSuccessMessage(msgContent *InitBotMatchSuccessMessageContent) error {
-	return GetMatchManager().AddMatchFromStaged(msgContent.MatchId)
-}
-
-func HandleInitBotMatchFailureMessage(msgContent *InitBotMatchFailureMessageContent) error {
-	stagedMatch, fetchStagedMatchErr := GetMatchManager().GetStagedMatchById(msgContent.MatchId)
-	if fetchStagedMatchErr != nil {
-		return fmt.Errorf("could not fetch staged match with id %s: %s", msgContent.MatchId, fetchStagedMatchErr)
+func (mh *MessageHandler) HandleInitBotMatchFailureMessage(msg *Message) error {
+	_, ok := msg.Content.(*InitBotMatchFailureMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to InitBotMatchFailureMessageContent")
 	}
-	var clientKey string
-	if stagedMatch.WhiteClientId != GetAuthManager().chessBotKey {
-		clientKey = stagedMatch.WhiteClientId
-	} else {
-		clientKey = stagedMatch.BlackClientId
+	return nil
+}
+func (mh *MessageHandler) HandleMoveMessage(moveMsg *Message) error {
+	moveMsgContent, ok := moveMsg.Content.(*MoveMessageContent)
+	if !ok {
+		return fmt.Errorf("invalid move message content")
 	}
-
-	GetMatchManager().UnstageMatch(msgContent.MatchId)
-
-	return GetUserClientsManager().DirectMessage(
-		&Message{
-			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_INIT_BOT_MATCH_FAILURE,
-			Content:     msgContent,
-		},
-		clientKey,
-	)
+	return mh.matchManager.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
 }
 
-func HandleMoveMessage(matchId string, move *chess.Move) error {
-	return GetMatchManager().ExecuteMove(matchId, move)
+func (mh *MessageHandler) HandleChallengePlayerMessage(challengeMsg *Message) error {
+	challengeMsgContent, ok := challengeMsg.Content.(*ChallengePlayerMessageContent)
+	if !ok {
+		return fmt.Errorf("invalid challenge message content")
+	}
+	return mh.matchManager.ChallengeClient(challengeMsgContent.Challenge)
 }
 
-func HandleChallengePlayerMessage(msgContent *ChallengePlayerMessageContent) error {
-	return GetMatchManager().ChallengeClient(msgContent.Challenge)
+func (mh *MessageHandler) HandleChallengeTerminatedMessage(msg *Message) error {
+	msgContent, ok := msg.Content.(*ChallengeTerminatedMessageContent)
+	if !ok {
+		return fmt.Errorf("invalid challenge terminated message content")
+	}
+	return mh.matchManager.TerminateChallenge(msgContent.Challenge, msgContent.Reason)
 }

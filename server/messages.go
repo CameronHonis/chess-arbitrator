@@ -6,8 +6,6 @@ import (
 	"github.com/CameronHonis/chess"
 )
 
-type MessageTopic string
-
 type Message struct {
 	SenderKey   string       `json:"senderKey"`
 	PrivateKey  string       `json:"privateKey"`
@@ -101,6 +99,7 @@ const (
 	CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS    = "INIT_BOT_MATCH_SUCCESS"
 	CONTENT_TYPE_INIT_BOT_MATCH_FAILURE    = "INIT_BOT_MATCH_FAILURE"
 	CONTENT_TYPE_CHALLENGE_PLAYER          = "CHALLENGE_PLAYER"
+	CONTENT_TYPE_CHALLENGE_TERMINATED      = "CHALLENGE_TERMINATED"
 )
 
 type AuthMessageContent struct {
@@ -174,4 +173,9 @@ type InitBotMatchFailureMessageContent struct {
 
 type ChallengePlayerMessageContent struct {
 	Challenge *Challenge `json:"challenge"`
+}
+
+type ChallengeTerminatedMessageContent struct {
+	Challenge *Challenge `json:"challenge"`
+	Reason    string     `json:"reason"`
 }
