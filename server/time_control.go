@@ -7,6 +7,13 @@ type TimeControl struct {
 	SecondsAfterMoves   int64 `json:"secondsAfterMoves"`
 }
 
+func (tc *TimeControl) Equals(other *TimeControl) bool {
+	return tc.InitialTimeSeconds == other.InitialTimeSeconds &&
+		tc.IncrementSeconds == other.IncrementSeconds &&
+		tc.TimeAfterMovesCount == other.TimeAfterMovesCount &&
+		tc.SecondsAfterMoves == other.SecondsAfterMoves
+}
+
 func NewRapidTimeControl() *TimeControl {
 	return &TimeControl{
 		InitialTimeSeconds:  600,

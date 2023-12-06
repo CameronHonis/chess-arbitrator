@@ -12,6 +12,12 @@ import (
 var matchManager *MatchManager
 
 type MatchManager struct {
+	// dependencies
+	logManager         *LogManager
+	userClientsManager UserClientsManagerI
+	authManager        *AuthManager
+
+	// state
 	matchByMatchId           map[string]*Match
 	matchIdByClientId        map[string]string
 	stagedMatchById          map[string]*Match //only for bot matches currently
@@ -22,16 +28,19 @@ type MatchManager struct {
 func GetMatchManager() *MatchManager {
 	if matchManager == nil {
 		matchManager = &MatchManager{
-			matchByMatchId:    make(map[string]*Match),
-			matchIdByClientId: make(map[string]string),
-			stagedMatchById:   make(map[string]*Match),
+			logManager:         GetLogManager(),
+			userClientsManager: GetUserClientsManager(),
+			authManager:        GetAuthManager(),
+			matchByMatchId:     make(map[string]*Match),
+			matchIdByClientId:  make(map[string]string),
+			stagedMatchById:    make(map[string]*Match),
 		}
 	}
 	return matchManager
 }
 
 func (mm *MatchManager) AddMatch(match *Match) error {
-	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("adding match %s", match.Uuid))
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("adding match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	if _, ok := mm.matchByMatchId[match.Uuid]; ok {
@@ -44,20 +53,20 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		return fmt.Errorf("client %s unavailable for match", match.BlackClientId)
 	}
 	mm.matchByMatchId[match.Uuid] = match
-	if GetAuthManager().chessBotKey != match.WhiteClientId {
+	if mm.authManager.chessBotKey != match.WhiteClientId {
 		mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
 	}
-	if GetAuthManager().chessBotKey != match.BlackClientId {
+	if mm.authManager.chessBotKey != match.BlackClientId {
 		mm.matchIdByClientId[match.BlackClientId] = match.Uuid
 	}
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
-	subErr := GetUserClientsManager().SubscribeClientTo(match.WhiteClientId, matchTopic)
+	subErr := mm.userClientsManager.SubscribeClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
+		mm.logManager.LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
 	}
-	subErr = GetUserClientsManager().SubscribeClientTo(match.BlackClientId, matchTopic)
+	subErr = mm.userClientsManager.SubscribeClientTo(match.BlackClientId, matchTopic)
 	if subErr != nil {
-		GetLogManager().LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
+		mm.logManager.LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
 
 	go StartTimer(match)
@@ -69,7 +78,7 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 			Match: match,
 		},
 	}
-	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
+	mm.userClientsManager.BroadcastMessage(matchUpdateMsg)
 	return nil
 }
 
@@ -83,7 +92,7 @@ func (mm *MatchManager) canStartMatchWithClientKey(clientKey string) bool {
 }
 
 func (mm *MatchManager) StageMatch(match *Match) {
-	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("staging match %s", match.Uuid))
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("staging match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	mm.stagedMatchById[match.Uuid] = match
@@ -100,7 +109,7 @@ func (mm *MatchManager) GetStagedMatchById(matchId string) (*Match, error) {
 }
 
 func (mm *MatchManager) UnstageMatch(matchId string) {
-	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("unstaging match %s", matchId))
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("unstaging match %s", matchId))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	delete(mm.stagedMatchById, matchId)
@@ -120,7 +129,7 @@ func (mm *MatchManager) AddMatchFromStaged(matchId string) error {
 }
 
 func (mm *MatchManager) RemoveMatch(match *Match) error {
-	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("removing match %s", match.Uuid))
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("removing match %s", match.Uuid))
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	if _, ok := mm.matchByMatchId[match.Uuid]; !ok {
@@ -147,9 +156,18 @@ func (mm *MatchManager) GetMatchById(matchId string) (*Match, error) {
 }
 
 func (mm *MatchManager) SetMatch(newMatch *Match) error {
-	_, fetchCurrMatchErr := mm.GetMatchById(newMatch.Uuid)
+	oldMatch, fetchCurrMatchErr := mm.GetMatchById(newMatch.Uuid)
 	if fetchCurrMatchErr != nil {
 		return fetchCurrMatchErr
+	}
+	if newMatch.WhiteClientId != oldMatch.WhiteClientId {
+		return fmt.Errorf("cannot change white client id")
+	}
+	if newMatch.BlackClientId != oldMatch.BlackClientId {
+		return fmt.Errorf("cannot change black client id")
+	}
+	if !newMatch.TimeControl.Equals(oldMatch.TimeControl) {
+		return fmt.Errorf("cannot change time control")
 	}
 	mm.mu.Lock()
 	mm.matchByMatchId[newMatch.Uuid] = newMatch
@@ -162,7 +180,7 @@ func (mm *MatchManager) SetMatch(newMatch *Match) error {
 			Match: newMatch,
 		},
 	}
-	GetUserClientsManager().BroadcastMessage(matchUpdateMsg)
+	mm.userClientsManager.BroadcastMessage(matchUpdateMsg)
 	return nil
 }
 
@@ -181,7 +199,7 @@ func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
 }
 
 func (mm *MatchManager) ChallengeClient(challenge *Challenge) error {
-	GetLogManager().Log(ENV_MATCH_MANAGER, fmt.Sprintf("challenging client %s", challenge.ChallengerKey))
+	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("challenging client %s", challenge.ChallengerKey))
 	if mm.canStartMatchWithClientKey(challenge.ChallengerKey) {
 		return fmt.Errorf("client %s already in match", challenge.ChallengerKey)
 	}

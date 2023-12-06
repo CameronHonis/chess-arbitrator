@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	github.com/CameronHonis/chess v0.0.0-20231104040721-1fa63f099091
+	github.com/CameronHonis/log v0.0.0-20231110230333-7c1ee849db4a
+	github.com/CameronHonis/set v0.0.0-20231110043107-dace21619137
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/onsi/ginkgo/v2 v2.13.0
@@ -17,8 +19,6 @@ replace github.com/CameronHonis/log => ../log
 replace github.com/CameronHonis/set => ../set
 
 require (
-	github.com/CameronHonis/log v0.0.0-20231110230333-7c1ee849db4a // indirect
-	github.com/CameronHonis/set v0.0.0-20231110043107-dace21619137 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect

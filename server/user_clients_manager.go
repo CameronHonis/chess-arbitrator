@@ -11,8 +11,23 @@ import (
 
 var userClientsManager *UserClientsManager
 
+type UserClientsManagerI interface {
+	AddNewClient(conn *websocket.Conn) (*UserClient, error)
+	AddClient(client *UserClient) error
+	RemoveClient(client *UserClient) error
+	SubscribeClientTo(clientKey string, topic MessageTopic) error
+	UnsubClientFrom(clientKey string, topic MessageTopic) error
+	UnsubClientFromAll(clientKey string)
+	GetClientFromKey(clientKey string) (*UserClient, error)
+	GetSubscribedTopics(clientKey string) *Set[MessageTopic]
+	GetClientKeysSubscribedToTopic(topic MessageTopic) *Set[string]
+	GetAllOutChannels() map[string]chan *Message
+	GetInChannelByClientKey(clientKey string) (<-chan *Message, error)
+	BroadcastMessage(message *Message)
+	DirectMessage(message *Message, clientKey string) error
+}
 type UserClientsManager struct {
-	interactMutex               *sync.Mutex
+	interactMutex               sync.Mutex
 	clientByPublicKey           map[string]*UserClient
 	subscriberClientKeysByTopic map[MessageTopic]*Set[string]
 	subscribedTopicsByClientKey map[string]*Set[MessageTopic]
@@ -200,7 +215,7 @@ func GetUserClientsManager() *UserClientsManager {
 		return userClientsManager
 	}
 	ucm := UserClientsManager{
-		interactMutex:               &sync.Mutex{},
+		interactMutex:               sync.Mutex{},
 		clientByPublicKey:           make(map[string]*UserClient),
 		subscriberClientKeysByTopic: make(map[MessageTopic]*Set[string], 50),
 		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),

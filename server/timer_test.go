@@ -5,5 +5,7 @@ import (
 )
 
 var _ = Describe("Timer", func() {
-	When("")
+	When("", func() {
+
+	})
 })
