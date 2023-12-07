@@ -17,17 +17,22 @@ type MessageHandler struct {
 	authManager         AuthManagerI
 	matchManager        MatchManagerI
 	matchmakingManager  MatchmakingManagerI
-	SubscriptionManager SubscriptionManagerI
+	subscriptionManager SubscriptionManagerI
+	userClientsManager  UserClientsManagerI
 }
 
 func GetMessageHandler() *MessageHandler {
-	if messageHandler == nil {
-		messageHandler = &MessageHandler{
-			logManager:         GetLogManager(),
-			authManager:        GetAuthManager(),
-			matchManager:       GetMatchManager(),
-			matchmakingManager: GetMatchmakingManager(),
-		}
+	if messageHandler != nil {
+		return messageHandler
+	}
+	messageHandler = &MessageHandler{} // null service to prevent infinite recursion
+	messageHandler = &MessageHandler{
+		logManager:          GetLogManager(),
+		authManager:         GetAuthManager(),
+		matchManager:        GetMatchManager(),
+		matchmakingManager:  GetMatchmakingManager(),
+		subscriptionManager: GetSubscriptionManager(),
+		userClientsManager:  GetUserClientsManager(),
 	}
 	return messageHandler
 }
@@ -65,39 +70,46 @@ func (mh *MessageHandler) HandleMessage(msg *Message) {
 
 func (mh *MessageHandler) HandleFindMatchMessage(msg *Message) error {
 	// TODO: query for elo, winStreak, lossStreak
-	addClientErr := GetMatchmakingManager().AddClient(&ClientProfile{
-		ClientKey:  clientKey,
+	addClientErr := mh.matchmakingManager.AddClient(&ClientProfile{
+		ClientKey:  msg.SenderKey,
 		Elo:        1000,
 		WinStreak:  0,
 		LossStreak: 0,
 	})
 	if addClientErr != nil {
-		return fmt.Errorf("could not add client %s to matchmaking pool: %s", clientKey, addClientErr)
+		return fmt.Errorf("could not add client %s to matchmaking pool: %s", msg.SenderKey, addClientErr)
 	}
 	return nil
 }
 
 func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
-	botClientKey := GetAuthManager().chessBotKey
+	msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message to FindBotMatchMessageContent")
+	}
+	botClientKey, botKeyErr := mh.authManager.GetBotKey()
+	if botKeyErr != nil {
+		return fmt.Errorf("could not get bot key: %s", botKeyErr)
+	}
 	if botClientKey == "" {
 		msg := &Message{
 			Topic:       "directMessage",
 			ContentType: CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS,
 			Content:     &FindBotMatchNoBotsMessageContent{},
 		}
-		return GetUserClientsManager().DirectMessage(msg, clientKey)
+		return mh.userClientsManager.DirectMessage(msg, msg.SenderKey)
 	}
-	match := NewMatch(clientKey, botClientKey, NewBulletTimeControl())
+	match := NewMatch(msg.SenderKey, botClientKey, NewBulletTimeControl())
 	GetMatchManager().StageMatch(match)
-	msg := &Message{
+	outMsg := &Message{
 		Topic:       "directMessage",
 		ContentType: CONTENT_TYPE_INIT_BOT_MATCH,
 		Content: &InitBotMatchMessageContent{
-			BotName: botName,
+			BotName: msgContent.BotName,
 			MatchId: match.Uuid,
 		},
 	}
-	return GetUserClientsManager().DirectMessage(msg, botClientKey)
+	return GetUserClientsManager().DirectMessage(outMsg, botClientKey)
 }
 
 func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
@@ -109,29 +121,29 @@ func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
 	topicWhitelist := EmptySet[string]()
 	topicWhitelist.Add("findBotMatch")
 
-	if !topicWhitelist.Has(string(topic)) {
+	if !topicWhitelist.Has(string(msgContent.Topic)) {
 		msg := Message{
 			Topic:       "directMessage",
 			ContentType: CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED,
 			Content: &SubscribeRequestDeniedMessageContent{
-				Topic:  topic,
+				Topic:  msgContent.Topic,
 				Reason: "topic not whitelisted to public",
 			},
 		}
-		return GetUserClientsManager().DirectMessage(&msg, clientKey)
+		return mh.userClientsManager.DirectMessage(&msg, msg.SenderKey)
 	}
-	subErr := GetUserClientsManager().SubscribeClientTo(clientKey, topic)
+	subErr := mh.subscriptionManager.SubClientTo(msg.SenderKey, msgContent.Topic)
 	if subErr != nil {
-		return fmt.Errorf("could not subscribe client %s to topic %s: %s", clientKey, topic, subErr)
+		return fmt.Errorf("could not subscribe client %s to topic %s: %s", msg.SenderKey, msgContent.Topic, subErr)
 	}
 	subGrantedMsg := &Message{
 		Topic:       "directMessage",
 		ContentType: CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED,
 		Content: &SubscribeRequestGrantedMessageContent{
-			Topic: topic,
+			Topic: msg.Topic,
 		},
 	}
-	return GetUserClientsManager().DirectMessage(subGrantedMsg, clientKey)
+	return GetUserClientsManager().DirectMessage(subGrantedMsg, msg.SenderKey)
 }
 
 func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
@@ -193,5 +205,15 @@ func (mh *MessageHandler) HandleChallengeTerminatedMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("invalid challenge terminated message content")
 	}
-	return mh.matchManager.TerminateChallenge(msgContent.Challenge, msgContent.Reason)
+
+	challenge := msgContent.Challenge
+	terminateChallengeErr := mh.matchManager.TerminateChallenge(challenge)
+	if terminateChallengeErr != nil {
+		return fmt.Errorf("could not terminate challenge: %s", terminateChallengeErr)
+	}
+	return mh.userClientsManager.DirectMessage(&Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_CHALLENGE_TERMINATED,
+		Content:     &ChallengeTerminatedMessageContent{},
+	}, challenge.ChallengerKey)
 }

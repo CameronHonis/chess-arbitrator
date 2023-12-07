@@ -37,7 +37,8 @@ func GetUserClientsManager() *UserClientsManager {
 	if userClientsManager != nil {
 		return userClientsManager
 	}
-	ucm := UserClientsManager{
+	userClientsManager = &UserClientsManager{} // null service to prevent infinite recursion
+	userClientsManager = &UserClientsManager{
 		messageHandler:              GetMessageHandler(),
 		logManager:                  GetLogManager(),
 		interactMutex:               sync.Mutex{},
@@ -45,9 +46,8 @@ func GetUserClientsManager() *UserClientsManager {
 		subscriberClientKeysByTopic: make(map[MessageTopic]*Set[string], 50),
 		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
 	}
-	go ucm.listenOnUserClientChannels()
-	userClientsManager = &ucm
-	return &ucm
+	go userClientsManager.listenOnUserClientChannels()
+	return userClientsManager
 }
 
 func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {

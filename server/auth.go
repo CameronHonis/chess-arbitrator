@@ -10,6 +10,7 @@ import (
 )
 
 type AuthManagerI interface {
+	GetBotKey() (string, error)
 	UpgradeAuth(clientKey string, secret string) error
 	ValidateAuthInMessage(msg *Message) error
 }
@@ -30,6 +31,13 @@ func GetAuthManager() *AuthManager {
 		}
 	}
 	return authManager
+}
+
+func (am *AuthManager) GetBotKey() (string, error) {
+	if am.chessBotKey == "" {
+		return "", fmt.Errorf("chess bot not authenticated")
+	}
+	return am.chessBotKey, nil
 }
 
 func (am *AuthManager) UpgradeAuth(clientKey string, secret string) error {

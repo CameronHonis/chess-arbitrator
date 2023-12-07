@@ -13,8 +13,8 @@ type SubscriptionManagerI interface {
 	SubClientTo(clientKey string, topic MessageTopic) error
 	UnsubClientFrom(clientKey string, topic MessageTopic) error
 	UnsubClientFromAll(clientKey string)
-	GetSubbedTopics(clientKey string) Set[MessageTopic]
-	GetClientKeysSubbedToTopic(topic MessageTopic) Set[string]
+	GetSubbedTopics(clientKey string) *Set[MessageTopic]
+	GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string]
 }
 
 type SubscriptionManager struct {
@@ -45,7 +45,7 @@ func (sm *SubscriptionManager) SubClientTo(clientKey string, topic MessageTopic)
 	subbedTopics.Add(topic)
 	sm.mu.Unlock()
 
-	subbedClientKeys := sm.GetClientKeysSubscribedToTopic(topic)
+	subbedClientKeys := sm.GetClientKeysSubbedToTopic(topic)
 
 	sm.mu.Lock()
 	subbedClientKeys.Add(clientKey)
@@ -62,7 +62,7 @@ func (sm *SubscriptionManager) UnsubClientFrom(clientKey string, topic MessageTo
 	subbedTopics.Remove(topic)
 	sm.mu.Unlock()
 
-	subbedClientKeys := sm.GetClientKeysSubscribedToTopic(topic)
+	subbedClientKeys := sm.GetClientKeysSubbedToTopic(topic)
 
 	sm.mu.Lock()
 	subbedClientKeys.Remove(clientKey)
@@ -86,7 +86,7 @@ func (sm *SubscriptionManager) GetSubbedTopics(clientKey string) *Set[MessageTop
 	return sm.subbedTopicsByClientKey[clientKey]
 }
 
-func (sm *SubscriptionManager) GetClientKeysSubscribedToTopic(topic MessageTopic) *Set[string] {
+func (sm *SubscriptionManager) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	return sm.subscriberClientKeysByTopic[topic]

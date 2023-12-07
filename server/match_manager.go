@@ -21,16 +21,17 @@ type MatchManagerI interface {
 	GetMatchByClientKey(clientKey string) (*Match, error)
 	ChallengeClient(challenge *Challenge) error
 	ExecuteMove(matchId string, move *chess.Move) error
-	TerminateChallenge(challenge *Challenge, reason string) error
+	TerminateChallenge(challenge *Challenge) error
 }
 
 var matchManager *MatchManager
 
 type MatchManager struct {
 	// dependencies
-	logManager         *LogManager
-	userClientsManager UserClientsManagerI
-	authManager        *AuthManager
+	logManager          LogManagerI
+	userClientsManager  UserClientsManagerI
+	authManager         AuthManagerI
+	subscriptionManager SubscriptionManagerI
 
 	// state
 	matchByMatchId           map[string]*Match
@@ -75,11 +76,11 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		mm.matchIdByClientId[match.BlackClientId] = match.Uuid
 	}
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
-	subErr := mm.userClientsManager.SubscribeClientTo(match.WhiteClientId, matchTopic)
+	subErr := mm.subscriptionManager.SubClientTo(match.WhiteClientId, matchTopic)
 	if subErr != nil {
 		mm.logManager.LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.WhiteClientId, subErr))
 	}
-	subErr = mm.userClientsManager.SubscribeClientTo(match.BlackClientId, matchTopic)
+	subErr = mm.subscriptionManager.SubClientTo(match.BlackClientId, matchTopic)
 	if subErr != nil {
 		mm.logManager.LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
@@ -285,17 +286,12 @@ func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 	return nil
 }
 
-func (mm *MatchManager) TerminateChallenge(challenge *Challenge, reason string) error {
+func (mm *MatchManager) TerminateChallenge(challenge *Challenge) error {
 	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("failing challenge for client %s", challenge.ChallengerKey))
 	stagedMatch, fetchStagedMatchErr := mm.GetStagedMatchById(challenge.ChallengerKey)
 	if fetchStagedMatchErr != nil {
 		return fetchStagedMatchErr
 	}
 	mm.UnstageMatch(stagedMatch.Uuid)
-
-	return mm.userClientsManager.DirectMessage(&Message{
-		Topic:       "directMessage",
-		ContentType: CONTENT_TYPE_CHALLENGE_TERMINATED,
-		Content:     &ChallengeTerminatedMessageContent{},
-	}, challenge.ChallengerKey)
+	return nil
 }
