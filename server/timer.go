@@ -6,7 +6,30 @@ import (
 	"time"
 )
 
-func StartTimer(match *Match) {
+type TimerI interface {
+	Start(match *Match)
+}
+
+var timer *Timer
+
+type Timer struct {
+	logManager   LogManagerI
+	matchManager MatchManagerI
+}
+
+func GetTimer() *Timer {
+	if timer != nil {
+		return timer
+	}
+	timer = &Timer{} // null service to prevent infinite recursion
+	timer = &Timer{
+		logManager:   GetLogManager(),
+		matchManager: GetMatchManager(),
+	}
+	return timer
+}
+
+func (t *Timer) Start(match *Match) {
 	var waitTime time.Duration
 	if match.Board.IsWhiteTurn {
 		waitTime = time.Duration(match.WhiteTimeRemaining) * time.Second

@@ -32,6 +32,7 @@ type MatchManager struct {
 	userClientsManager  UserClientsManagerI
 	authManager         AuthManagerI
 	subscriptionManager SubscriptionManagerI
+	timer               TimerI
 
 	// state
 	matchByMatchId           map[string]*Match
@@ -42,15 +43,20 @@ type MatchManager struct {
 }
 
 func GetMatchManager() *MatchManager {
-	if matchManager == nil {
-		matchManager = &MatchManager{
-			logManager:         GetLogManager(),
-			userClientsManager: GetUserClientsManager(),
-			authManager:        GetAuthManager(),
-			matchByMatchId:     make(map[string]*Match),
-			matchIdByClientId:  make(map[string]string),
-			stagedMatchById:    make(map[string]*Match),
-		}
+	if matchManager != nil {
+		return matchManager
+	}
+	matchManager = &MatchManager{} // null service to prevent infinite recursion
+	matchManager = &MatchManager{
+		logManager:               GetLogManager(),
+		userClientsManager:       GetUserClientsManager(),
+		authManager:              GetAuthManager(),
+		subscriptionManager:      GetSubscriptionManager(),
+		timer:                    GetTimer(),
+		matchByMatchId:           make(map[string]*Match),
+		matchIdByClientId:        make(map[string]string),
+		stagedMatchById:          make(map[string]*Match),
+		challengeByChallengerKey: make(map[string]*Challenge),
 	}
 	return matchManager
 }
@@ -69,10 +75,11 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		return fmt.Errorf("client %s unavailable for match", match.BlackClientId)
 	}
 	mm.matchByMatchId[match.Uuid] = match
-	if mm.authManager.chessBotKey != match.WhiteClientId {
+	botKey, _ := mm.authManager.GetBotKey()
+	if botKey != match.WhiteClientId {
 		mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
 	}
-	if mm.authManager.chessBotKey != match.BlackClientId {
+	if botKey != match.BlackClientId {
 		mm.matchIdByClientId[match.BlackClientId] = match.Uuid
 	}
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
@@ -85,7 +92,7 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 		mm.logManager.LogRed(ENV_MATCH_MANAGER, fmt.Sprintf("could not subscribe client %s to match topic: %s", match.BlackClientId, subErr))
 	}
 
-	go StartTimer(match)
+	go mm.timer.Start(match)
 
 	matchUpdateMsg := &Message{
 		Topic:       matchTopic,
@@ -280,7 +287,7 @@ func (mm *MatchManager) ExecuteMove(matchId string, move *chess.Move) error {
 	if newMatch.Board.IsTerminal {
 		return mm.RemoveMatch(newMatch)
 	} else {
-		go StartTimer(newMatch)
+		go mm.timer.Start(newMatch)
 	}
 
 	return nil

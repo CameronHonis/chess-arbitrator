@@ -9,6 +9,9 @@ import (
 )
 
 type UserClient struct {
+	authManager AuthManagerI
+	logManager  LogManagerI
+
 	active     bool //assumed that cleanup already ran if set to true
 	publicKey  string
 	privateKey string
@@ -24,24 +27,26 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	outChannel := make(chan *Message)
 
 	uc := UserClient{
-		active:     true,
-		publicKey:  pubKey,
-		privateKey: priKey,
-		inChannel:  inChannel,
-		outChannel: outChannel,
-		conn:       conn,
-		cleanup:    cleanup,
+		authManager: GetAuthManager(),
+		logManager:  GetLogManager(),
+		active:      true,
+		publicKey:   pubKey,
+		privateKey:  priKey,
+		inChannel:   inChannel,
+		outChannel:  outChannel,
+		conn:        conn,
+		cleanup:     cleanup,
 	}
 	go uc.listenOnServerChannel()
 	go uc.listenOnWebsocket()
 
 	logManagerConfigBuilder := NewLogManagerConfigBuilder()
 	logManagerConfigBuilder.WithDecorator(pubKey, ClientKeyLogDecorator)
-	if GetLogManager().Config.IsEnvMuted(pubKey) {
+	if uc.logManager.(*LogManager).Config.IsEnvMuted(pubKey) {
 		logManagerConfigBuilder.WithMutedEnv(pubKey)
 	}
 	logConfig := logManagerConfigBuilder.Build()
-	GetLogManager().InjectConfig(logConfig)
+	uc.logManager.InjectConfig(logConfig)
 
 	msg := &Message{
 		Topic:       "auth",
@@ -53,7 +58,7 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	}
 	sendAuthErr := uc.SendMessage(msg)
 	if sendAuthErr != nil {
-		GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
+		uc.logManager.LogRed(ENV_CLIENT, fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
 	}
 	return &uc
 }
@@ -77,7 +82,7 @@ func (uc *UserClient) listenOnServerChannel() {
 		case message := <-uc.inChannel:
 			sendErr := uc.SendMessage(message)
 			if sendErr != nil {
-				GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error sending message to client: %s", sendErr), ALL_BUT_TEST_ENV)
+				uc.logManager.LogRed(ENV_CLIENT, fmt.Sprintf("error sending message to client: %s", sendErr), ALL_BUT_TEST_ENV)
 			}
 		default:
 			if !uc.active {
@@ -89,7 +94,7 @@ func (uc *UserClient) listenOnServerChannel() {
 
 func (uc *UserClient) listenOnWebsocket() {
 	if uc.conn == nil {
-		GetLogManager().Log(ENV_CLIENT, "cannot listen on websocket, connection is nil", ALL_BUT_TEST_ENV)
+		uc.logManager.Log(ENV_CLIENT, "cannot listen on websocket, connection is nil", ALL_BUT_TEST_ENV)
 		return
 	}
 	for {
@@ -98,21 +103,21 @@ func (uc *UserClient) listenOnWebsocket() {
 			return
 		}
 		if readErr != nil {
-			GetLogManager().LogRed(ENV_CLIENT, fmt.Sprintf("error reading message from websocket: %s", readErr))
+			uc.logManager.LogRed(ENV_CLIENT, fmt.Sprintf("error reading message from websocket: %s", readErr))
 			// assume all readErrs are disconnects
 			_ = userClientsManager.RemoveClient(uc)
 			return
 		}
-		GetLogManager().Log(uc.publicKey, ">> ", string(rawMsg))
+		uc.logManager.Log(uc.publicKey, ">> ", string(rawMsg))
 
 		msg, unmarshalErr := UnmarshalToMessage(rawMsg)
 		if unmarshalErr != nil {
-			GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
+			uc.logManager.Log(ENV_CLIENT, fmt.Sprintf("could not unmarshal message: %s", unmarshalErr))
 			continue
 		}
-		authErr := GetAuthManager().ValidateAuthInMessage(msg)
+		authErr := uc.authManager.ValidateAuthInMessage(msg)
 		if authErr != nil {
-			GetLogManager().Log(ENV_CLIENT, fmt.Sprintf("auth error: %s", authErr))
+			uc.logManager.Log(ENV_CLIENT, fmt.Sprintf("auth error: %s", authErr))
 			continue
 		}
 		uc.outChannel <- msg
@@ -127,7 +132,7 @@ func (uc *UserClient) SendMessage(msg *Message) error {
 	if jsonErr != nil {
 		return jsonErr
 	}
-	GetLogManager().Log(uc.publicKey, "<< ", string(msgJson))
+	uc.logManager.Log(uc.publicKey, "<< ", string(msgJson))
 	writeErr := uc.conn.WriteMessage(websocket.TextMessage, msgJson)
 	if writeErr != nil {
 		return writeErr

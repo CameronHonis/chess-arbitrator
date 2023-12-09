@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/set"
 )
 
 type MessageHandlerI interface {
@@ -70,46 +69,43 @@ func (mh *MessageHandler) HandleMessage(msg *Message) {
 
 func (mh *MessageHandler) HandleFindMatchMessage(msg *Message) error {
 	// TODO: query for elo, winStreak, lossStreak
-	addClientErr := mh.matchmakingManager.AddClient(&ClientProfile{
+	return mh.matchmakingManager.AddClient(&ClientProfile{
 		ClientKey:  msg.SenderKey,
 		Elo:        1000,
 		WinStreak:  0,
 		LossStreak: 0,
 	})
-	if addClientErr != nil {
-		return fmt.Errorf("could not add client %s to matchmaking pool: %s", msg.SenderKey, addClientErr)
-	}
-	return nil
 }
 
 func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
-	msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
-	if !ok {
-		return fmt.Errorf("could not cast message to FindBotMatchMessageContent")
-	}
-	botClientKey, botKeyErr := mh.authManager.GetBotKey()
-	if botKeyErr != nil {
-		return fmt.Errorf("could not get bot key: %s", botKeyErr)
-	}
-	if botClientKey == "" {
-		msg := &Message{
-			Topic:       "directMessage",
-			ContentType: CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS,
-			Content:     &FindBotMatchNoBotsMessageContent{},
-		}
-		return mh.userClientsManager.DirectMessage(msg, msg.SenderKey)
-	}
-	match := NewMatch(msg.SenderKey, botClientKey, NewBulletTimeControl())
-	GetMatchManager().StageMatch(match)
-	outMsg := &Message{
-		Topic:       "directMessage",
-		ContentType: CONTENT_TYPE_INIT_BOT_MATCH,
-		Content: &InitBotMatchMessageContent{
-			BotName: msgContent.BotName,
-			MatchId: match.Uuid,
-		},
-	}
-	return GetUserClientsManager().DirectMessage(outMsg, botClientKey)
+	//msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
+	//if !ok {
+	//	return fmt.Errorf("could not cast message to FindBotMatchMessageContent")
+	//}
+	//botClientKey, botKeyErr := mh.authManager.GetBotKey()
+	//if botKeyErr != nil {
+	//	return fmt.Errorf("could not get bot key: %s", botKeyErr)
+	//}
+	//if botClientKey == "" {
+	//	msg := &Message{
+	//		Topic:       "directMessage",
+	//		ContentType: CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS,
+	//		Content:     &FindBotMatchNoBotsMessageContent{},
+	//	}
+	//	return mh.userClientsManager.DirectMessage(msg, msg.SenderKey)
+	//}
+	//match := NewMatch(msg.SenderKey, botClientKey, NewBulletTimeControl())
+	//GetMatchManager().StageMatch(match)
+	//outMsg := &Message{
+	//	Topic:       "directMessage",
+	//	ContentType: CONTENT_TYPE_INIT_BOT_MATCH,
+	//	Content: &InitBotMatchMessageContent{
+	//		BotName: msgContent.BotName,
+	//		MatchId: match.Uuid,
+	//	},
+	//}
+	//return .DirectMessage(outMsg, botClientKey)
+	return nil
 }
 
 func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
@@ -117,24 +113,17 @@ func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
 	}
-	// TODO: add auth groups - including one for bots client
-	topicWhitelist := EmptySet[string]()
-	topicWhitelist.Add("findBotMatch")
-
-	if !topicWhitelist.Has(string(msgContent.Topic)) {
-		msg := Message{
+	subErr := mh.subscriptionManager.SubClientTo(msg.SenderKey, msgContent.Topic)
+	if subErr != nil {
+		outMsg := &Message{
 			Topic:       "directMessage",
 			ContentType: CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED,
 			Content: &SubscribeRequestDeniedMessageContent{
+				Reason: subErr.Error(),
 				Topic:  msgContent.Topic,
-				Reason: "topic not whitelisted to public",
 			},
 		}
-		return mh.userClientsManager.DirectMessage(&msg, msg.SenderKey)
-	}
-	subErr := mh.subscriptionManager.SubClientTo(msg.SenderKey, msgContent.Topic)
-	if subErr != nil {
-		return fmt.Errorf("could not subscribe client %s to topic %s: %s", msg.SenderKey, msgContent.Topic, subErr)
+		return mh.userClientsManager.DirectMessage(outMsg, msg.SenderKey)
 	}
 	subGrantedMsg := &Message{
 		Topic:       "directMessage",
@@ -143,7 +132,7 @@ func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
 			Topic: msg.Topic,
 		},
 	}
-	return GetUserClientsManager().DirectMessage(subGrantedMsg, msg.SenderKey)
+	return mh.userClientsManager.DirectMessage(subGrantedMsg, msg.SenderKey)
 }
 
 func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
@@ -158,7 +147,7 @@ func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
 			Message: msgContent.Message,
 		},
 	}
-	return GetUserClientsManager().DirectMessage(&echoMsg, msg.SenderKey)
+	return mh.userClientsManager.DirectMessage(&echoMsg, msg.SenderKey)
 }
 
 func (mh *MessageHandler) HandleRequestUpgradeAuthMessage(msg *Message) error {
@@ -166,7 +155,25 @@ func (mh *MessageHandler) HandleRequestUpgradeAuthMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	return mh.authManager.UpgradeAuth(msg.SenderKey, msgContent.Secret)
+	role, upgradeAuthErr := mh.authManager.UpgradeAuth(msg.SenderKey, msgContent.Secret)
+	if upgradeAuthErr != nil {
+		outMsg := Message{
+			Topic:       "directMessage",
+			ContentType: CONTENT_TYPE_UPGRADE_AUTH_DENIED,
+			Content: &UpgradeAuthDeniedMessageContent{
+				Reason: "unrecognized secret",
+			},
+		}
+		return mh.userClientsManager.DirectMessage(&outMsg, msg.SenderKey)
+	}
+	outMsg := Message{
+		Topic:       "directMessage",
+		ContentType: CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
+		Content: &UpgradeAuthGrantedMessageContent{
+			UpgradedToRole: role,
+		},
+	}
+	return mh.userClientsManager.DirectMessage(&outMsg, msg.SenderKey)
 }
 
 func (mh *MessageHandler) HandleInitBotMatchSuccessMessage(msg *Message) error {
@@ -197,7 +204,18 @@ func (mh *MessageHandler) HandleChallengePlayerMessage(challengeMsg *Message) er
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}
-	return mh.matchManager.ChallengeClient(challengeMsgContent.Challenge)
+	challengeErr := mh.matchManager.ChallengeClient(challengeMsgContent.Challenge)
+	if challengeErr != nil {
+		return fmt.Errorf("could not challenge client: %s", challengeErr)
+	}
+	//outMsg := &Message{
+	//	Topic:       "directMessage",
+	//	ContentType: CONTENT_TYPE_CHALLENGE_PLAYER,
+	//	Content: &ChallengePlayerMessageContent{
+	//		Challenge: challengeMsgContent.Challenge,
+	//	},
+	//}
+	return nil
 }
 
 func (mh *MessageHandler) HandleChallengeTerminatedMessage(msg *Message) error {

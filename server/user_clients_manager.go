@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/set"
 	"github.com/gorilla/websocket"
 	"sync"
 	"time"
@@ -27,10 +26,8 @@ type UserClientsManager struct {
 	logManager          LogManagerI
 	subscriptionManager SubscriptionManagerI
 
-	interactMutex               sync.Mutex
-	clientByPublicKey           map[string]*UserClient
-	subscriberClientKeysByTopic map[MessageTopic]*Set[string]
-	subscribedTopicsByClientKey map[string]*Set[MessageTopic]
+	interactMutex     sync.Mutex
+	clientByPublicKey map[string]*UserClient
 }
 
 func GetUserClientsManager() *UserClientsManager {
@@ -39,12 +36,11 @@ func GetUserClientsManager() *UserClientsManager {
 	}
 	userClientsManager = &UserClientsManager{} // null service to prevent infinite recursion
 	userClientsManager = &UserClientsManager{
-		messageHandler:              GetMessageHandler(),
-		logManager:                  GetLogManager(),
-		interactMutex:               sync.Mutex{},
-		clientByPublicKey:           make(map[string]*UserClient),
-		subscriberClientKeysByTopic: make(map[MessageTopic]*Set[string], 50),
-		subscribedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
+		messageHandler:      GetMessageHandler(),
+		logManager:          GetLogManager(),
+		subscriptionManager: GetSubscriptionManager(),
+		interactMutex:       sync.Mutex{},
+		clientByPublicKey:   make(map[string]*UserClient),
 	}
 	go userClientsManager.listenOnUserClientChannels()
 	return userClientsManager
@@ -73,16 +69,18 @@ func (ucm *UserClientsManager) AddClient(client *UserClient) error {
 }
 
 func (ucm *UserClientsManager) RemoveClient(client *UserClient) error {
+	pubKey := client.PublicKey()
+
 	ucm.interactMutex.Lock()
-	if _, ok := ucm.clientByPublicKey[client.PublicKey()]; !ok {
+	if _, ok := ucm.clientByPublicKey[pubKey]; !ok {
 		ucm.interactMutex.Unlock()
 		return fmt.Errorf("client with key %s isn't an established client", client.PublicKey())
 	}
-	delete(ucm.clientByPublicKey, client.PublicKey())
+	delete(ucm.clientByPublicKey, pubKey)
 	ucm.interactMutex.Unlock()
 
 	client.Kill()
-	ucm.subscriptionManager.UnsubClientFromAll(client.PublicKey())
+	ucm.subscriptionManager.UnsubClientFromAll(pubKey)
 	return nil
 }
 
