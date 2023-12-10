@@ -34,7 +34,7 @@ var _ = Describe("MatchManager", func() {
 			BeforeEach(func() {
 				mm.matchIdByClientId["client1"] = "match1"
 				oldMatch := *match
-				oldMatch.BlackClientId = "client3"
+				oldMatch.BlackClientKey = "client3"
 				mm.matchByMatchId["match1"] = &oldMatch
 			})
 			It("returns an error", func() {
@@ -46,16 +46,16 @@ var _ = Describe("MatchManager", func() {
 			err := mm.AddMatch(match)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mm.matchByMatchId[match.Uuid]).To(Equal(match))
-			Expect(mm.matchIdByClientId[match.WhiteClientId]).To(Equal(match.Uuid))
-			Expect(mm.matchIdByClientId[match.BlackClientId]).To(Equal(match.Uuid))
+			Expect(mm.matchIdByClientId[match.WhiteClientKey]).To(Equal(match.Uuid))
+			Expect(mm.matchIdByClientId[match.BlackClientKey]).To(Equal(match.Uuid))
 		})
 		It("subscribes the players to the match topic", func() {
 			messageTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 			err := mm.AddMatch(match)
 			Expect(err).ToNot(HaveOccurred())
-			whiteSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.WhiteClientId)
+			whiteSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.WhiteClientKey)
 			Expect(whiteSubbedTopics.Flatten()).To(ContainElement(messageTopic))
-			blackSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.BlackClientId)
+			blackSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.BlackClientKey)
 			Expect(blackSubbedTopics.Flatten()).To(ContainElement(messageTopic))
 		})
 	})
@@ -67,23 +67,23 @@ var _ = Describe("MatchManager", func() {
 		Describe("when the match exists", func() {
 			BeforeEach(func() {
 				mm.matchByMatchId[match.Uuid] = match
-				mm.matchIdByClientId[match.WhiteClientId] = match.Uuid
-				mm.matchIdByClientId[match.BlackClientId] = match.Uuid
+				mm.matchIdByClientId[match.WhiteClientKey] = match.Uuid
+				mm.matchIdByClientId[match.BlackClientKey] = match.Uuid
 			})
 			It("removes the match from the active matches", func() {
 				err := mm.RemoveMatch(match)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mm.matchByMatchId).ToNot(HaveKey(match.Uuid))
-				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.WhiteClientId))
-				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.BlackClientId))
+				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.WhiteClientKey))
+				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.BlackClientKey))
 			})
 			It("unsubscribes the players from the match topic", func() {
 				messageTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 				err := mm.RemoveMatch(match)
 				Expect(err).ToNot(HaveOccurred())
-				whiteSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.WhiteClientId)
+				whiteSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.WhiteClientKey)
 				Expect(whiteSubbedTopics.Flatten()).ToNot(ContainElement(messageTopic))
-				blackSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.BlackClientId)
+				blackSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.BlackClientKey)
 				Expect(blackSubbedTopics.Flatten()).ToNot(ContainElement(messageTopic))
 			})
 		})
@@ -98,8 +98,8 @@ var _ = Describe("MatchManager", func() {
 		var newMatch *Match
 		BeforeEach(func() {
 			newMatch = NewMatch("client1", "client2", NewBulletTimeControl())
-			newMatch.WhiteClientId = "client1"
-			newMatch.BlackClientId = "client2"
+			newMatch.WhiteClientKey = "client1"
+			newMatch.BlackClientKey = "client2"
 			move := chess.Move{chess.WHITE_PAWN, &chess.Square{2, 4}, &chess.Square{4, 4}, chess.EMPTY, make([]*chess.Square, 0), chess.EMPTY}
 			newBoard := chess.GetBoardFromMove(newMatch.Board, &move)
 			newTime := time.Now().Add(time.Second * -10)
@@ -110,12 +110,12 @@ var _ = Describe("MatchManager", func() {
 			var prevMatch *Match
 			BeforeEach(func() {
 				prevMatch = NewMatch("client1", "client2", NewBulletTimeControl())
-				prevMatch.WhiteClientId = "client1"
-				prevMatch.BlackClientId = "client2"
+				prevMatch.WhiteClientKey = "client1"
+				prevMatch.BlackClientKey = "client2"
 				prevMatch.Uuid = newMatch.Uuid
 				mm.matchByMatchId[prevMatch.Uuid] = prevMatch
-				mm.matchIdByClientId[prevMatch.WhiteClientId] = prevMatch.Uuid
-				mm.matchIdByClientId[prevMatch.BlackClientId] = prevMatch.Uuid
+				mm.matchIdByClientId[prevMatch.WhiteClientKey] = prevMatch.Uuid
+				mm.matchIdByClientId[prevMatch.BlackClientKey] = prevMatch.Uuid
 				mm.userClientsManager = &MockUserClientsManager{}
 			})
 			It("updates the match", func() {
@@ -142,8 +142,8 @@ var _ = Describe("MatchManager", func() {
 			Describe("when the new match differs by client id", func() {
 				BeforeEach(func() {
 					newMatch = NewMatch("other-client1", "client2", NewBulletTimeControl())
-					newMatch.WhiteClientId = "other-client1"
-					newMatch.BlackClientId = "client2"
+					newMatch.WhiteClientKey = "other-client1"
+					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
 				})
 				It("returns an error", func() {
@@ -154,8 +154,8 @@ var _ = Describe("MatchManager", func() {
 			Describe("when the new match differs by time control", func() {
 				BeforeEach(func() {
 					newMatch = NewMatch("client1", "client2", NewRapidTimeControl())
-					newMatch.WhiteClientId = "client1"
-					newMatch.BlackClientId = "client2"
+					newMatch.WhiteClientKey = "client1"
+					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
 				})
 				It("returns an error", func() {
@@ -175,7 +175,107 @@ var _ = Describe("MatchManager", func() {
 		})
 	})
 
-	Describe("StageMatch", func() {
+	FDescribe("StageMatchFromChallenge", func() {
+		var challenge Challenge
+		BeforeEach(func() {
+			challenge = Challenge{
+				ChallengerKey:     "client1",
+				ChallengedKey:     "client2",
+				IsChallengerWhite: true,
+				IsChallengerBlack: false,
+				TimeControl:       NewBulletTimeControl(),
+			}
+		})
+		When("neither player is in a match", func() {
+			When("the challenge specifies that the challenger is white", func() {
+				It("stages a match with the challenger as white", func() {
+					match, err := mm.StageMatchFromChallenge(&challenge)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mm.stagedMatchById[match.Uuid]).To(Equal(match))
+					Expect(match.Uuid).ToNot(BeEmpty())
+					Expect(match.WhiteClientKey).To(Equal(challenge.ChallengerKey))
+					Expect(match.BlackClientKey).To(Equal(challenge.ChallengedKey))
+					Expect(match.TimeControl).To(Equal(challenge.TimeControl))
+					Expect(match.WhiteTimeRemainingSec).To(Equal(challenge.TimeControl.InitialTimeSec))
+					Expect(match.BlackTimeRemainingSec).To(Equal(challenge.TimeControl.InitialTimeSec))
+				})
+			})
+			When("the challenge specifies that the challenger is black", func() {
+				BeforeEach(func() {
+					challenge.IsChallengerWhite = false
+					challenge.IsChallengerBlack = true
+				})
+				It("stages a match with the challenger as black", func() {
+					match, err := mm.StageMatchFromChallenge(&challenge)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mm.stagedMatchById[match.Uuid]).To(Equal(match))
+					Expect(match.Uuid).ToNot(BeEmpty())
+					Expect(match.WhiteClientKey).To(Equal(challenge.ChallengedKey))
+					Expect(match.BlackClientKey).To(Equal(challenge.ChallengerKey))
+					Expect(match.TimeControl).To(Equal(challenge.TimeControl))
+					Expect(match.WhiteTimeRemainingSec).To(Equal(challenge.TimeControl.InitialTimeSec))
+					Expect(match.BlackTimeRemainingSec).To(Equal(challenge.TimeControl.InitialTimeSec))
+				})
+			})
+			When("the challenge does not specify player colors", func() {
+				BeforeEach(func() {
+					challenge.IsChallengerWhite = false
+					challenge.IsChallengerBlack = false
+				})
+				It("randomly assigns player colors", func() {
+					memo := make(map[bool]bool)
+					for i := 0; i < 100; i++ {
+						mm.stagedMatchById = make(map[string]*Match)
+						match, err := mm.StageMatchFromChallenge(&challenge)
+						Expect(err).ToNot(HaveOccurred())
+						memo[match.WhiteClientKey == challenge.ChallengerKey] = true
+						if _, ok := memo[match.WhiteClientKey != challenge.ChallengerKey]; ok {
+							break
+						}
+					}
+					Expect(len(memo)).To(Equal(2))
+				})
+			})
+			When("the challenger is already in a staged match", func() {
+				BeforeEach(func() {
+					otherChallenge := Challenge{
+						ChallengerKey:     "client1",
+						ChallengedKey:     "client3",
+					}
+					_, err := mm.StageMatchFromChallenge(&otherChallenge)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mm.stagedMatchById).To(HaveLen(1)
+				})
+				It("stages another match", func() {
+
+				})
+			})
+			When("the challenged is already in a staged match", func() {
+				BeforeEach(func() {
+
+				})
+				It("stages another match", func() {
+
+				})
+			})
+		})
+		When("the challenger is in a match", func() {
+			BeforeEach(func() {
+
+				match, stagingErr := mm.StageMatchFromChallenge(challenge)
+			})
+			It("returns an error", func() {
+				err := mm.StageMatchFromChallenge(match)
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		When("the match is already in progress", func() {
+			It("returns an error", func() {
+				_ = mm.AddMatch(match)
+				err := mm.StageMatchFromChallenge(match)
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 	Describe("UnstageMatch", func() {
 

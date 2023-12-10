@@ -95,7 +95,7 @@ func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
 	//	return mh.userClientsManager.DirectMessage(msg, msg.SenderKey)
 	//}
 	//match := NewMatch(msg.SenderKey, botClientKey, NewBulletTimeControl())
-	//GetMatchManager().StageMatch(match)
+	//GetMatchManager().StageMatchFromChallenge(match)
 	//outMsg := &Message{
 	//	Topic:       "directMessage",
 	//	ContentType: CONTENT_TYPE_INIT_BOT_MATCH,

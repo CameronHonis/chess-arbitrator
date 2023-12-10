@@ -8,14 +8,14 @@ import (
 )
 
 type Match struct {
-	Uuid               string       `json:"uuid"`
-	Board              *chess.Board `json:"board"`
-	WhiteClientId      string       `json:"whiteClientId"`
-	WhiteTimeRemaining float64      `json:"whiteTimeRemaining"`
-	BlackClientId      string       `json:"blackClientId"`
-	BlackTimeRemaining float64      `json:"blackTimeRemaining"`
-	TimeControl        *TimeControl `json:"timeControl"`
-	LastMoveTime       *time.Time   `json:"-"`
+	Uuid                  string       `json:"uuid"`
+	Board                 *chess.Board `json:"board"`
+	WhiteClientKey        string       `json:"whiteClientKey"`
+	WhiteTimeRemainingSec float64      `json:"whiteTimeRemainingSec"`
+	BlackClientKey        string       `json:"blackClientKey"`
+	BlackTimeRemainingSec float64      `json:"blackTimeRemainingSec"`
+	TimeControl           *TimeControl `json:"timeControl"`
+	LastMoveTime          *time.Time   `json:"-"`
 }
 
 func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *Match {
@@ -32,14 +32,14 @@ func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *M
 	}
 	now := time.Now()
 	return &Match{
-		Uuid:               matchId,
-		Board:              chess.GetInitBoard(),
-		WhiteClientId:      whiteClientKey,
-		WhiteTimeRemaining: float64(timeControl.InitialTimeSeconds),
-		BlackClientId:      blackClientKey,
-		BlackTimeRemaining: float64(timeControl.InitialTimeSeconds),
-		TimeControl:        timeControl,
-		LastMoveTime:       &now,
+		Uuid:                  matchId,
+		Board:                 chess.GetInitBoard(),
+		WhiteClientKey:        whiteClientKey,
+		WhiteTimeRemainingSec: float64(timeControl.InitialTimeSec),
+		BlackClientKey:        blackClientKey,
+		BlackTimeRemainingSec: float64(timeControl.InitialTimeSec),
+		TimeControl:           timeControl,
+		LastMoveTime:          &now,
 	}
 }
 
@@ -48,8 +48,13 @@ type MatchBuilder struct {
 }
 
 func NewMatchBuilder() *MatchBuilder {
+	now := time.Now()
 	return &MatchBuilder{
-		match: &Match{},
+		match: &Match{
+			Uuid:         uuid.New().String(),
+			Board:        chess.GetInitBoard(),
+			LastMoveTime: &now,
+		},
 	}
 }
 
@@ -63,23 +68,29 @@ func (mb *MatchBuilder) WithBoard(board *chess.Board) *MatchBuilder {
 	return mb
 }
 
-func (mb *MatchBuilder) WithWhiteClientId(clientId string) *MatchBuilder {
-	mb.match.WhiteClientId = clientId
+func (mb *MatchBuilder) WithWhiteClientKey(clientKey string) *MatchBuilder {
+	mb.match.WhiteClientKey = clientKey
 	return mb
 }
 
-func (mb *MatchBuilder) WithWhiteTimeRemaining(timeRemaining float64) *MatchBuilder {
-	mb.match.WhiteTimeRemaining = timeRemaining
+func (mb *MatchBuilder) WithWhiteTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
+	mb.match.WhiteTimeRemainingSec = timeRemainingSec
 	return mb
 }
 
-func (mb *MatchBuilder) WithBlackClientId(clientId string) *MatchBuilder {
-	mb.match.BlackClientId = clientId
+func (mb *MatchBuilder) WithBlackClientKey(clientKey string) *MatchBuilder {
+	mb.match.BlackClientKey = clientKey
 	return mb
 }
 
-func (mb *MatchBuilder) WithBlackTimeRemaining(timeRemaining float64) *MatchBuilder {
-	mb.match.BlackTimeRemaining = timeRemaining
+func (mb *MatchBuilder) WithBlackTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
+	mb.match.BlackTimeRemainingSec = timeRemainingSec
+	return mb
+}
+
+func (mb *MatchBuilder) WithTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
+	mb.match.WhiteTimeRemainingSec = timeRemainingSec
+	mb.match.BlackTimeRemainingSec = timeRemainingSec
 	return mb
 }
 
@@ -90,6 +101,22 @@ func (mb *MatchBuilder) WithTimeControl(timeControl *TimeControl) *MatchBuilder 
 
 func (mb *MatchBuilder) WithLastMoveTime(lastMoveTime *time.Time) *MatchBuilder {
 	mb.match.LastMoveTime = lastMoveTime
+	return mb
+}
+
+func (mb *MatchBuilder) WithClientKeys(clientAKey string, clientBKey string) *MatchBuilder {
+	rand.Seed(time.Now().UnixNano())
+	clientAIsWhite := rand.Intn(2) == 0
+	var whiteClientKey, blackClientKey string
+	if clientAIsWhite {
+		whiteClientKey = clientAKey
+		blackClientKey = clientBKey
+	} else {
+		whiteClientKey = clientBKey
+		blackClientKey = clientAKey
+	}
+	mb.match.WhiteClientKey = whiteClientKey
+	mb.match.BlackClientKey = blackClientKey
 	return mb
 }
 

@@ -32,9 +32,9 @@ func GetTimer() *Timer {
 func (t *Timer) Start(match *Match) {
 	var waitTime time.Duration
 	if match.Board.IsWhiteTurn {
-		waitTime = time.Duration(match.WhiteTimeRemaining) * time.Second
+		waitTime = time.Duration(match.WhiteTimeRemainingSec) * time.Second
 	} else {
-		waitTime = time.Duration(match.BlackTimeRemaining) * time.Second
+		waitTime = time.Duration(match.BlackTimeRemainingSec) * time.Second
 	}
 
 	time.Sleep(waitTime)
@@ -48,10 +48,10 @@ func (t *Timer) Start(match *Match) {
 		boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
 		boardBuilder.WithIsTerminal(true)
 		if match.Board.IsWhiteTurn {
-			matchBuilder.WithWhiteTimeRemaining(0)
+			matchBuilder.WithWhiteTimeRemainingSec(0)
 			boardBuilder.WithIsBlackWinner(true)
 		} else {
-			matchBuilder.WithBlackTimeRemaining(0)
+			matchBuilder.WithBlackTimeRemainingSec(0)
 			boardBuilder.WithIsWhiteWinner(true)
 		}
 		matchBuilder.WithBoard(boardBuilder.Build())
