@@ -204,9 +204,10 @@ func (mh *MessageHandler) HandleChallengePlayerMessage(challengeMsg *Message) er
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}
-	challengeErr := mh.matchManager.ChallengeClient(challengeMsgContent.Challenge)
-	if challengeErr != nil {
-		return fmt.Errorf("could not challenge client: %s", challengeErr)
+	_, stageMatchErr := mh.matchManager.StageMatchFromChallenge(challengeMsgContent.Challenge)
+	if stageMatchErr != nil {
+		return fmt.Errorf("could not stage match for challenge with challenger key %s: %s",
+			challengeMsgContent.Challenge.ChallengerKey, stageMatchErr)
 	}
 	//outMsg := &Message{
 	//	Topic:       "directMessage",

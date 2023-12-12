@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess"
 	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/set"
 	"math"
 	"sync"
 	"time"
@@ -13,11 +14,11 @@ type MatchManagerI interface {
 	GetMatchById(matchId string) (*Match, error)
 	GetMatchByClientKey(clientKey string) (*Match, error)
 	GetStagedMatchById(matchId string) (*Match, error)
-	GetStagedMatchByClientKey(clientKey string) (*Match, error)
+	GetStagedMatchesByClientKey(clientKey string) ([]*Match, error)
 
 	AddMatch(match *Match) error
-	StageMatch(challenge *Challenge) error
-	UnstageMatch(matchId string)
+	StageMatchFromChallenge(challenge *Challenge) (*Match, error)
+	UnstageMatch(matchId string) error
 	AddMatchFromStaged(matchId string) error
 	RemoveMatch(match *Match) error
 	SetMatch(newMatch *Match) error
@@ -35,11 +36,11 @@ type MatchManager struct {
 	subscriptionManager SubscriptionManagerI
 	timer               TimerI
 
-	matchByMatchId          map[string]*Match
-	matchIdByClientId       map[string]string
-	stagedMatchById         map[string]*Match
-	stagedMatchIdByClientId map[string]*Match
-	mu                      sync.Mutex
+	matchByMatchId           map[string]*Match
+	matchIdByClientId        map[string]string
+	stagedMatchById          map[string]*Match
+	stagedMatchIdsByClientId map[string]*Set[string]
+	mu                       sync.Mutex
 }
 
 func GetMatchManager() *MatchManager {
@@ -48,15 +49,15 @@ func GetMatchManager() *MatchManager {
 	}
 	matchManager = &MatchManager{} // null service to prevent infinite recursion
 	matchManager = &MatchManager{
-		logManager:              GetLogManager(),
-		userClientsManager:      GetUserClientsManager(),
-		authManager:             GetAuthManager(),
-		subscriptionManager:     GetSubscriptionManager(),
-		timer:                   GetTimer(),
-		matchByMatchId:          make(map[string]*Match),
-		matchIdByClientId:       make(map[string]string),
-		stagedMatchById:         make(map[string]*Match),
-		stagedMatchIdByClientId: make(map[string]*Match),
+		logManager:               GetLogManager(),
+		userClientsManager:       GetUserClientsManager(),
+		authManager:              GetAuthManager(),
+		subscriptionManager:      GetSubscriptionManager(),
+		timer:                    GetTimer(),
+		matchByMatchId:           make(map[string]*Match),
+		matchIdByClientId:        make(map[string]string),
+		stagedMatchById:          make(map[string]*Match),
+		stagedMatchIdsByClientId: make(map[string]*Set[string]),
 	}
 	return matchManager
 }
@@ -83,40 +84,51 @@ func (mm *MatchManager) GetStagedMatchById(matchId string) (*Match, error) {
 
 func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
 	mm.mu.Lock()
-	defer mm.mu.Unlock()
 	matchId, ok := mm.matchIdByClientId[clientKey]
+	mm.mu.Unlock()
 	if !ok {
 		return nil, fmt.Errorf("client %s not in match", clientKey)
 	}
-	match, ok := mm.matchByMatchId[matchId]
+	return mm.GetMatchById(matchId)
+}
+
+func (mm *MatchManager) GetStagedMatchesByClientKey(clientKey string) ([]*Match, error) {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+	matchIds, ok := mm.stagedMatchIdsByClientId[clientKey]
 	if !ok {
-		return nil, fmt.Errorf("match with id %s not found", matchId)
+		matchIds = EmptySet[string]()
 	}
-	return match, nil
+	var matches []*Match
+	for _, matchId := range matchIds.Flatten() {
+		match, getMatchErr := mm.GetStagedMatchById(matchId)
+		if getMatchErr != nil {
+			return nil, getMatchErr
+		}
+		matches = append(matches, match)
+	}
+	return matches, nil
 }
 
 func (mm *MatchManager) canStartMatchWithClientKey(clientKey string) bool {
-	_, isInMatch := mm.matchIdByClientId[clientKey]
-	if isInMatch {
-		return false
-	}
-	_, isChallenger := mm.challengeByChallengerKey[clientKey]
-	return !isChallenger
+	match, _ := mm.GetMatchByClientKey(clientKey)
+	return match == nil
 }
 
 func (mm *MatchManager) AddMatch(match *Match) error {
 	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("adding match %s", match.Uuid))
 	mm.mu.Lock()
-	defer mm.mu.Unlock()
 	if _, ok := mm.matchByMatchId[match.Uuid]; ok {
 		return fmt.Errorf("match with id %s already exists", match.Uuid)
 	}
+	mm.mu.Unlock()
 	if !mm.canStartMatchWithClientKey(match.WhiteClientKey) {
 		return fmt.Errorf("client %s unavailable for match", match.WhiteClientKey)
 	}
 	if !mm.canStartMatchWithClientKey(match.BlackClientKey) {
 		return fmt.Errorf("client %s unavailable for match", match.BlackClientKey)
 	}
+	mm.mu.Lock()
 	mm.matchByMatchId[match.Uuid] = match
 	botKey, _ := mm.authManager.GetBotKey()
 	if botKey != match.WhiteClientKey {
@@ -125,6 +137,8 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 	if botKey != match.BlackClientKey {
 		mm.matchIdByClientId[match.BlackClientKey] = match.Uuid
 	}
+	mm.mu.Unlock()
+
 	matchTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
 	subErr := mm.subscriptionManager.SubClientTo(match.WhiteClientKey, matchTopic)
 	if subErr != nil {
@@ -151,10 +165,26 @@ func (mm *MatchManager) AddMatch(match *Match) error {
 func (mm *MatchManager) setStagedMatch(match *Match) {
 	mm.mu.Lock()
 	mm.stagedMatchById[match.Uuid] = match
+	if _, ok := mm.stagedMatchIdsByClientId[match.WhiteClientKey]; !ok {
+		mm.stagedMatchIdsByClientId[match.WhiteClientKey] = EmptySet[string]()
+	}
+	if _, ok := mm.stagedMatchIdsByClientId[match.BlackClientKey]; !ok {
+		mm.stagedMatchIdsByClientId[match.BlackClientKey] = EmptySet[string]()
+	}
+	whiteStagedMatchIds := mm.stagedMatchIdsByClientId[match.WhiteClientKey]
+	whiteStagedMatchIds.Add(match.Uuid)
+	blackStagedMatchIds := mm.stagedMatchIdsByClientId[match.BlackClientKey]
+	blackStagedMatchIds.Add(match.Uuid)
 	mm.mu.Unlock()
 }
 
 func (mm *MatchManager) StageMatchFromChallenge(challenge *Challenge) (*Match, error) {
+	if !mm.canStartMatchWithClientKey(challenge.ChallengerKey) {
+		return nil, fmt.Errorf("challenger client %s unavailable for match", challenge.ChallengerKey)
+	}
+	if !mm.canStartMatchWithClientKey(challenge.ChallengedKey) {
+		return nil, fmt.Errorf("challenged client %s unavailable for match", challenge.ChallengedKey)
+	}
 	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("staging match for challenger %s challenging %s", challenge.ChallengerKey, challenge.ChallengedKey))
 
 	matchBuilder := NewMatchBuilder()
@@ -174,11 +204,22 @@ func (mm *MatchManager) StageMatchFromChallenge(challenge *Challenge) (*Match, e
 	return match, nil
 }
 
-func (mm *MatchManager) UnstageMatch(matchId string) {
+func (mm *MatchManager) UnstageMatch(matchId string) error {
 	mm.logManager.Log(ENV_MATCH_MANAGER, fmt.Sprintf("unstaging match %s", matchId))
+	match, getMatchErr := mm.GetStagedMatchById(matchId)
+	if getMatchErr != nil {
+		return getMatchErr
+	}
 	mm.mu.Lock()
-	defer mm.mu.Unlock()
 	delete(mm.stagedMatchById, matchId)
+	if whiteStagedMatchIds, ok := mm.stagedMatchIdsByClientId[match.WhiteClientKey]; ok {
+		whiteStagedMatchIds.Remove(matchId)
+	}
+	if blackStagedMatchIds, ok := mm.stagedMatchIdsByClientId[match.BlackClientKey]; ok {
+		blackStagedMatchIds.Remove(matchId)
+	}
+	mm.mu.Unlock()
+	return nil
 }
 
 func (mm *MatchManager) AddMatchFromStaged(matchId string) error {
