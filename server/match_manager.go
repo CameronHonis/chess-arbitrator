@@ -10,6 +10,16 @@ import (
 	"time"
 )
 
+type MatchManagerAction string
+
+const (
+	ADD_MATCH           MatchManagerAction = "ADD_MATCH"
+	REMOVE_MATCH        MatchManagerAction = "REMOVE_MATCH"
+	SET_MATCH           MatchManagerAction = "SET_MATCH"
+	ADD_STAGED_MATCH    MatchManagerAction = "ADD_STAGED_MATCH"
+	REMOVE_STAGED_MATCH MatchManagerAction = "REMOVE_STAGED_MATCH"
+)
+
 type MatchManagerI interface {
 	GetMatchById(matchId string) (*Match, error)
 	GetMatchByClientKey(clientKey string) (*Match, error)
@@ -36,6 +46,8 @@ type MatchManager struct {
 	subscriptionManager SubscriptionManagerI
 	timer               TimerI
 
+	sideEffects []func()
+
 	matchByMatchId           map[string]*Match
 	matchIdByClientId        map[string]string
 	stagedMatchById          map[string]*Match
@@ -49,11 +61,12 @@ func GetMatchManager() *MatchManager {
 	}
 	matchManager = &MatchManager{} // null service to prevent infinite recursion
 	matchManager = &MatchManager{
-		logManager:               GetLogManager(),
-		userClientsManager:       GetUserClientsManager(),
-		authManager:              GetAuthManager(),
-		subscriptionManager:      GetSubscriptionManager(),
-		timer:                    GetTimer(),
+		logManager:          GetLogManager(),
+		userClientsManager:  GetUserClientsManager(),
+		authManager:         GetAuthManager(),
+		subscriptionManager: GetSubscriptionManager(),
+		timer:               GetTimer(),
+
 		matchByMatchId:           make(map[string]*Match),
 		matchIdByClientId:        make(map[string]string),
 		stagedMatchById:          make(map[string]*Match),
@@ -94,8 +107,8 @@ func (mm *MatchManager) GetMatchByClientKey(clientKey string) (*Match, error) {
 
 func (mm *MatchManager) GetStagedMatchesByClientKey(clientKey string) ([]*Match, error) {
 	mm.mu.Lock()
-	defer mm.mu.Unlock()
 	matchIds, ok := mm.stagedMatchIdsByClientId[clientKey]
+	mm.mu.Unlock()
 	if !ok {
 		matchIds = EmptySet[string]()
 	}
@@ -227,11 +240,33 @@ func (mm *MatchManager) AddMatchFromStaged(matchId string) error {
 	if fetchStagedMatchErr != nil {
 		return fetchStagedMatchErr
 	}
+
+	whiteStagedMatches, getBlackStagedMatchesErr := mm.GetStagedMatchesByClientKey(stagedMatch.WhiteClientKey)
+	if getBlackStagedMatchesErr != nil {
+		return fmt.Errorf("could not get staged matches for client %s: %s", stagedMatch.WhiteClientKey, getBlackStagedMatchesErr)
+	}
+	for _, whiteStagedMatch := range whiteStagedMatches {
+		unstageErr := mm.UnstageMatch(whiteStagedMatch.Uuid)
+		if unstageErr != nil {
+			return fmt.Errorf("could not unstage match %s: %s", whiteStagedMatch.Uuid, unstageErr.Error())
+		}
+	}
+
+	blackStagedMatches, getBlackStagedMatchesErr := mm.GetStagedMatchesByClientKey(stagedMatch.BlackClientKey)
+	if getBlackStagedMatchesErr != nil {
+		return fmt.Errorf("could not get staged matches for client %s: %s", stagedMatch.BlackClientKey, getBlackStagedMatchesErr.Error())
+	}
+	for _, blackStagedMatch := range blackStagedMatches {
+		unstageErr := mm.UnstageMatch(blackStagedMatch.Uuid)
+		if unstageErr != nil {
+			return fmt.Errorf("could not unstage match %s: %s", blackStagedMatch.Uuid, unstageErr.Error())
+		}
+	}
+
 	addMatchErr := mm.AddMatch(stagedMatch)
 	if addMatchErr != nil {
-		return fmt.Errorf("could not add staged match with id %s: %s", matchId, addMatchErr)
+		return fmt.Errorf("could not add match from staged: %s", addMatchErr.Error())
 	}
-	mm.UnstageMatch(matchId)
 	return nil
 }
 

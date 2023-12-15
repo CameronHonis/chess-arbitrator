@@ -18,7 +18,10 @@ replace github.com/CameronHonis/log => ../log
 
 replace github.com/CameronHonis/set => ../set
 
+replace github.com/CameronHonis/service => ../service
+
 require (
+	github.com/CameronHonis/service v0.0.0-20231215050504-e639f9883805 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect

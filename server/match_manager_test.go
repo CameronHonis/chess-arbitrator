@@ -350,7 +350,68 @@ var _ = Describe("MatchManager", func() {
 		})
 	})
 	Describe("AddMatchFromStaged", func() {
-
+		When("the staged match does not exist", func() {
+			It("returns an error", func() {
+				err := mm.AddMatchFromStaged("asdf")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+		When("the staged match exists", func() {
+			var stagedMatchId string
+			BeforeEach(func() {
+				stagedMatch, stageMatchErr := mm.StageMatchFromChallenge(&Challenge{
+					ChallengerKey: "client1",
+					ChallengedKey: "client2",
+					TimeControl:   NewBulletTimeControl(),
+				})
+				Expect(stageMatchErr).ToNot(HaveOccurred())
+				stagedMatchId = stagedMatch.Uuid
+				fetchedStagedMatch, getStagedMatchErr := mm.GetStagedMatchById(stagedMatchId)
+				Expect(getStagedMatchErr).ToNot(HaveOccurred())
+				Expect(fetchedStagedMatch).To(Equal(stagedMatch))
+			})
+			It("adds the match to the active matches", func() {
+				err := mm.AddMatchFromStaged(stagedMatchId)
+				Expect(err).ToNot(HaveOccurred())
+				match, getMatchErr := mm.GetMatchById(stagedMatchId)
+				Expect(getMatchErr).ToNot(HaveOccurred())
+				Expect(match).ToNot(BeNil())
+			})
+			It("removes the staged match", func() {
+				err := mm.AddMatchFromStaged(stagedMatchId)
+				Expect(err).ToNot(HaveOccurred())
+				stagedMatch, getStagedMatchErr := mm.GetStagedMatchById(stagedMatchId)
+				Expect(getStagedMatchErr).To(HaveOccurred())
+				Expect(stagedMatch).To(BeNil())
+			})
+			When("the challenger has other staged matches", func() {
+				var otherStagedMatchId string
+				BeforeEach(func() {
+					otherStagedMatch, stageMatchErr := mm.StageMatchFromChallenge(&Challenge{
+						ChallengerKey: "client1",
+						ChallengedKey: "client3",
+						TimeControl:   NewBulletTimeControl(),
+					})
+					Expect(stageMatchErr).ToNot(HaveOccurred())
+					Expect(otherStagedMatch).ToNot(BeNil())
+					otherStagedMatchId = otherStagedMatch.Uuid
+					challengerStagedMatches, getChallengeStagedMatchesErr := mm.GetStagedMatchesByClientKey("client1")
+					Expect(getChallengeStagedMatchesErr).ToNot(HaveOccurred())
+					Expect(challengerStagedMatches).To(HaveLen(2))
+					fetchedOtherStagedMatch, _ := mm.GetStagedMatchById(otherStagedMatchId)
+					Expect(fetchedOtherStagedMatch).To(Equal(otherStagedMatch))
+				})
+				It("removes the other staged matches", func() {
+					err := mm.AddMatchFromStaged(stagedMatchId)
+					Expect(err).ToNot(HaveOccurred())
+					otherStagedMatch, getOtherStagedMatchErr := mm.GetStagedMatchById(otherStagedMatchId)
+					Expect(getOtherStagedMatchErr).To(HaveOccurred())
+					Expect(otherStagedMatch).To(BeNil())
+					challengerStagedMatches, _ := mm.GetStagedMatchesByClientKey("client1")
+					Expect(challengerStagedMatches).To(HaveLen(0))
+				})
+			})
+		})
 	})
 
 	Describe("ChallengeClient", func() {
