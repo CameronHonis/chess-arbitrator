@@ -5,6 +5,5 @@ import (
 )
 
 func main() {
-	server.ConfigLogger()
-	server.StartWSServer()
+	server.BuildServices()
 }

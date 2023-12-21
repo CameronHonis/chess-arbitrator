@@ -2,14 +2,19 @@ package server
 
 import (
 	"fmt"
+	. "github.com/CameronHonis/marker"
+	. "github.com/CameronHonis/service"
 	. "github.com/CameronHonis/set"
 	"sync"
 )
 
-var subscriptionManager *SubscriptionManager
-
 type MessageTopic string
-type SubscriptionManagerI interface {
+
+type SubscriptionConfig struct {
+	ConfigI
+}
+
+type SubscriptionServiceI interface {
 	SubClientTo(clientKey string, topic MessageTopic) error
 	UnsubClientFrom(clientKey string, topic MessageTopic) error
 	UnsubClientFromAll(clientKey string)
@@ -17,30 +22,26 @@ type SubscriptionManagerI interface {
 	GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string]
 }
 
-type SubscriptionManager struct {
-	userClientsManager UserClientsManagerI
-	authManager        AuthManagerI
+type SubscriptionService struct {
+	Service[*SubscriptionConfig]
+	__dependencies__ Marker
+	authManager      AuthenticationServiceI
 
+	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[string]
 	subbedTopicsByClientKey map[string]*Set[MessageTopic]
 	mu                      sync.Mutex
 }
 
-func GetSubscriptionManager() *SubscriptionManager {
-	if subscriptionManager != nil {
-		return subscriptionManager
-	}
-	subscriptionManager = &SubscriptionManager{} // null service to prevent infinite recursion
-	subscriptionManager = &SubscriptionManager{
-		userClientsManager:      GetUserClientsManager(),
-		authManager:             GetAuthManager(),
+func NewSubService(config *SubscriptionConfig) *SubscriptionService {
+	subService := &SubscriptionService{
 		subbedClientKeysByTopic: make(map[MessageTopic]*Set[string]),
 		subbedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
 	}
-	return subscriptionManager
+	subService.Service = *NewService(subService, config)
+	return subService
 }
-
-func (sm *SubscriptionManager) SubClientTo(clientKey string, topic MessageTopic) error {
+func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic) error {
 	authErr := sm.authManager.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		return authErr
@@ -61,7 +62,7 @@ func (sm *SubscriptionManager) SubClientTo(clientKey string, topic MessageTopic)
 	return nil
 }
 
-func (sm *SubscriptionManager) UnsubClientFrom(clientKey string, topic MessageTopic) error {
+func (sm *SubscriptionService) UnsubClientFrom(clientKey string, topic MessageTopic) error {
 	subbedTopics := sm.GetSubbedTopics(clientKey)
 	sm.mu.Lock()
 	if !subbedTopics.Has(topic) {
@@ -78,7 +79,7 @@ func (sm *SubscriptionManager) UnsubClientFrom(clientKey string, topic MessageTo
 	return nil
 }
 
-func (sm *SubscriptionManager) UnsubClientFromAll(clientKey string) {
+func (sm *SubscriptionService) UnsubClientFromAll(clientKey string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	subbedTopics, ok := sm.subbedTopicsByClientKey[clientKey]
@@ -91,7 +92,7 @@ func (sm *SubscriptionManager) UnsubClientFromAll(clientKey string) {
 	delete(sm.subbedTopicsByClientKey, clientKey)
 }
 
-func (sm *SubscriptionManager) GetSubbedTopics(clientKey string) *Set[MessageTopic] {
+func (sm *SubscriptionService) GetSubbedTopics(clientKey string) *Set[MessageTopic] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedTopicsByClientKey[clientKey]
@@ -101,7 +102,7 @@ func (sm *SubscriptionManager) GetSubbedTopics(clientKey string) *Set[MessageTop
 	return sm.subbedTopicsByClientKey[clientKey]
 }
 
-func (sm *SubscriptionManager) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string] {
+func (sm *SubscriptionService) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedClientKeysByTopic[topic]

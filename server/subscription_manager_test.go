@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SubscriptionManager", func() {
+var _ = Describe("SubscriptionService", func() {
 	var client *UserClient
 	var clientKey string
 	BeforeEach(func() {

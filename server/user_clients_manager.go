@@ -3,14 +3,27 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/marker"
+	. "github.com/CameronHonis/service"
 	"github.com/gorilla/websocket"
 	"sync"
 	"time"
 )
 
-var userClientsManager *UserClientsManager
+type UserClientsConfig struct {
+}
 
-type UserClientsManagerI interface {
+func NewUserClientsConfig() *UserClientsConfig {
+	return &UserClientsConfig{}
+}
+
+func (uc *UserClientsConfig) MergeWith(other ConfigI) ConfigI {
+	newConfig := *(other.(*UserClientsConfig))
+	return &newConfig
+}
+
+type UserClientsServiceI interface {
+	ServiceI
 	AddNewClient(conn *websocket.Conn) (*UserClient, error)
 	AddClient(client *UserClient) error
 	RemoveClient(client *UserClient) error
@@ -21,32 +34,29 @@ type UserClientsManagerI interface {
 	DirectMessage(message *Message, clientKey string) error
 }
 
-type UserClientsManager struct {
-	messageHandler      MessageHandlerI
-	logManager          LogManagerI
-	subscriptionManager SubscriptionManagerI
+type UserClientsService struct {
+	Service[*UserClientsConfig]
 
-	interactMutex     sync.Mutex
+	__dependencies__ Marker
+	LoggerService    LoggerServiceI
+	MsgService       MessageServiceI
+	SubService       SubscriptionServiceI
+	AuthService      AuthenticationServiceI
+
+	__state__         Marker
+	mu                sync.Mutex
 	clientByPublicKey map[string]*UserClient
 }
 
-func GetUserClientsManager() *UserClientsManager {
-	if userClientsManager != nil {
-		return userClientsManager
+func NewUserClientsService(config *UserClientsConfig) *UserClientsService {
+	userClientsService := &UserClientsService{
+		clientByPublicKey: make(map[string]*UserClient),
 	}
-	userClientsManager = &UserClientsManager{} // null service to prevent infinite recursion
-	userClientsManager = &UserClientsManager{
-		messageHandler:      GetMessageHandler(),
-		logManager:          GetLogManager(),
-		subscriptionManager: GetSubscriptionManager(),
-		interactMutex:       sync.Mutex{},
-		clientByPublicKey:   make(map[string]*UserClient),
-	}
-	go userClientsManager.listenOnUserClientChannels()
-	return userClientsManager
+	userClientsService.Service = *NewService(userClientsService, config)
+	return userClientsService
 }
 
-func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
+func (ucm *UserClientsService) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
 	client := NewUserClient(conn, CleanupClient)
 
 	err := ucm.AddClient(client)
@@ -57,9 +67,9 @@ func (ucm *UserClientsManager) AddNewClient(conn *websocket.Conn) (*UserClient, 
 	}
 }
 
-func (ucm *UserClientsManager) AddClient(client *UserClient) error {
-	ucm.interactMutex.Lock()
-	defer ucm.interactMutex.Unlock()
+func (ucm *UserClientsService) AddClient(client *UserClient) error {
+	ucm.mu.Lock()
+	defer ucm.mu.Unlock()
 	if _, ok := ucm.clientByPublicKey[client.PublicKey()]; ok {
 		client.Kill()
 		return fmt.Errorf("client with key %s already exists", client.PublicKey())
@@ -68,25 +78,25 @@ func (ucm *UserClientsManager) AddClient(client *UserClient) error {
 	return nil
 }
 
-func (ucm *UserClientsManager) RemoveClient(client *UserClient) error {
+func (ucm *UserClientsService) RemoveClient(client *UserClient) error {
 	pubKey := client.PublicKey()
 
-	ucm.interactMutex.Lock()
+	ucm.mu.Lock()
 	if _, ok := ucm.clientByPublicKey[pubKey]; !ok {
-		ucm.interactMutex.Unlock()
+		ucm.mu.Unlock()
 		return fmt.Errorf("client with key %s isn't an established client", client.PublicKey())
 	}
 	delete(ucm.clientByPublicKey, pubKey)
-	ucm.interactMutex.Unlock()
+	ucm.mu.Unlock()
 
 	client.Kill()
-	ucm.subscriptionManager.UnsubClientFromAll(pubKey)
+	ucm.SubService.UnsubClientFromAll(pubKey)
 	return nil
 }
 
-func (ucm *UserClientsManager) GetClientFromKey(clientKey string) (*UserClient, error) {
-	defer ucm.interactMutex.Unlock()
-	ucm.interactMutex.Lock()
+func (ucm *UserClientsService) GetClientFromKey(clientKey string) (*UserClient, error) {
+	defer ucm.mu.Unlock()
+	ucm.mu.Lock()
 	client, ok := ucm.clientByPublicKey[clientKey]
 	if !ok {
 		return nil, fmt.Errorf("no client with public key %s", clientKey)
@@ -94,9 +104,9 @@ func (ucm *UserClientsManager) GetClientFromKey(clientKey string) (*UserClient, 
 	return client, nil
 }
 
-func (ucm *UserClientsManager) GetAllOutChannels() map[string]chan *Message {
-	defer ucm.interactMutex.Unlock()
-	ucm.interactMutex.Lock()
+func (ucm *UserClientsService) GetAllOutChannels() map[string]chan *Message {
+	defer ucm.mu.Unlock()
+	ucm.mu.Lock()
 	if len(ucm.clientByPublicKey) == 0 {
 		return make(map[string]chan *Message)
 	}
@@ -107,9 +117,9 @@ func (ucm *UserClientsManager) GetAllOutChannels() map[string]chan *Message {
 	return channels
 }
 
-func (ucm *UserClientsManager) GetInChannelByClientKey(clientKey string) (<-chan *Message, error) {
-	defer ucm.interactMutex.Unlock()
-	ucm.interactMutex.Lock()
+func (ucm *UserClientsService) GetInChannelByClientKey(clientKey string) (<-chan *Message, error) {
+	defer ucm.mu.Unlock()
+	ucm.mu.Lock()
 	client, ok := ucm.clientByPublicKey[clientKey]
 	if !ok {
 		return nil, fmt.Errorf("client with key %s does not exist", clientKey)
@@ -117,14 +127,14 @@ func (ucm *UserClientsManager) GetInChannelByClientKey(clientKey string) (<-chan
 	return client.OutChannel(), nil
 }
 
-func (ucm *UserClientsManager) listenOnUserClientChannels() {
+func (ucm *UserClientsService) listenOnUserClientChannels() {
 	for {
 		time.Sleep(time.Millisecond * 1)
 		for clientKey, channel := range ucm.GetAllOutChannels() {
 			select {
 			case message := <-channel:
 				message.SenderKey = clientKey
-				go ucm.messageHandler.HandleMessage(message)
+				go ucm.MsgService.HandleMessage(message)
 			default:
 				continue
 			}
@@ -132,21 +142,21 @@ func (ucm *UserClientsManager) listenOnUserClientChannels() {
 	}
 }
 
-func (ucm *UserClientsManager) BroadcastMessage(message *Message) {
+func (ucm *UserClientsService) BroadcastMessage(message *Message) {
 	msgCopy := *message
 	msgCopy.PrivateKey = ""
-	subbedClientKeys := ucm.subscriptionManager.GetClientKeysSubbedToTopic(msgCopy.Topic)
+	subbedClientKeys := ucm.SubService.GetClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := ucm.GetClientFromKey(clientKey)
 		if err != nil {
-			ucm.logManager.LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
+			ucm.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
 		client.InChannel() <- &msgCopy
 	}
 }
 
-func (ucm *UserClientsManager) DirectMessage(message *Message, clientKey string) error {
+func (ucm *UserClientsService) DirectMessage(message *Message, clientKey string) error {
 	if message.Topic != "directMessage" && message.Topic != "" {
 		return fmt.Errorf("direct messages expected to not have a topic, given %s", message.Topic)
 	}
@@ -160,9 +170,8 @@ func (ucm *UserClientsManager) DirectMessage(message *Message, clientKey string)
 	return nil
 }
 
-func CleanupClient(userClient *UserClient) {
-	am := GetAuthManager()
-	if am.chessBotKey == userClient.PublicKey() {
+func (ucm *UserClientsService) CleanupClient(userClient *UserClient) {
+	if ucm.AuthService.GetBotKey() == userClient.PublicKey() {
 		am.chessBotKey = ""
 	}
 }

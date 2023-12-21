@@ -3,41 +3,48 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/marker"
+	. "github.com/CameronHonis/service"
 )
 
-type MessageHandlerI interface {
+type MessageConfig struct {
+}
+
+func NewMessageConfig() *MessageConfig {
+	return &MessageConfig{}
+}
+
+func (mhc *MessageConfig) MergeWith(other ConfigI) ConfigI {
+	newConfig := *(other.(*MessageConfig))
+	return &newConfig
+}
+
+type MessageServiceI interface {
 	HandleMessage(msg *Message)
 }
 
-var messageHandler *MessageHandler
+type MessageService struct {
+	Service[*MessageConfig]
 
-type MessageHandler struct {
-	logManager          LogManagerI
-	authManager         AuthManagerI
-	matchManager        MatchManagerI
-	matchmakingManager  MatchmakingManagerI
-	subscriptionManager SubscriptionManagerI
-	userClientsManager  UserClientsManagerI
+	__dependencies__   Marker
+	LoggerService      LoggerServiceI
+	AuthService        AuthenticationServiceI
+	SubService         SubscriptionServiceI
+	MatchService       MatchServiceI
+	MatchmakingService MatchmakingServiceI
+
+	__state__ Marker
 }
 
-func GetMessageHandler() *MessageHandler {
-	if messageHandler != nil {
-		return messageHandler
-	}
-	messageHandler = &MessageHandler{} // null service to prevent infinite recursion
-	messageHandler = &MessageHandler{
-		logManager:          GetLogManager(),
-		authManager:         GetAuthManager(),
-		matchManager:        GetMatchManager(),
-		matchmakingManager:  GetMatchmakingManager(),
-		subscriptionManager: GetSubscriptionManager(),
-		userClientsManager:  GetUserClientsManager(),
-	}
+func NewMessageHandlerService() *MessageService {
+	messageHandler := &MessageService{}
+	messageHandler.Service = *NewService(messageHandler, NewMessageConfig())
+
 	return messageHandler
 }
 
-func (mh *MessageHandler) HandleMessage(msg *Message) {
-	mh.logManager.Log(ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
+func (mh *MessageService) HandleMessage(msg *Message) {
+	mh.LoggerService.Log(ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
 	var handleMsgErr error
 	switch msg.ContentType {
 	case CONTENT_TYPE_FIND_MATCH:
@@ -62,14 +69,14 @@ func (mh *MessageHandler) HandleMessage(msg *Message) {
 		handleMsgErr = mh.HandleChallengeTerminatedMessage(msg)
 	}
 	if handleMsgErr != nil {
-		GetLogManager().LogRed(ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
+		mh.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
 	}
 	GetUserClientsManager().BroadcastMessage(msg)
 }
 
-func (mh *MessageHandler) HandleFindMatchMessage(msg *Message) error {
+func (mh *MessageService) HandleFindMatchMessage(msg *Message) error {
 	// TODO: query for elo, winStreak, lossStreak
-	return mh.matchmakingManager.AddClient(&ClientProfile{
+	return mh.MatchmakingService.AddClient(&ClientProfile{
 		ClientKey:  msg.SenderKey,
 		Elo:        1000,
 		WinStreak:  0,
@@ -77,7 +84,7 @@ func (mh *MessageHandler) HandleFindMatchMessage(msg *Message) error {
 	})
 }
 
-func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
+func (mh *MessageService) HandleFindBotMatchMessage(msg *Message) error {
 	//msgContent, ok := msg.Content.(*FindBotMatchMessageContent)
 	//if !ok {
 	//	return fmt.Errorf("could not cast message to FindBotMatchMessageContent")
@@ -108,12 +115,12 @@ func (mh *MessageHandler) HandleFindBotMatchMessage(msg *Message) error {
 	return nil
 }
 
-func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
+func (mh *MessageService) HandleSubscribeRequestMessage(msg *Message) error {
 	msgContent, ok := msg.Content.(*SubscribeRequestMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
 	}
-	subErr := mh.subscriptionManager.SubClientTo(msg.SenderKey, msgContent.Topic)
+	subErr := mh.SubService.SubClientTo(msg.SenderKey, msgContent.Topic)
 	if subErr != nil {
 		outMsg := &Message{
 			Topic:       "directMessage",
@@ -135,7 +142,7 @@ func (mh *MessageHandler) HandleSubscribeRequestMessage(msg *Message) error {
 	return mh.userClientsManager.DirectMessage(subGrantedMsg, msg.SenderKey)
 }
 
-func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
+func (mh *MessageService) HandleEchoMessage(msg *Message) error {
 	msgContent, ok := msg.Content.(*EchoMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message to EchoMessageContent")
@@ -150,12 +157,12 @@ func (mh *MessageHandler) HandleEchoMessage(msg *Message) error {
 	return mh.userClientsManager.DirectMessage(&echoMsg, msg.SenderKey)
 }
 
-func (mh *MessageHandler) HandleRequestUpgradeAuthMessage(msg *Message) error {
+func (mh *MessageService) HandleRequestUpgradeAuthMessage(msg *Message) error {
 	msgContent, ok := msg.Content.(*UpgradeAuthRequestMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	role, upgradeAuthErr := mh.authManager.UpgradeAuth(msg.SenderKey, msgContent.Secret)
+	role, upgradeAuthErr := mh.AuthService.UpgradeAuth(msg.SenderKey, msgContent.Secret)
 	if upgradeAuthErr != nil {
 		outMsg := Message{
 			Topic:       "directMessage",
@@ -176,7 +183,7 @@ func (mh *MessageHandler) HandleRequestUpgradeAuthMessage(msg *Message) error {
 	return mh.userClientsManager.DirectMessage(&outMsg, msg.SenderKey)
 }
 
-func (mh *MessageHandler) HandleInitBotMatchSuccessMessage(msg *Message) error {
+func (mh *MessageService) HandleInitBotMatchSuccessMessage(msg *Message) error {
 	_, ok := msg.Content.(*InitBotMatchSuccessMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message to InitBotMatchSuccessMessageContent")
@@ -184,27 +191,27 @@ func (mh *MessageHandler) HandleInitBotMatchSuccessMessage(msg *Message) error {
 	return nil
 }
 
-func (mh *MessageHandler) HandleInitBotMatchFailureMessage(msg *Message) error {
+func (mh *MessageService) HandleInitBotMatchFailureMessage(msg *Message) error {
 	_, ok := msg.Content.(*InitBotMatchFailureMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message to InitBotMatchFailureMessageContent")
 	}
 	return nil
 }
-func (mh *MessageHandler) HandleMoveMessage(moveMsg *Message) error {
+func (mh *MessageService) HandleMoveMessage(moveMsg *Message) error {
 	moveMsgContent, ok := moveMsg.Content.(*MoveMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid move message content")
 	}
-	return mh.matchManager.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
+	return mh.MatchService.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
 }
 
-func (mh *MessageHandler) HandleChallengePlayerMessage(challengeMsg *Message) error {
+func (mh *MessageService) HandleChallengePlayerMessage(challengeMsg *Message) error {
 	challengeMsgContent, ok := challengeMsg.Content.(*ChallengePlayerMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}
-	_, stageMatchErr := mh.matchManager.StageMatchFromChallenge(challengeMsgContent.Challenge)
+	_, stageMatchErr := mh.MatchService.StageMatchFromChallenge(challengeMsgContent.Challenge)
 	if stageMatchErr != nil {
 		return fmt.Errorf("could not stage match for challenge with challenger key %s: %s",
 			challengeMsgContent.Challenge.ChallengerKey, stageMatchErr)
@@ -219,14 +226,14 @@ func (mh *MessageHandler) HandleChallengePlayerMessage(challengeMsg *Message) er
 	return nil
 }
 
-func (mh *MessageHandler) HandleChallengeTerminatedMessage(msg *Message) error {
+func (mh *MessageService) HandleChallengeTerminatedMessage(msg *Message) error {
 	msgContent, ok := msg.Content.(*ChallengeTerminatedMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid challenge terminated message content")
 	}
 
 	challenge := msgContent.Challenge
-	terminateChallengeErr := mh.matchManager.TerminateChallenge(challenge)
+	terminateChallengeErr := mh.MatchService.TerminateChallenge(challenge)
 	if terminateChallengeErr != nil {
 		return fmt.Errorf("could not terminate challenge: %s", terminateChallengeErr)
 	}

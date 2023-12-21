@@ -9,7 +9,7 @@ import (
 )
 
 type UserClient struct {
-	authManager AuthManagerI
+	authManager AuthenticationServiceI
 	logManager  LogManagerI
 
 	active     bool //assumed that cleanup already ran if set to true

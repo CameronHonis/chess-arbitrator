@@ -18,8 +18,8 @@ func (mucm *MockUserClientsManager) BroadcastMessage(message *Message) {
 	mucm.MessagesBroadcasted = append(mucm.MessagesBroadcasted, message)
 }
 
-var _ = Describe("MatchManager", func() {
-	var mm *MatchManager
+var _ = Describe("MatchService", func() {
+	var mm *MatchService
 	BeforeEach(func() {
 		matchManager = nil
 		userClientsManager = nil

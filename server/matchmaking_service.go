@@ -3,47 +3,63 @@ package server
 import (
 	"fmt"
 	. "github.com/CameronHonis/log"
+	. "github.com/CameronHonis/marker"
+	. "github.com/CameronHonis/service"
 	"math"
 	"time"
 )
 
-type MatchmakingManagerI interface {
+type MatchmakingConfig struct {
+	ConfigI
+}
+
+func NewMatchmakingConfig() *MatchmakingConfig {
+	return &MatchmakingConfig{}
+}
+
+type MatchmakingServiceI interface {
+	ServiceI
 	AddClient(client *ClientProfile) error
 	RemoveClient(client *ClientProfile) error
 }
 
-var matchmakingManager *MatchmakingManager
+type MatchmakingService struct {
+	Service[*MatchmakingConfig]
 
-type MatchmakingManager struct {
-	pool *MatchmakingPool
+	__dependencies__ Marker
+	LoggerService    LoggerServiceI
+	MatchService     MatchServiceI
+
+	__state__ Marker
+	pool      *MatchmakingPool
 }
 
-func GetMatchmakingManager() *MatchmakingManager {
-	if matchmakingManager != nil {
-		return matchmakingManager
-	}
-	matchmakingManager = &MatchmakingManager{
+func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
+	matchmakingService := &MatchmakingService{
 		pool: NewMatchmakingPool(),
 	}
-	go matchmakingManager.loopMatchmaking()
-	return matchmakingManager
+	matchmakingService.Service = *NewService(matchmakingService, config)
+
+	go matchmakingService.loopMatchmaking()
+
+	return matchmakingService
 }
 
-func (mm *MatchmakingManager) AddClient(client *ClientProfile) error {
-	GetLogManager().Log(ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+func (mm *MatchmakingService) AddClient(client *ClientProfile) error {
+	mm.LoggerService.Log(ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
 	addErr := mm.pool.AddClient(client)
 	if addErr != nil {
 		return addErr
 	}
-	GetLogManager().Log(ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	mm.LoggerService.Log(ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
 	return nil
 }
 
-func (mm *MatchmakingManager) RemoveClient(client *ClientProfile) error {
+func (mm *MatchmakingService) RemoveClient(client *ClientProfile) error {
 	return mm.pool.RemoveClient(client.ClientKey)
 }
 
-func (mm *MatchmakingManager) loopMatchmaking() {
+func (mm *MatchmakingService) loopMatchmaking() {
 	for {
 		time.Sleep(time.Second)
 		if mm.pool.head == mm.pool.tail {
@@ -68,9 +84,9 @@ func (mm *MatchmakingManager) loopMatchmaking() {
 			if IsMatchable(clientA, clientB, waitTime) {
 				matchErr := mm.matchClients(clientA, clientB)
 				if matchErr != nil {
-					GetLogManager().LogRed(ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
+					mm.LoggerService.LogRed(ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
-					GetLogManager().LogGreen(ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
+					mm.LoggerService.LogGreen(ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
 				}
 			}
 			currPoolNode = currPoolNode.next
@@ -78,7 +94,7 @@ func (mm *MatchmakingManager) loopMatchmaking() {
 	}
 }
 
-func (mm *MatchmakingManager) matchClients(clientA *ClientProfile, clientB *ClientProfile) error {
+func (mm *MatchmakingService) matchClients(clientA *ClientProfile, clientB *ClientProfile) error {
 	removeErr := mm.pool.RemoveClient(clientA.ClientKey)
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientA.ClientKey, removeErr)
@@ -88,7 +104,7 @@ func (mm *MatchmakingManager) matchClients(clientA *ClientProfile, clientB *Clie
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
 	match := NewMatch(clientA.ClientKey, clientB.ClientKey, NewBulletTimeControl())
-	addMatchErr := GetMatchManager().AddMatch(match)
+	addMatchErr := mm.MatchService.AddMatch(match)
 	if addMatchErr != nil {
 		return fmt.Errorf("error adding match %s to match manager: %s", match.Uuid, addMatchErr)
 	}

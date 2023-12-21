@@ -1,12 +1,44 @@
 package server
 
 import (
+	. "github.com/CameronHonis/marker"
+	. "github.com/CameronHonis/service"
 	"net/http"
 )
 import "fmt"
 import "github.com/gorilla/websocket"
 
-func StartWSServer() {
+type RouterConfig struct {
+	Port uint
+}
+
+func NewRouterConfig() *RouterConfig {
+	return &RouterConfig{
+		Port: 8080,
+	}
+}
+
+func (rc *RouterConfig) MergeWith(other ConfigI) ConfigI {
+	newConfig := *(other.(*RouterConfig))
+	return &newConfig
+}
+
+type RouterService struct {
+	Service[*RouterConfig]
+
+	__dependencies__   Marker
+	UserClientsService UserClientsServiceI
+
+	__state__ Marker
+}
+
+func NewRouterService(config *RouterConfig) *RouterService {
+	routerService := &RouterService{}
+	routerService.Service = *NewService(routerService, config)
+	return routerService
+}
+
+func (rs *RouterService) StartWSServer() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, connErr := upgradeToWSCon(w, r)
 		if connErr != nil {
@@ -20,7 +52,9 @@ func StartWSServer() {
 		}
 	})
 
-	err := http.ListenAndServe(":8080", nil)
+	config := rs.Config().(*RouterConfig)
+	port := config.Port
+	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 	if err != nil {
 		fmt.Println(err)
 		return
