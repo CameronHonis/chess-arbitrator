@@ -45,7 +45,7 @@ func (rs *RouterService) StartWSServer() {
 			fmt.Println(connErr)
 			return
 		}
-		_, addClientErr := GetUserClientsManager().AddNewClient(conn)
+		_, addClientErr := rs.UserClientsService.AddNewClient(conn)
 		if addClientErr != nil {
 			fmt.Println(addClientErr)
 			return

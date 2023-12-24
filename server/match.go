@@ -18,18 +18,8 @@ type Match struct {
 	LastMoveTime          *time.Time   `json:"-"`
 }
 
-func NewMatch(clientAKey string, clientBKey string, timeControl *TimeControl) *Match {
-	rand.Seed(time.Now().UnixNano())
-	clientAIsWhite := rand.Intn(2) == 0
+func NewMatch(whiteClientKey string, blackClientKey string, timeControl *TimeControl) *Match {
 	matchId := uuid.New().String()
-	var whiteClientKey, blackClientKey string
-	if clientAIsWhite {
-		whiteClientKey = clientAKey
-		blackClientKey = clientBKey
-	} else {
-		whiteClientKey = clientBKey
-		blackClientKey = clientAKey
-	}
 	now := time.Now()
 	return &Match{
 		Uuid:                  matchId,
@@ -117,6 +107,20 @@ func (mb *MatchBuilder) WithClientKeys(clientAKey string, clientBKey string) *Ma
 	}
 	mb.match.WhiteClientKey = whiteClientKey
 	mb.match.BlackClientKey = blackClientKey
+	return mb
+}
+
+func (mb *MatchBuilder) FromChallenge(challenge *Challenge) *MatchBuilder {
+	mb.match = NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl)
+	if challenge.IsChallengerWhite {
+		mb.WithWhiteClientKey(challenge.ChallengerKey)
+		mb.WithBlackClientKey(challenge.ChallengedKey)
+	} else if challenge.IsChallengerBlack {
+		mb.WithWhiteClientKey(challenge.ChallengedKey)
+		mb.WithBlackClientKey(challenge.ChallengerKey)
+	} else {
+		mb.WithClientKeys(challenge.ChallengerKey, challenge.ChallengedKey)
+	}
 	return mb
 }
 

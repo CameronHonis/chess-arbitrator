@@ -32,7 +32,7 @@ var _ = Describe("MatchService", func() {
 		})
 		Describe("when one of the players in the proposed match is already in a match", func() {
 			BeforeEach(func() {
-				mm.matchIdByClientId["client1"] = "match1"
+				mm.matchIdByClientKey["client1"] = "match1"
 				oldMatch := *match
 				oldMatch.BlackClientKey = "client3"
 				mm.matchByMatchId["match1"] = &oldMatch
@@ -46,8 +46,8 @@ var _ = Describe("MatchService", func() {
 			err := mm.AddMatch(match)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mm.matchByMatchId[match.Uuid]).To(Equal(match))
-			Expect(mm.matchIdByClientId[match.WhiteClientKey]).To(Equal(match.Uuid))
-			Expect(mm.matchIdByClientId[match.BlackClientKey]).To(Equal(match.Uuid))
+			Expect(mm.matchIdByClientKey[match.WhiteClientKey]).To(Equal(match.Uuid))
+			Expect(mm.matchIdByClientKey[match.BlackClientKey]).To(Equal(match.Uuid))
 		})
 		It("subscribes the players to the match topic", func() {
 			messageTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
@@ -59,7 +59,7 @@ var _ = Describe("MatchService", func() {
 			Expect(blackSubbedTopics.Flatten()).To(ContainElement(messageTopic))
 		})
 	})
-	Describe("RemoveMatch", func() {
+	Describe("removeMatch", func() {
 		var match *Match
 		BeforeEach(func() {
 			match = NewMatch("client1", "client2", NewBulletTimeControl())
@@ -67,19 +67,19 @@ var _ = Describe("MatchService", func() {
 		Describe("when the match exists", func() {
 			BeforeEach(func() {
 				mm.matchByMatchId[match.Uuid] = match
-				mm.matchIdByClientId[match.WhiteClientKey] = match.Uuid
-				mm.matchIdByClientId[match.BlackClientKey] = match.Uuid
+				mm.matchIdByClientKey[match.WhiteClientKey] = match.Uuid
+				mm.matchIdByClientKey[match.BlackClientKey] = match.Uuid
 			})
 			It("removes the match from the active matches", func() {
-				err := mm.RemoveMatch(match)
+				err := mm.removeMatch(match)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mm.matchByMatchId).ToNot(HaveKey(match.Uuid))
-				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.WhiteClientKey))
-				Expect(mm.matchIdByClientId).ToNot(HaveKey(match.BlackClientKey))
+				Expect(mm.matchIdByClientKey).ToNot(HaveKey(match.WhiteClientKey))
+				Expect(mm.matchIdByClientKey).ToNot(HaveKey(match.BlackClientKey))
 			})
 			It("unsubscribes the players from the match topic", func() {
 				messageTopic := MessageTopic(fmt.Sprintf("match-%s", match.Uuid))
-				err := mm.RemoveMatch(match)
+				err := mm.removeMatch(match)
 				Expect(err).ToNot(HaveOccurred())
 				whiteSubbedTopics := GetSubscriptionManager().GetSubbedTopics(match.WhiteClientKey)
 				Expect(whiteSubbedTopics.Flatten()).ToNot(ContainElement(messageTopic))
@@ -89,12 +89,12 @@ var _ = Describe("MatchService", func() {
 		})
 		Describe("when the match does not exist", func() {
 			It("returns an error", func() {
-				err := mm.RemoveMatch(match)
+				err := mm.removeMatch(match)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
-	Describe("SetMatch", func() {
+	Describe("setMatch", func() {
 		var newMatch *Match
 		BeforeEach(func() {
 			newMatch = NewMatch("client1", "client2", NewBulletTimeControl())
@@ -114,17 +114,17 @@ var _ = Describe("MatchService", func() {
 				prevMatch.BlackClientKey = "client2"
 				prevMatch.Uuid = newMatch.Uuid
 				mm.matchByMatchId[prevMatch.Uuid] = prevMatch
-				mm.matchIdByClientId[prevMatch.WhiteClientKey] = prevMatch.Uuid
-				mm.matchIdByClientId[prevMatch.BlackClientKey] = prevMatch.Uuid
+				mm.matchIdByClientKey[prevMatch.WhiteClientKey] = prevMatch.Uuid
+				mm.matchIdByClientKey[prevMatch.BlackClientKey] = prevMatch.Uuid
 				mm.userClientsManager = &MockUserClientsManager{}
 			})
 			It("updates the match", func() {
-				err := mm.SetMatch(newMatch)
+				err := mm.setMatch(newMatch)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mm.matchByMatchId[newMatch.Uuid]).To(Equal(newMatch))
 			})
 			It("broadcasts the match update on the match topic", func() {
-				err := mm.SetMatch(newMatch)
+				err := mm.setMatch(newMatch)
 				Expect(err).ToNot(HaveOccurred())
 				mucm := mm.userClientsManager.(*MockUserClientsManager)
 				Expect(mucm.MessagesBroadcasted).To(HaveLen(1))
@@ -147,7 +147,7 @@ var _ = Describe("MatchService", func() {
 					newMatch.Uuid = prevMatch.Uuid
 				})
 				It("returns an error", func() {
-					err := mm.SetMatch(newMatch)
+					err := mm.setMatch(newMatch)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -159,7 +159,7 @@ var _ = Describe("MatchService", func() {
 					newMatch.Uuid = prevMatch.Uuid
 				})
 				It("returns an error", func() {
-					err := mm.SetMatch(newMatch)
+					err := mm.setMatch(newMatch)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -169,7 +169,7 @@ var _ = Describe("MatchService", func() {
 				Expect(mm.matchByMatchId).ToNot(HaveKey(newMatch.Uuid))
 			})
 			It("returns an error", func() {
-				err := mm.SetMatch(newMatch)
+				err := mm.setMatch(newMatch)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -288,7 +288,7 @@ var _ = Describe("MatchService", func() {
 				addMatchErr := mm.AddMatch(NewMatch("client1", "client3", NewBulletTimeControl()))
 				Expect(addMatchErr).ToNot(HaveOccurred())
 				Expect(mm.matchByMatchId).To(HaveLen(1))
-				challengedClientMatchId := mm.matchIdByClientId["client1"]
+				challengedClientMatchId := mm.matchIdByClientKey["client1"]
 				Expect(challengedClientMatchId).ToNot(BeNil())
 			})
 			It("returns an error", func() {
@@ -301,7 +301,7 @@ var _ = Describe("MatchService", func() {
 				addMatchErr := mm.AddMatch(NewMatch("client2", "client3", NewBulletTimeControl()))
 				Expect(addMatchErr).ToNot(HaveOccurred())
 				Expect(mm.matchByMatchId).To(HaveLen(1))
-				challengedClientMatchId := mm.matchIdByClientId["client2"]
+				challengedClientMatchId := mm.matchIdByClientKey["client2"]
 				Expect(challengedClientMatchId).ToNot(BeNil())
 			})
 			It("returns an error", func() {
@@ -429,7 +429,7 @@ var _ = Describe("MatchService", func() {
 		})
 		Describe("when the match doesnt exist", func() {
 			BeforeEach(func() {
-				mm.matchIdByClientId = make(map[string]string)
+				mm.matchIdByClientKey = make(map[string]string)
 				mm.matchByMatchId = make(map[string]*Match)
 				_, getMatchErr := mm.GetMatchById(match.Uuid)
 				Expect(getMatchErr).To(HaveOccurred())

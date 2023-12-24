@@ -51,21 +51,22 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
 	contentStructMap := map[ContentType]interface{}{
 		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
-		CONTENT_TYPE_FIND_BOT_MATCH:            &FindBotMatchMessageContent{},
 		CONTENT_TYPE_FIND_MATCH:                &FindMatchMessageContent{},
 		CONTENT_TYPE_MATCH_UPDATE:              &MatchUpdateMessageContent{},
 		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST:         &SubscribeRequestMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED: &SubscribeRequestGrantedMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED:  &SubscribeRequestDeniedMessageContent{},
-		CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS:    &FindBotMatchNoBotsMessageContent{},
 		CONTENT_TYPE_ECHO:                      &EchoMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
-		CONTENT_TYPE_INIT_BOT_MATCH:            &InitBotMatchMessageContent{},
-		CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS:    &InitBotMatchSuccessMessageContent{},
-		CONTENT_TYPE_INIT_BOT_MATCH_FAILURE:    &InitBotMatchFailureMessageContent{},
+		CONTENT_TYPE_CHALLENGE_PLAYER:          &ChallengePlayerMessageContent{},
+		CONTENT_TYPE_CHALLENGE_REQUEST_FAILED:  &ChallengeRequestFailedMessageContent{},
+		CONTENT_TYPE_ACCEPT_CHALLENGE:          &AcceptChallengeMessageContent{},
+		CONTENT_TYPE_DECLINE_CHALLENGE:         &DeclineChallengeMessageContent{},
+		CONTENT_TYPE_REVOKE_CHALLENGE:          &RevokeChallengeMessageContent{},
+		CONTENT_TYPE_MATCH_CREATION_FAILED:     &MatchCreationFailedMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
 	if !ok {
@@ -82,36 +83,29 @@ type ContentType string
 
 const (
 	CONTENT_TYPE_EMPTY                     = "EMPTY"
+	CONTENT_TYPE_ECHO                      = "ECHO"
 	CONTENT_TYPE_AUTH                      = "AUTH"
-	CONTENT_TYPE_FIND_BOT_MATCH            = "FIND_BOT_MATCH"
 	CONTENT_TYPE_FIND_MATCH                = "FIND_MATCH"
 	CONTENT_TYPE_MATCH_UPDATE              = "MATCH_UPDATE"
 	CONTENT_TYPE_MOVE                      = "MOVE"
+	CONTENT_TYPE_MOVE_FAILED               = "MOVE_FAILED"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST         = "SUBSCRIBE_REQUEST"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED = "SUBSCRIBE_REQUEST_GRANTED"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED  = "SUBSCRIBE_REQUEST_DENIED"
-	CONTENT_TYPE_FIND_BOT_MATCH_NO_BOTS    = "FIND_BOT_MATCH_NO_BOTS"
-	CONTENT_TYPE_ECHO                      = "ECHO"
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
 	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
-	CONTENT_TYPE_INIT_BOT_MATCH            = "INIT_BOT_MATCH"
-	CONTENT_TYPE_INIT_BOT_MATCH_SUCCESS    = "INIT_BOT_MATCH_SUCCESS"
-	CONTENT_TYPE_INIT_BOT_MATCH_FAILURE    = "INIT_BOT_MATCH_FAILURE"
 	CONTENT_TYPE_CHALLENGE_PLAYER          = "CHALLENGE_PLAYER"
-	CONTENT_TYPE_CHALLENGE_TERMINATED      = "CHALLENGE_TERMINATED"
+	CONTENT_TYPE_CHALLENGE_REQUEST_FAILED  = "CHALLENGE_REQUEST_FAILED"
+	CONTENT_TYPE_ACCEPT_CHALLENGE          = "ACCEPT_CHALLENGE"
+	CONTENT_TYPE_DECLINE_CHALLENGE         = "DECLINE_CHALLENGE"
+	CONTENT_TYPE_REVOKE_CHALLENGE          = "REVOKE_CHALLENGE"
+	CONTENT_TYPE_MATCH_CREATION_FAILED     = "MATCH_CREATION_FAILED"
 )
 
 type AuthMessageContent struct {
 	PublicKey  string `json:"publicKey"`
 	PrivateKey string `json:"privateKey"`
-}
-
-type FindBotMatchMessageContent struct {
-	BotName string `json:"botName"`
-}
-
-type FindBotMatchNoBotsMessageContent struct {
 }
 
 type FindMatchMessageContent struct {
@@ -144,7 +138,8 @@ type EchoMessageContent struct {
 }
 
 type UpgradeAuthRequestMessageContent struct {
-	Secret string `json:"secret"`
+	Role   RoleName `json:"role"`
+	Secret string   `json:"secret"`
 }
 
 type UpgradeAuthGrantedMessageContent struct {
@@ -155,27 +150,28 @@ type UpgradeAuthDeniedMessageContent struct {
 	Reason string `json:"reason"`
 }
 
-type InitBotMatchMessageContent struct {
-	BotName string `json:"botName"`
-	MatchId string `json:"matchId"`
-}
-
-type InitBotMatchSuccessMessageContent struct {
-	BotName string `json:"botType"`
-	MatchId string `json:"matchId"`
-}
-
-type InitBotMatchFailureMessageContent struct {
-	BotName string `json:"botType"`
-	MatchId string `json:"matchId"`
-	Reason  string `json:"reason"`
-}
-
 type ChallengePlayerMessageContent struct {
 	Challenge *Challenge `json:"challenge"`
 }
 
-type ChallengeTerminatedMessageContent struct {
+type ChallengeRequestFailedMessageContent struct {
 	Challenge *Challenge `json:"challenge"`
 	Reason    string     `json:"reason"`
+}
+
+type AcceptChallengeMessageContent struct {
+	ChallengerClientKey string `json:"challengerClientKey"`
+}
+
+type DeclineChallengeMessageContent struct {
+	ChallengerClientKey string `json:"challengerClientKey"`
+}
+
+type RevokeChallengeMessageContent struct {
+	ChallengerClientKey string `json:"challengerClientKey"`
+}
+
+type MatchCreationFailedMessageContent struct {
+	Challenger string `json:"challenger"`
+	Reason     string `json:"reason"`
 }

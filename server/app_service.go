@@ -9,6 +9,10 @@ import (
 type AppConfig struct {
 }
 
+func NewAppConfig() *AppConfig {
+	return &AppConfig{}
+}
+
 func (ac *AppConfig) MergeWith(other ConfigI) ConfigI {
 	newConfig := *(other.(*AppConfig))
 	return &newConfig
@@ -25,7 +29,7 @@ type AppService struct {
 }
 
 func NewAppService(config *AppConfig) *AppService {
-	appService := &AppService{}
-	appService.Service = *NewService(appService, config)
-	return appService
+	app := &AppService{}
+	app.Service = *NewService(app, config)
+	return app
 }

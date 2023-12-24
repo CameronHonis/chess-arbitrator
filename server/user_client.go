@@ -9,70 +9,36 @@ import (
 )
 
 type UserClient struct {
-	authManager AuthenticationServiceI
-	logManager  LogManagerI
-
 	active     bool //assumed that cleanup already ran if set to true
 	publicKey  string
 	privateKey string
-	inChannel  chan *Message
-	outChannel chan *Message
 	conn       *websocket.Conn
 	cleanup    func(*UserClient)
 }
 
 func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
 	pubKey, priKey := GenerateKeyset()
-	inChannel := make(chan *Message)
-	outChannel := make(chan *Message)
 
-	uc := UserClient{
-		authManager: GetAuthManager(),
-		logManager:  GetLogManager(),
-		active:      true,
-		publicKey:   pubKey,
-		privateKey:  priKey,
-		inChannel:   inChannel,
-		outChannel:  outChannel,
-		conn:        conn,
-		cleanup:     cleanup,
+	uc := &UserClient{
+		active:     true,
+		publicKey:  pubKey,
+		privateKey: priKey,
+		conn:       conn,
+		cleanup:    cleanup,
 	}
-	go uc.listenOnServerChannel()
-	go uc.listenOnWebsocket()
+	return uc
+}
 
-	logManagerConfigBuilder := NewLogManagerConfigBuilder()
-	logManagerConfigBuilder.WithDecorator(pubKey, ClientKeyLogDecorator)
-	if uc.logManager.(*LogManager).Config.IsEnvMuted(pubKey) {
-		logManagerConfigBuilder.WithMutedEnv(pubKey)
-	}
-	logConfig := logManagerConfigBuilder.Build()
-	uc.logManager.InjectConfig(logConfig)
-
-	msg := &Message{
-		Topic:       "auth",
-		ContentType: CONTENT_TYPE_AUTH,
-		Content: &AuthMessageContent{
-			PublicKey:  pubKey,
-			PrivateKey: priKey,
-		},
-	}
-	sendAuthErr := uc.SendMessage(msg)
-	if sendAuthErr != nil {
-		uc.logManager.LogRed(ENV_CLIENT, fmt.Sprintf("error sending auth message to client: %s", sendAuthErr), ALL_BUT_TEST_ENV)
-	}
-	return &uc
+func (uc *UserClient) Active() bool {
+	return uc.active
 }
 
 func (uc *UserClient) PublicKey() string {
 	return uc.publicKey
 }
 
-func (uc *UserClient) InChannel() chan *Message {
-	return uc.inChannel
-}
-
-func (uc *UserClient) OutChannel() chan *Message {
-	return uc.outChannel
+func (uc *UserClient) WSConn() *websocket.Conn {
+	return uc.conn
 }
 
 func (uc *UserClient) listenOnServerChannel() {

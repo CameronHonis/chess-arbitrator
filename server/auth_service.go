@@ -9,6 +9,43 @@ import (
 	"sync"
 )
 
+const (
+	AUTH_GRANTED EventVariant = "AUTH_GRANTED"
+	AUTH_DENIED               = "AUTH_DENIED"
+)
+
+type AuthenticationGrantedPayload struct {
+	ClientKey string
+	Role      RoleName
+}
+
+type AuthenticationGrantedEvent struct{ Event }
+
+func NewAuthenticationGrantedEvent(clientKey string, role RoleName) *AuthenticationGrantedEvent {
+	return &AuthenticationGrantedEvent{
+		Event: *NewEvent(AUTH_GRANTED, &AuthenticationGrantedPayload{
+			ClientKey: clientKey,
+			Role:      role,
+		}),
+	}
+}
+
+type AuthenticationDeniedPayload struct {
+	ClientKey string
+	Reason    string
+}
+
+type AuthenticationDeniedEvent struct{ Event }
+
+func NewAuthenticationDeniedEvent(clientKey string, reason string) *AuthenticationDeniedEvent {
+	return &AuthenticationDeniedEvent{
+		Event: *NewEvent(AUTH_DENIED, &AuthenticationDeniedPayload{
+			ClientKey: clientKey,
+			Reason:    reason,
+		}),
+	}
+}
+
 type RoleName string
 
 const (
@@ -23,6 +60,10 @@ var ENV_NAME_BY_ROLE_NAME = map[RoleName]string{
 
 type AuthConfig struct {
 	ConfigI
+}
+
+func NewAuthenticationConfig() *AuthConfig {
+	return &AuthConfig{}
 }
 
 type AuthenticationServiceI interface {
@@ -76,9 +117,18 @@ func (am *AuthenticationService) AddClient(clientKey string) {
 func (am *AuthenticationService) UpgradeAuth(clientKey string, roleName RoleName, secret string) error {
 	validSecretErr := am.ValidateSecret(roleName, secret)
 	if validSecretErr != nil {
+		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, validSecretErr.Error()))
 		return validSecretErr
 	}
-	return am.setRole(clientKey, roleName)
+
+	roleErr := am.setRole(clientKey, roleName)
+	if roleErr != nil {
+		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, roleErr.Error()))
+		return roleErr
+	}
+
+	am.Dispatch(NewAuthenticationGrantedEvent(clientKey, roleName))
+	return nil
 }
 
 func (am *AuthenticationService) RemoveClient(clientKey string) error {

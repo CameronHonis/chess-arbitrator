@@ -8,10 +8,53 @@ import (
 	"sync"
 )
 
+const (
+	SUB_SUCCESSFUL EventVariant = "SUB_SUCCESSFUL"
+	SUB_FAILED                  = "SUB_FAILED"
+)
+
+type SubSuccessfulPayload struct {
+	ClientKey string
+	Topic     MessageTopic
+}
+
+type SubSuccessfulEvent struct{ Event }
+
+func NewSubSuccessEvent(clientKey string, topic MessageTopic) *SubSuccessfulEvent {
+	return &SubSuccessfulEvent{
+		Event: *NewEvent(SUB_SUCCESSFUL, &SubSuccessfulPayload{
+			ClientKey: clientKey,
+			Topic:     topic,
+		}),
+	}
+}
+
+type SubFailedPayload struct {
+	ClientKey string
+	Topic     MessageTopic
+	Reason    string
+}
+
+type SubFailedEvent struct{ Event }
+
+func NewSubFailedEvent(clientKey string, topic MessageTopic, reason string) *SubFailedEvent {
+	return &SubFailedEvent{
+		Event: *NewEvent(SUB_FAILED, &SubFailedPayload{
+			ClientKey: clientKey,
+			Topic:     topic,
+			Reason:    reason,
+		}),
+	}
+}
+
 type MessageTopic string
 
 type SubscriptionConfig struct {
 	ConfigI
+}
+
+func NewSubscriptionConfig() *SubscriptionConfig {
+	return &SubscriptionConfig{}
 }
 
 type SubscriptionServiceI interface {
@@ -25,7 +68,7 @@ type SubscriptionServiceI interface {
 type SubscriptionService struct {
 	Service[*SubscriptionConfig]
 	__dependencies__ Marker
-	authManager      AuthenticationServiceI
+	AuthService      AuthenticationServiceI
 
 	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[string]
@@ -33,7 +76,7 @@ type SubscriptionService struct {
 	mu                      sync.Mutex
 }
 
-func NewSubService(config *SubscriptionConfig) *SubscriptionService {
+func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	subService := &SubscriptionService{
 		subbedClientKeysByTopic: make(map[MessageTopic]*Set[string]),
 		subbedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
@@ -42,13 +85,15 @@ func NewSubService(config *SubscriptionConfig) *SubscriptionService {
 	return subService
 }
 func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic) error {
-	authErr := sm.authManager.ValidateClientForTopic(clientKey, topic)
+	authErr := sm.AuthService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
+		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr
 	}
 	subbedTopics := sm.GetSubbedTopics(clientKey)
 	sm.mu.Lock()
 	if subbedTopics.Has(topic) {
+		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, "already subscribed"))
 		return fmt.Errorf("client %s already subscribed to topic %s", clientKey, topic)
 	}
 	subbedTopics.Add(topic)
@@ -59,6 +104,8 @@ func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic)
 	sm.mu.Lock()
 	subbedClientKeys.Add(clientKey)
 	sm.mu.Unlock()
+
+	sm.Dispatch(NewSubSuccessEvent(clientKey, topic))
 	return nil
 }
 

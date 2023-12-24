@@ -7,11 +7,11 @@ import (
 const ENV_SERVER = "server"
 const ENV_CLIENT = "client"
 const ENV_MATCHMAKING = "matchmaking"
-const ENV_MATCH_MANAGER = "match_manager"
+const ENV_MATCH_SERVICE = "match_service"
 const ENV_TIMER = "timer"
 
 func GetAppConfig() *AppConfig {
-	return &AppConfig{}
+	return NewAppConfig()
 }
 
 func GetLoggerConfig() *LoggerConfig {
@@ -19,7 +19,7 @@ func GetLoggerConfig() *LoggerConfig {
 	logConfigBuilder.WithDecorator(ENV_SERVER, WrapGreen)
 	logConfigBuilder.WithDecorator(ENV_CLIENT, WrapBlue)
 	logConfigBuilder.WithDecorator(ENV_MATCHMAKING, WrapMagenta)
-	logConfigBuilder.WithDecorator(ENV_MATCH_MANAGER, WrapBrown)
+	logConfigBuilder.WithDecorator(ENV_MATCH_SERVICE, WrapBrown)
 	logConfigBuilder.WithDecorator(ENV_TIMER, WrapOrange)
 	//logConfigBuilder.WithMutedEnv("server")
 	//logConfigBuilder.WithMutedEnv("client")
@@ -28,4 +28,12 @@ func GetLoggerConfig() *LoggerConfig {
 	//logConfigBuilder.WithMutedEnv("timer")
 
 	return logConfigBuilder.Build()
+}
+
+func GetRouterConfig() *RouterConfig {
+	return NewRouterConfig()
+}
+
+func GetUserClientsConfig() *UserClientsConfig {
+	return NewUserClientsConfig()
 }
