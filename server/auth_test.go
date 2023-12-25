@@ -17,8 +17,8 @@ var _ = Describe("Auth", func() {
 			Expect(len(publicKey)).To(Equal(64), "public key should be a sha256 hex hash")
 		})
 		It("generates a unique public & private key each time", func() {
-			pubKeySet := set.EmptySet[string]()
-			privKeySet := set.EmptySet[string]()
+			pubKeySet := set.EmptySet[Key]()
+			privKeySet := set.EmptySet[Key]()
 			for i := 0; i < 1000; i++ {
 				publicKey, privateKey := GenerateKeyset()
 				Expect(pubKeySet.Has(publicKey)).To(BeFalse())

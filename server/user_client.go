@@ -1,23 +1,22 @@
 package server
 
 import (
-	"fmt"
-	. "github.com/CameronHonis/log"
 	"github.com/gorilla/websocket"
-	"strings"
 )
 
-type UserClient struct {
-	publicKey  string
-	privateKey string
+type Key string
+
+type Client struct {
+	publicKey  Key
+	privateKey Key
 	conn       *websocket.Conn
-	cleanup    func(*UserClient)
+	cleanup    func(*Client)
 }
 
-func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient {
+func NewClient(conn *websocket.Conn, cleanup func(*Client)) *Client {
 	pubKey, priKey := GenerateKeyset()
 
-	uc := &UserClient{
+	uc := &Client{
 		publicKey:  pubKey,
 		privateKey: priKey,
 		conn:       conn,
@@ -26,15 +25,10 @@ func NewUserClient(conn *websocket.Conn, cleanup func(*UserClient)) *UserClient 
 	return uc
 }
 
-func (uc *UserClient) PublicKey() string {
-	return uc.publicKey
+func (c *Client) PublicKey() Key {
+	return c.publicKey
 }
 
-func (uc *UserClient) WSConn() *websocket.Conn {
-	return uc.conn
-}
-
-func ClientKeyLogDecorator(clientKey string) string {
-	concatKey := clientKey[:4] + ".." + clientKey[len(clientKey)-4:]
-	return WrapCyan(fmt.Sprintf("%s", strings.ToUpper(concatKey)))
+func (c *Client) WSConn() *websocket.Conn {
+	return c.conn
 }

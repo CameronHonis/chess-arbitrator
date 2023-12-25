@@ -124,9 +124,9 @@ type MatchServiceI interface {
 	ExecuteMove(matchId string, move *chess.Move) error
 
 	ChallengePlayer(challenge *Challenge) error
-	AcceptChallenge(challengedKey, challengerKey string) error
-	RevokeChallenge(challengerKey, challengedKey string) error
-	DeclineChallenge(challengedKey, challengerKey string) error
+	AcceptChallenge(challengedKey, challengerKey Key) error
+	RevokeChallenge(challengerKey, challengedKey Key) error
+	DeclineChallenge(challengedKey, challengerKey Key) error
 	AddMatch(match *Match) error
 }
 
@@ -136,18 +136,18 @@ type MatchService struct {
 	LoggerService         LoggerServiceI
 	AuthenticationService AuthenticationServiceI
 
-	__state__                      Marker
-	matchByMatchId                 map[string]*Match
-	matchIdByClientKey             map[string]string
-	challengeByChallengerClientKey map[string]*Set[*Challenge]
-	mu                             sync.Mutex
+	__state__                Marker
+	matchByMatchId           map[string]*Match
+	matchIdByClientKey       map[Key]string
+	challengeByChallengerKey map[Key]*Set[*Challenge]
+	mu                       sync.Mutex
 }
 
 func NewMatchService(config *MatchServiceConfig) *MatchService {
 	matchService := &MatchService{
-		matchByMatchId:                 make(map[string]*Match),
-		matchIdByClientKey:             make(map[string]string),
-		challengeByChallengerClientKey: make(map[string]*Set[*Challenge]),
+		matchByMatchId:           make(map[string]*Match),
+		matchIdByClientKey:       make(map[Key]string),
+		challengeByChallengerKey: make(map[Key]*Set[*Challenge]),
 	}
 	matchService.Service = *NewService(matchService, config)
 	return matchService
@@ -163,7 +163,7 @@ func (m *MatchService) GetMatchById(matchId string) (*Match, error) {
 	return match, nil
 }
 
-func (m *MatchService) GetMatchByClientKey(clientKey string) (*Match, error) {
+func (m *MatchService) GetMatchByClientKey(clientKey Key) (*Match, error) {
 	m.mu.Lock()
 	matchId, ok := m.matchIdByClientKey[clientKey]
 	m.mu.Unlock()
@@ -173,23 +173,23 @@ func (m *MatchService) GetMatchByClientKey(clientKey string) (*Match, error) {
 	return m.GetMatchById(matchId)
 }
 
-func (m *MatchService) GetChallenges(challengerKey string) (*Set[*Challenge], error) {
+func (m *MatchService) GetChallenges(challengerKey Key) (*Set[*Challenge], error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	challenges, ok := m.challengeByChallengerClientKey[challengerKey]
+	challenges, ok := m.challengeByChallengerKey[challengerKey]
 	if !ok {
 		return EmptySet[*Challenge](), nil
 	}
 	return challenges, nil
 }
 
-func (m *MatchService) GetChallenge(challengerKey string, receivingClientKey string) (*Challenge, error) {
+func (m *MatchService) GetChallenge(challengerKey Key, receiverKey Key) (*Challenge, error) {
 	challenges, challengesErr := m.GetChallenges(challengerKey)
 	if challengesErr != nil {
 		return nil, challengesErr
 	}
 	for _, challenge := range challenges.Flatten() {
-		if challenge.ChallengedKey == receivingClientKey {
+		if challenge.ChallengedKey == receiverKey {
 			return challenge, nil
 		}
 	}
@@ -258,13 +258,13 @@ func (m *MatchService) ChallengePlayer(challenge *Challenge) error {
 		return fmt.Errorf("challenge already exists")
 	}
 	m.mu.Lock()
-	m.challengeByChallengerClientKey[challenge.ChallengerKey].Add(challenge)
+	m.challengeByChallengerKey[challenge.ChallengerKey].Add(challenge)
 	m.mu.Unlock()
 	go m.Dispatch(NewChallengeCreatedEvent(challenge))
 	return nil
 }
 
-func (m *MatchService) AcceptChallenge(challengedKey, challengerKey string) error {
+func (m *MatchService) AcceptChallenge(challengedKey, challengerKey Key) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
@@ -274,13 +274,13 @@ func (m *MatchService) AcceptChallenge(challengedKey, challengerKey string) erro
 	return m.AddMatch(match)
 }
 
-func (m *MatchService) RevokeChallenge(challengerKey, challengedKey string) error {
+func (m *MatchService) RevokeChallenge(challengerKey, challengedKey Key) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
 }
 
-func (m *MatchService) DeclineChallenge(challengedKey, challengerKey string) error {
+func (m *MatchService) DeclineChallenge(challengedKey, challengerKey Key) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
@@ -350,7 +350,7 @@ func (m *MatchService) removeMatch(match *Match) error {
 	return nil
 }
 
-func (m *MatchService) canStartMatchWithClientKey(clientKey string) bool {
+func (m *MatchService) canStartMatchWithClientKey(clientKey Key) bool {
 	role, roleErr := m.AuthenticationService.GetRole(clientKey)
 	if roleErr != nil {
 		return false

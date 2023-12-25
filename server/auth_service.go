@@ -15,13 +15,13 @@ const (
 )
 
 type AuthenticationGrantedPayload struct {
-	ClientKey string
+	ClientKey Key
 	Role      RoleName
 }
 
 type AuthenticationGrantedEvent struct{ Event }
 
-func NewAuthenticationGrantedEvent(clientKey string, role RoleName) *AuthenticationGrantedEvent {
+func NewAuthenticationGrantedEvent(clientKey Key, role RoleName) *AuthenticationGrantedEvent {
 	return &AuthenticationGrantedEvent{
 		Event: *NewEvent(AUTH_GRANTED, &AuthenticationGrantedPayload{
 			ClientKey: clientKey,
@@ -31,13 +31,13 @@ func NewAuthenticationGrantedEvent(clientKey string, role RoleName) *Authenticat
 }
 
 type AuthenticationDeniedPayload struct {
-	ClientKey string
+	ClientKey Key
 	Reason    string
 }
 
 type AuthenticationDeniedEvent struct{ Event }
 
-func NewAuthenticationDeniedEvent(clientKey string, reason string) *AuthenticationDeniedEvent {
+func NewAuthenticationDeniedEvent(clientKey Key, reason string) *AuthenticationDeniedEvent {
 	return &AuthenticationDeniedEvent{
 		Event: *NewEvent(AUTH_DENIED, &AuthenticationDeniedPayload{
 			ClientKey: clientKey,
@@ -67,19 +67,19 @@ func NewAuthenticationConfig() *AuthConfig {
 }
 
 type AuthenticationServiceI interface {
-	GetRole(clientKey string) (RoleName, error)
+	GetRole(clientKey Key) (RoleName, error)
 
-	AddClient(clientKey string)
-	UpgradeAuth(clientKey string, roleName RoleName, secret string) error
-	RemoveClient(clientKey string) error
+	AddClient(clientKey Key)
+	UpgradeAuth(clientKey Key, roleName RoleName, secret string) error
+	RemoveClient(clientKey Key) error
 
 	ValidateSecret(roleName RoleName, secret string) error
 	ValidateAuthInMessage(msg *Message) error
 	StripAuthFromMessage(msg *Message)
-	ValidateClientForTopic(clientKey string, topic MessageTopic) error
+	ValidateClientForTopic(clientKey Key, topic MessageTopic) error
 
 	getSecret(role RoleName) (string, error)
-	setRole(clientKey string, role RoleName) error
+	setRole(clientKey Key, role RoleName) error
 }
 
 type AuthenticationService struct {
@@ -89,7 +89,7 @@ type AuthenticationService struct {
 	LoggerService    LoggerServiceI
 
 	__state__    Marker
-	roleByClient map[string]RoleName
+	roleByClient map[Key]RoleName
 	mu           sync.Mutex
 }
 
@@ -99,7 +99,7 @@ func NewAuthenticationService(config *AuthConfig) *AuthenticationService {
 	return authService
 }
 
-func (am *AuthenticationService) GetRole(clientKey string) (RoleName, error) {
+func (am *AuthenticationService) GetRole(clientKey Key) (RoleName, error) {
 	am.mu.Lock()
 	role, ok := am.roleByClient[clientKey]
 	am.mu.Unlock()
@@ -109,13 +109,13 @@ func (am *AuthenticationService) GetRole(clientKey string) (RoleName, error) {
 	return role, nil
 }
 
-func (am *AuthenticationService) AddClient(clientKey string) {
+func (am *AuthenticationService) AddClient(clientKey Key) {
 	am.mu.Lock()
 	am.roleByClient[clientKey] = PLEB
 	am.mu.Unlock()
 }
 
-func (am *AuthenticationService) UpgradeAuth(clientKey string, roleName RoleName, secret string) error {
+func (am *AuthenticationService) UpgradeAuth(clientKey Key, roleName RoleName, secret string) error {
 	validSecretErr := am.ValidateSecret(roleName, secret)
 	if validSecretErr != nil {
 		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, validSecretErr.Error()))
@@ -132,7 +132,7 @@ func (am *AuthenticationService) UpgradeAuth(clientKey string, roleName RoleName
 	return nil
 }
 
-func (am *AuthenticationService) RemoveClient(clientKey string) error {
+func (am *AuthenticationService) RemoveClient(clientKey Key) error {
 	_, roleErr := am.GetRole(clientKey)
 	if roleErr != nil {
 		am.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("attempt to remove non-existant client %s", clientKey))
@@ -167,11 +167,11 @@ func (am *AuthenticationService) StripAuthFromMessage(msg *Message) {
 	msg.PrivateKey = ""
 }
 
-func (am *AuthenticationService) ValidateClientForTopic(clientKey string, topic MessageTopic) error {
+func (am *AuthenticationService) ValidateClientForTopic(clientKey Key, topic MessageTopic) error {
 	return nil
 }
 
-func (am *AuthenticationService) setRole(clientKey string, role RoleName) error {
+func (am *AuthenticationService) setRole(clientKey Key, role RoleName) error {
 	_, getRoleErr := am.GetRole(clientKey)
 	if getRoleErr != nil {
 		return getRoleErr

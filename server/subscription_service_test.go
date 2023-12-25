@@ -8,14 +8,14 @@ import (
 )
 
 var _ = Describe("SubscriptionService", func() {
-	var client *UserClient
+	var client *Client
 	var clientKey string
 	BeforeEach(func() {
 		userClientsManager = nil
 		GetUserClientsManager()
 		subscriptionManager = nil
 		GetSubscriptionManager()
-		client = NewUserClient(nil, func(client *UserClient) {})
+		client = NewClient(nil, func(client *Client) {})
 		client.publicKey = "some-public-key"
 		clientKey = client.publicKey
 	})

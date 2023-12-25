@@ -23,10 +23,10 @@ func (uc *UserClientsConfig) MergeWith(other ConfigI) ConfigI {
 
 type UserClientsServiceI interface {
 	ServiceI
-	GetClient(clientKey string) (*UserClient, error)
-	AddNewClient(conn *websocket.Conn) (*UserClient, error)
-	AddClient(client *UserClient) error
-	RemoveClient(client *UserClient) error
+	GetClient(clientKey string) (*Client, error)
+	AddNewClient(conn *websocket.Conn) (*Client, error)
+	AddClient(client *Client) error
+	RemoveClient(client *Client) error
 	BroadcastMessage(message *Message)
 	DirectMessage(message *Message, clientKey string) error
 }
@@ -42,19 +42,19 @@ type UserClientsService struct {
 
 	__state__         Marker
 	mu                sync.Mutex
-	clientByPublicKey map[string]*UserClient
+	clientByPublicKey map[Key]*Client
 }
 
 func NewUserClientsService(config *UserClientsConfig) *UserClientsService {
 	userClientsService := &UserClientsService{
-		clientByPublicKey: make(map[string]*UserClient),
+		clientByPublicKey: make(map[Key]*Client),
 	}
 	userClientsService.Service = *NewService(userClientsService, config)
 	return userClientsService
 }
 
-func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*UserClient, error) {
-	client := NewUserClient(conn, uc.CleanupClient)
+func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*Client, error) {
+	client := NewClient(conn, uc.CleanupClient)
 
 	err := uc.AddClient(client)
 	if err != nil {
@@ -64,7 +64,7 @@ func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*UserClient, e
 	}
 }
 
-func (uc *UserClientsService) AddClient(client *UserClient) error {
+func (uc *UserClientsService) AddClient(client *Client) error {
 	uc.mu.Lock()
 	if _, ok := uc.clientByPublicKey[client.PublicKey()]; ok {
 		return fmt.Errorf("client with key %s already exists", client.PublicKey())
@@ -75,7 +75,7 @@ func (uc *UserClientsService) AddClient(client *UserClient) error {
 	return nil
 }
 
-func (uc *UserClientsService) RemoveClient(client *UserClient) error {
+func (uc *UserClientsService) RemoveClient(client *Client) error {
 	pubKey := client.PublicKey()
 
 	uc.mu.Lock()
@@ -90,7 +90,7 @@ func (uc *UserClientsService) RemoveClient(client *UserClient) error {
 	return nil
 }
 
-func (uc *UserClientsService) GetClient(clientKey string) (*UserClient, error) {
+func (uc *UserClientsService) GetClient(clientKey Key) (*Client, error) {
 	defer uc.mu.Unlock()
 	uc.mu.Lock()
 	client, ok := uc.clientByPublicKey[clientKey]
@@ -118,7 +118,7 @@ func (uc *UserClientsService) BroadcastMessage(message *Message) {
 	}
 }
 
-func (uc *UserClientsService) DirectMessage(message *Message, clientKey string) error {
+func (uc *UserClientsService) DirectMessage(message *Message, clientKey Key) error {
 	if message.Topic != "directMessage" && message.Topic != "" {
 		return fmt.Errorf("direct messages expected to not have a topic, given %s", message.Topic)
 	}
@@ -131,11 +131,11 @@ func (uc *UserClientsService) DirectMessage(message *Message, clientKey string) 
 	return uc.writeMessage(client, &msgCopy)
 }
 
-func (uc *UserClientsService) CleanupClient(userClient *UserClient) {
+func (uc *UserClientsService) CleanupClient(userClient *Client) {
 	_ = uc.AuthenticationService.RemoveClient(userClient.PublicKey())
 }
 
-func (uc *UserClientsService) listenForUserInput(userClient *UserClient) {
+func (uc *UserClientsService) listenForUserInput(userClient *Client) {
 	for {
 		_, rawMsg, readErr := userClient.WSConn().ReadMessage()
 		_, clientErr := uc.GetClient(userClient.PublicKey())
@@ -157,8 +157,8 @@ func (uc *UserClientsService) listenForUserInput(userClient *UserClient) {
 
 }
 
-func (uc *UserClientsService) readMessage(clientKey string, rawMsg []byte) error {
-	uc.LoggerService.Log(clientKey, ">> ", string(rawMsg))
+func (uc *UserClientsService) readMessage(clientKey Key, rawMsg []byte) error {
+	uc.LoggerService.Log(string(clientKey), ">> ", string(rawMsg))
 	msg, unmarshalErr := UnmarshalToMessage(rawMsg)
 	if unmarshalErr != nil {
 		return fmt.Errorf("error unmarshalling message: %s", unmarshalErr)
@@ -173,7 +173,7 @@ func (uc *UserClientsService) readMessage(clientKey string, rawMsg []byte) error
 	return nil
 }
 
-func (uc *UserClientsService) writeMessage(client *UserClient, msg *Message) error {
+func (uc *UserClientsService) writeMessage(client *Client, msg *Message) error {
 	client, err := uc.GetClient(msg.SenderKey)
 	if err != nil {
 		return err
@@ -182,6 +182,6 @@ func (uc *UserClientsService) writeMessage(client *UserClient, msg *Message) err
 	if jsonErr != nil {
 		return jsonErr
 	}
-	uc.LoggerService.Log(client.PublicKey(), "<< ", string(msgJson))
+	uc.LoggerService.Log(string(client.PublicKey()), "<< ", string(msgJson))
 	return client.WSConn().WriteMessage(websocket.TextMessage, msgJson)
 }

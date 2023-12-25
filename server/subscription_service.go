@@ -14,13 +14,13 @@ const (
 )
 
 type SubSuccessfulPayload struct {
-	ClientKey string
+	ClientKey Key
 	Topic     MessageTopic
 }
 
 type SubSuccessfulEvent struct{ Event }
 
-func NewSubSuccessEvent(clientKey string, topic MessageTopic) *SubSuccessfulEvent {
+func NewSubSuccessEvent(clientKey Key, topic MessageTopic) *SubSuccessfulEvent {
 	return &SubSuccessfulEvent{
 		Event: *NewEvent(SUB_SUCCESSFUL, &SubSuccessfulPayload{
 			ClientKey: clientKey,
@@ -30,14 +30,14 @@ func NewSubSuccessEvent(clientKey string, topic MessageTopic) *SubSuccessfulEven
 }
 
 type SubFailedPayload struct {
-	ClientKey string
+	ClientKey Key
 	Topic     MessageTopic
 	Reason    string
 }
 
 type SubFailedEvent struct{ Event }
 
-func NewSubFailedEvent(clientKey string, topic MessageTopic, reason string) *SubFailedEvent {
+func NewSubFailedEvent(clientKey Key, topic MessageTopic, reason string) *SubFailedEvent {
 	return &SubFailedEvent{
 		Event: *NewEvent(SUB_FAILED, &SubFailedPayload{
 			ClientKey: clientKey,
@@ -58,11 +58,11 @@ func NewSubscriptionConfig() *SubscriptionConfig {
 }
 
 type SubscriptionServiceI interface {
-	SubClientTo(clientKey string, topic MessageTopic) error
-	UnsubClientFrom(clientKey string, topic MessageTopic) error
-	UnsubClientFromAll(clientKey string)
-	GetSubbedTopics(clientKey string) *Set[MessageTopic]
-	GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string]
+	SubClientTo(clientKey Key, topic MessageTopic) error
+	UnsubClientFrom(clientKey Key, topic MessageTopic) error
+	UnsubClientFromAll(clientKey Key)
+	GetSubbedTopics(clientKey Key) *Set[MessageTopic]
+	GetClientKeysSubbedToTopic(topic MessageTopic) *Set[Key]
 }
 
 type SubscriptionService struct {
@@ -71,20 +71,20 @@ type SubscriptionService struct {
 	AuthenticationService AuthenticationServiceI
 
 	__state__               Marker
-	subbedClientKeysByTopic map[MessageTopic]*Set[string]
-	subbedTopicsByClientKey map[string]*Set[MessageTopic]
+	subbedClientKeysByTopic map[MessageTopic]*Set[Key]
+	subbedTopicsByClientKey map[Key]*Set[MessageTopic]
 	mu                      sync.Mutex
 }
 
 func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	subService := &SubscriptionService{
-		subbedClientKeysByTopic: make(map[MessageTopic]*Set[string]),
-		subbedTopicsByClientKey: make(map[string]*Set[MessageTopic]),
+		subbedClientKeysByTopic: make(map[MessageTopic]*Set[Key]),
+		subbedTopicsByClientKey: make(map[Key]*Set[MessageTopic]),
 	}
 	subService.Service = *NewService(subService, config)
 	return subService
 }
-func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic) error {
+func (sm *SubscriptionService) SubClientTo(clientKey Key, topic MessageTopic) error {
 	authErr := sm.AuthenticationService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
@@ -109,7 +109,7 @@ func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic)
 	return nil
 }
 
-func (sm *SubscriptionService) UnsubClientFrom(clientKey string, topic MessageTopic) error {
+func (sm *SubscriptionService) UnsubClientFrom(clientKey Key, topic MessageTopic) error {
 	subbedTopics := sm.GetSubbedTopics(clientKey)
 	sm.mu.Lock()
 	if !subbedTopics.Has(topic) {
@@ -126,7 +126,7 @@ func (sm *SubscriptionService) UnsubClientFrom(clientKey string, topic MessageTo
 	return nil
 }
 
-func (sm *SubscriptionService) UnsubClientFromAll(clientKey string) {
+func (sm *SubscriptionService) UnsubClientFromAll(clientKey Key) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	subbedTopics, ok := sm.subbedTopicsByClientKey[clientKey]
@@ -139,7 +139,7 @@ func (sm *SubscriptionService) UnsubClientFromAll(clientKey string) {
 	delete(sm.subbedTopicsByClientKey, clientKey)
 }
 
-func (sm *SubscriptionService) GetSubbedTopics(clientKey string) *Set[MessageTopic] {
+func (sm *SubscriptionService) GetSubbedTopics(clientKey Key) *Set[MessageTopic] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedTopicsByClientKey[clientKey]
@@ -149,12 +149,12 @@ func (sm *SubscriptionService) GetSubbedTopics(clientKey string) *Set[MessageTop
 	return sm.subbedTopicsByClientKey[clientKey]
 }
 
-func (sm *SubscriptionService) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[string] {
+func (sm *SubscriptionService) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedClientKeysByTopic[topic]
 	if !ok {
-		sm.subbedClientKeysByTopic[topic] = EmptySet[string]()
+		sm.subbedClientKeysByTopic[topic] = EmptySet[Key]()
 	}
 	return sm.subbedClientKeysByTopic[topic]
 }

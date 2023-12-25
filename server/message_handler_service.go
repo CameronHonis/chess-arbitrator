@@ -30,16 +30,16 @@ func NewEchoEvent(message string) *EchoEvent {
 }
 
 type MatchCreationFailedEventPayload struct {
-	ChallengerClientKey string
+	ChallengerClientKey Key
 	Reason              string
 }
 
 type MatchCreationFailedEvent struct{ Event }
 
-func NewMatchCreationFailedEvent(challengerClientKey string, reason string) *MatchCreationFailedEvent {
+func NewMatchCreationFailedEvent(challengerKey Key, reason string) *MatchCreationFailedEvent {
 	return &MatchCreationFailedEvent{
 		Event: *NewEvent(MATCH_CREATION_FAILED, &MatchCreationFailedEventPayload{
-			ChallengerClientKey: challengerClientKey,
+			ChallengerClientKey: challengerKey,
 			Reason:              reason,
 		}),
 	}

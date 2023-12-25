@@ -7,13 +7,13 @@ import (
 )
 
 var _ = Describe("UserClientsService", func() {
-	var client *UserClient
+	var client *Client
 	var clientKey string
 	BeforeEach(func() {
 		subscriptionManager = nil
 		userClientsManager = nil
 		GetUserClientsManager()
-		client = NewUserClient(nil, func(client *UserClient) {})
+		client = NewClient(nil, func(client *Client) {})
 		client.publicKey = "some-public-key"
 		clientKey = client.publicKey
 	})
@@ -25,7 +25,7 @@ var _ = Describe("UserClientsService", func() {
 				Expect(len(userClientsManager.clientByPublicKey)).To(Equal(1))
 				client, ok := userClientsManager.clientByPublicKey[clientKey]
 				Expect(ok).To(BeTrue())
-				Expect(*client).To(BeAssignableToTypeOf(UserClient{}))
+				Expect(*client).To(BeAssignableToTypeOf(Client{}))
 				Expect(client.publicKey).To(Equal(clientKey))
 				Expect(client.inChannel).ToNot(BeNil())
 				Expect(client.outChannel).ToNot(BeNil())
@@ -80,11 +80,11 @@ var _ = Describe("UserClientsService", func() {
 	})
 	Describe("::GetAllOutChannels", func() {
 		// is this flakey?
-		var otherClient *UserClient
+		var otherClient *Client
 		BeforeEach(func() {
 			addClientErr := userClientsManager.AddClient(client)
 			Expect(addClientErr).ToNot(HaveOccurred())
-			otherClient = NewUserClient(nil, func(client *UserClient) {})
+			otherClient = NewClient(nil, func(client *Client) {})
 			otherClient.publicKey = "other-public-key"
 			addClientErr = userClientsManager.AddClient(otherClient)
 			Expect(addClientErr).ToNot(HaveOccurred())

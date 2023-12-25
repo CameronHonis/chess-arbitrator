@@ -1,14 +1,14 @@
 package server
 
 type Challenge struct {
-	ChallengerKey     string       `json:"challengerKey"`
-	ChallengedKey     string       `json:"challengedKey"`
+	ChallengerKey     Key          `json:"challengerKey"`
+	ChallengedKey     Key          `json:"challengedKey"`
 	IsChallengerWhite bool         `json:"isChallengerWhite"`
 	IsChallengerBlack bool         `json:"isChallengerBlack"`
 	TimeControl       *TimeControl `json:"timeControl"`
 }
 
-func NewChallenge(challengerKey string, challengedKey string, timeControl *TimeControl) *Challenge {
+func NewChallenge(challengerKey Key, challengedKey Key, timeControl *TimeControl) *Challenge {
 	return &Challenge{
 		ChallengerKey:     challengerKey,
 		ChallengedKey:     challengedKey,

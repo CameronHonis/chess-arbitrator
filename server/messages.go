@@ -7,8 +7,8 @@ import (
 )
 
 type Message struct {
-	SenderKey   string       `json:"senderKey"`
-	PrivateKey  string       `json:"privateKey"`
+	SenderKey   Key          `json:"senderKey"`
+	PrivateKey  Key          `json:"privateKey"`
 	Topic       MessageTopic `json:"topic"`
 	ContentType ContentType  `json:"contentType"`
 	Content     interface{}  `json:"content"`
@@ -104,8 +104,8 @@ const (
 )
 
 type AuthMessageContent struct {
-	PublicKey  string `json:"publicKey"`
-	PrivateKey string `json:"privateKey"`
+	PublicKey  Key `json:"publicKey"`
+	PrivateKey Key `json:"privateKey"`
 }
 
 type FindMatchMessageContent struct {
@@ -160,18 +160,18 @@ type ChallengeRequestFailedMessageContent struct {
 }
 
 type AcceptChallengeMessageContent struct {
-	ChallengerClientKey string `json:"challengerClientKey"`
+	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
 type DeclineChallengeMessageContent struct {
-	ChallengerClientKey string `json:"challengerClientKey"`
+	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
 type RevokeChallengeMessageContent struct {
-	ChallengerClientKey string `json:"challengerClientKey"`
+	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
 type MatchCreationFailedMessageContent struct {
-	Challenger string `json:"challenger"`
-	Reason     string `json:"reason"`
+	ChallengerKey Key    `json:"challenger"`
+	Reason        string `json:"reason"`
 }

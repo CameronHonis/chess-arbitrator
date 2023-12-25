@@ -10,15 +10,15 @@ import (
 type Match struct {
 	Uuid                  string       `json:"uuid"`
 	Board                 *chess.Board `json:"board"`
-	WhiteClientKey        string       `json:"whiteClientKey"`
+	WhiteClientKey        Key          `json:"whiteClientKey"`
 	WhiteTimeRemainingSec float64      `json:"whiteTimeRemainingSec"`
-	BlackClientKey        string       `json:"blackClientKey"`
+	BlackClientKey        Key          `json:"blackClientKey"`
 	BlackTimeRemainingSec float64      `json:"blackTimeRemainingSec"`
 	TimeControl           *TimeControl `json:"timeControl"`
 	LastMoveTime          *time.Time   `json:"-"`
 }
 
-func NewMatch(whiteClientKey string, blackClientKey string, timeControl *TimeControl) *Match {
+func NewMatch(whiteClientKey Key, blackClientKey Key, timeControl *TimeControl) *Match {
 	matchId := uuid.New().String()
 	now := time.Now()
 	return &Match{
@@ -58,7 +58,7 @@ func (mb *MatchBuilder) WithBoard(board *chess.Board) *MatchBuilder {
 	return mb
 }
 
-func (mb *MatchBuilder) WithWhiteClientKey(clientKey string) *MatchBuilder {
+func (mb *MatchBuilder) WithWhiteClientKey(clientKey Key) *MatchBuilder {
 	mb.match.WhiteClientKey = clientKey
 	return mb
 }
@@ -68,7 +68,7 @@ func (mb *MatchBuilder) WithWhiteTimeRemainingSec(timeRemainingSec float64) *Mat
 	return mb
 }
 
-func (mb *MatchBuilder) WithBlackClientKey(clientKey string) *MatchBuilder {
+func (mb *MatchBuilder) WithBlackClientKey(clientKey Key) *MatchBuilder {
 	mb.match.BlackClientKey = clientKey
 	return mb
 }
@@ -94,10 +94,10 @@ func (mb *MatchBuilder) WithLastMoveTime(lastMoveTime *time.Time) *MatchBuilder 
 	return mb
 }
 
-func (mb *MatchBuilder) WithClientKeys(clientAKey string, clientBKey string) *MatchBuilder {
+func (mb *MatchBuilder) WithClientKeys(clientAKey Key, clientBKey Key) *MatchBuilder {
 	rand.Seed(time.Now().UnixNano())
 	clientAIsWhite := rand.Intn(2) == 0
-	var whiteClientKey, blackClientKey string
+	var whiteClientKey, blackClientKey Key
 	if clientAIsWhite {
 		whiteClientKey = clientAKey
 		blackClientKey = clientBKey

@@ -18,12 +18,12 @@ type MatchmakingPool struct {
 	head *MMPoolNode
 	tail *MMPoolNode
 	// map to allow for O(1) lookup time of nodes by client key
-	nodeByClientKey map[string]*MMPoolNode
+	nodeByClientKey map[Key]*MMPoolNode
 }
 
 func NewMatchmakingPool() *MatchmakingPool {
 	return &MatchmakingPool{
-		nodeByClientKey: make(map[string]*MMPoolNode),
+		nodeByClientKey: make(map[Key]*MMPoolNode),
 	}
 }
 
@@ -47,7 +47,7 @@ func (mmp *MatchmakingPool) AddClient(client *ClientProfile) error {
 	return nil
 }
 
-func (mmp *MatchmakingPool) RemoveClient(clientKey string) error {
+func (mmp *MatchmakingPool) RemoveClient(clientKey Key) error {
 	node, ok := mmp.nodeByClientKey[clientKey]
 	if !ok {
 		return fmt.Errorf("client with key %s not in pool", clientKey)
