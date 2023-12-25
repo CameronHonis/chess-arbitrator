@@ -54,7 +54,7 @@ func (rs *RouterService) StartWSServer() {
 
 	config := rs.Config().(*RouterConfig)
 	port := config.Port
-	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
 		fmt.Println(err)
 		return

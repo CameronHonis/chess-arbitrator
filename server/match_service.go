@@ -132,9 +132,9 @@ type MatchServiceI interface {
 
 type MatchService struct {
 	Service[*MatchServiceConfig]
-	__dependencies__ Marker
-	LoggerService    LoggerServiceI
-	AuthService      AuthenticationServiceI
+	__dependencies__      Marker
+	LoggerService         LoggerServiceI
+	AuthenticationService AuthenticationServiceI
 
 	__state__                      Marker
 	matchByMatchId                 map[string]*Match
@@ -299,10 +299,10 @@ func (m *MatchService) AddMatch(match *Match) error {
 
 	m.mu.Lock()
 	m.matchByMatchId[match.Uuid] = match
-	if role, _ := m.AuthService.GetRole(match.WhiteClientKey); role != BOT {
+	if role, _ := m.AuthenticationService.GetRole(match.WhiteClientKey); role != BOT {
 		m.matchIdByClientKey[match.WhiteClientKey] = match.Uuid
 	}
-	if role, _ := m.AuthService.GetRole(match.BlackClientKey); role != BOT {
+	if role, _ := m.AuthenticationService.GetRole(match.BlackClientKey); role != BOT {
 		m.matchIdByClientKey[match.BlackClientKey] = match.Uuid
 	}
 	m.mu.Unlock()
@@ -351,7 +351,7 @@ func (m *MatchService) removeMatch(match *Match) error {
 }
 
 func (m *MatchService) canStartMatchWithClientKey(clientKey string) bool {
-	role, roleErr := m.AuthService.GetRole(clientKey)
+	role, roleErr := m.AuthenticationService.GetRole(clientKey)
 	if roleErr != nil {
 		return false
 	}

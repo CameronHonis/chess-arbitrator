@@ -67,8 +67,8 @@ type SubscriptionServiceI interface {
 
 type SubscriptionService struct {
 	Service[*SubscriptionConfig]
-	__dependencies__ Marker
-	AuthService      AuthenticationServiceI
+	__dependencies__      Marker
+	AuthenticationService AuthenticationServiceI
 
 	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[string]
@@ -85,7 +85,7 @@ func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	return subService
 }
 func (sm *SubscriptionService) SubClientTo(clientKey string, topic MessageTopic) error {
-	authErr := sm.AuthService.ValidateClientForTopic(clientKey, topic)
+	authErr := sm.AuthenticationService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr

@@ -1,7 +1,6 @@
 package server
 
 import (
-	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 )
@@ -22,8 +21,7 @@ type AppService struct {
 	Service[*AppConfig]
 
 	__dependencies__ Marker
-	Server           *RouterService
-	Logger           *LoggerService
+	RouterService    *RouterService
 
 	__state__ Marker
 }

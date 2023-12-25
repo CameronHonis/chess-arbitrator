@@ -34,11 +34,11 @@ type UserClientsServiceI interface {
 type UserClientsService struct {
 	Service[*UserClientsConfig]
 
-	__dependencies__ Marker
-	LoggerService    LoggerServiceI
-	MsgService       MessageServiceI
-	SubService       SubscriptionServiceI
-	AuthService      AuthenticationServiceI
+	__dependencies__      Marker
+	LoggerService         LoggerServiceI
+	MessageService        MessageServiceI
+	SubscriptionService   SubscriptionServiceI
+	AuthenticationService AuthenticationServiceI
 
 	__state__         Marker
 	mu                sync.Mutex
@@ -86,7 +86,7 @@ func (uc *UserClientsService) RemoveClient(client *UserClient) error {
 	delete(uc.clientByPublicKey, pubKey)
 	uc.mu.Unlock()
 
-	uc.SubService.UnsubClientFromAll(pubKey)
+	uc.SubscriptionService.UnsubClientFromAll(pubKey)
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (uc *UserClientsService) GetClient(clientKey string) (*UserClient, error) {
 func (uc *UserClientsService) BroadcastMessage(message *Message) {
 	msgCopy := *message
 	msgCopy.PrivateKey = ""
-	subbedClientKeys := uc.SubService.GetClientKeysSubbedToTopic(msgCopy.Topic)
+	subbedClientKeys := uc.SubscriptionService.GetClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := uc.GetClient(clientKey)
 		if err != nil {
@@ -132,7 +132,7 @@ func (uc *UserClientsService) DirectMessage(message *Message, clientKey string) 
 }
 
 func (uc *UserClientsService) CleanupClient(userClient *UserClient) {
-	_ = uc.AuthService.RemoveClient(userClient.PublicKey())
+	_ = uc.AuthenticationService.RemoveClient(userClient.PublicKey())
 }
 
 func (uc *UserClientsService) listenForUserInput(userClient *UserClient) {
@@ -163,12 +163,12 @@ func (uc *UserClientsService) readMessage(clientKey string, rawMsg []byte) error
 	if unmarshalErr != nil {
 		return fmt.Errorf("error unmarshalling message: %s", unmarshalErr)
 	}
-	if authErr := uc.AuthService.ValidateAuthInMessage(msg); authErr != nil {
+	if authErr := uc.AuthenticationService.ValidateAuthInMessage(msg); authErr != nil {
 		return fmt.Errorf("error validating auth in message: %s", authErr)
 	}
-	uc.AuthService.StripAuthFromMessage(msg)
+	uc.AuthenticationService.StripAuthFromMessage(msg)
 
-	uc.MsgService.HandleMessage(msg)
+	uc.MessageService.HandleMessage(msg)
 	uc.BroadcastMessage(msg)
 	return nil
 }

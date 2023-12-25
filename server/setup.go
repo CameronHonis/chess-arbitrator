@@ -20,7 +20,6 @@ func BuildServices() *AppService {
 	matchmakingService := NewMatchmakingService(NewMatchmakingConfig())
 
 	// inject dependencies
-	appService.AddDependency(loggerService)
 	appService.AddDependency(routerService)
 	routerService.AddDependency(userClientsService)
 	userClientsService.AddDependency(loggerService)

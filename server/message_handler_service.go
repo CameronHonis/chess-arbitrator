@@ -98,12 +98,12 @@ type MessageServiceI interface {
 type MessageService struct {
 	Service[*MessageHandlerConfig]
 
-	__dependencies__   Marker
-	LoggerService      LoggerServiceI
-	AuthService        AuthenticationServiceI
-	SubService         SubscriptionServiceI
-	MatchService       MatchServiceI
-	MatchmakingService MatchmakingServiceI
+	__dependencies__      Marker
+	LoggerService         LoggerServiceI
+	AuthenticationService AuthenticationServiceI
+	SubscriptionService   SubscriptionServiceI
+	MatchService          MatchServiceI
+	MatchmakingService    MatchmakingServiceI
 
 	__state__ Marker
 }
@@ -158,7 +158,7 @@ func (m *MessageService) HandleSubscribeRequestMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
 	}
-	subErr := m.SubService.SubClientTo(msg.SenderKey, msgContent.Topic)
+	subErr := m.SubscriptionService.SubClientTo(msg.SenderKey, msgContent.Topic)
 	return subErr
 }
 
@@ -176,7 +176,7 @@ func (m *MessageService) HandleRequestUpgradeAuthMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	return m.AuthService.UpgradeAuth(msg.SenderKey, msgContent.Role, msgContent.Secret)
+	return m.AuthenticationService.UpgradeAuth(msg.SenderKey, msgContent.Role, msgContent.Secret)
 }
 
 func (m *MessageService) HandleMoveMessage(moveMsg *Message) error {
