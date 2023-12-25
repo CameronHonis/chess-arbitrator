@@ -75,6 +75,7 @@ type AuthenticationServiceI interface {
 
 	ValidateSecret(roleName RoleName, secret string) error
 	ValidateAuthInMessage(msg *Message) error
+	StripAuthFromMessage(msg *Message)
 	ValidateClientForTopic(clientKey string, topic MessageTopic) error
 
 	getSecret(role RoleName) (string, error)
@@ -160,6 +161,10 @@ func (am *AuthenticationService) ValidateAuthInMessage(msg *Message) error {
 		return fmt.Errorf("invalid auth")
 	}
 	return nil
+}
+
+func (am *AuthenticationService) StripAuthFromMessage(msg *Message) {
+	msg.PrivateKey = ""
 }
 
 func (am *AuthenticationService) ValidateClientForTopic(clientKey string, topic MessageTopic) error {
