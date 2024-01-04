@@ -336,7 +336,6 @@ func (m *MatchService) SetMatch(newMatch *Match) error {
 func (m *MatchService) RemoveMatch(match *Match) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("removing match %s", match.Uuid))
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if _, ok := m.matchByMatchId[match.Uuid]; !ok {
 		return fmt.Errorf("match with id %s doesn't exist", match.Uuid)
 	}
@@ -347,6 +346,9 @@ func (m *MatchService) RemoveMatch(match *Match) error {
 		delete(m.matchIdByClientKey, match.BlackClientKey)
 	}
 	delete(m.matchByMatchId, match.Uuid)
+	m.mu.Unlock()
+
+	go m.Dispatch(NewMatchEndedEvent(match))
 	return nil
 }
 

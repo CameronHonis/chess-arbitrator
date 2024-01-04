@@ -5,13 +5,92 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
 	"github.com/CameronHonis/log"
+	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+type EventCatcher struct {
+	Service
+	__Dependencies__ Marker
+	ListeningTo      ServiceI
+
+	__State__    Marker
+	evs          []EventI
+	evsByVariant map[EventVariant][]EventI
+}
+
+func NewEventCatcher() *EventCatcher {
+	ec := &EventCatcher{
+		evs:          make([]EventI, 0),
+		evsByVariant: make(map[EventVariant][]EventI),
+	}
+	ec.Service = *NewService(ec, nil)
+	catcher := func(ev EventI) bool {
+		ec.CatchEvent(ev)
+		return false
+	}
+	ec.AddEventListener(ALL_EVENTS, catcher)
+	return ec
+}
+
+func (ec *EventCatcher) CatchEvent(ev EventI) {
+	ec.evs = append(ec.evs, ev)
+	if _, ok := ec.evsByVariant[ev.Variant()]; !ok {
+		ec.evsByVariant[ev.Variant()] = make([]EventI, 0)
+	}
+	ec.evsByVariant[ev.Variant()] = append(ec.evsByVariant[ev.Variant()], ev)
+}
+
+func (ec *EventCatcher) LastEvent() EventI {
+	if len(ec.evs) == 0 {
+		panic("no events have been caught")
+	}
+	return ec.evs[len(ec.evs)-1]
+}
+
+func (ec *EventCatcher) LastEventByVariant(eVar EventVariant) EventI {
+	evs, ok := ec.evsByVariant[eVar]
+	if !ok {
+		panic(fmt.Sprintf("no events with variant %s have been caught", eVar))
+	}
+	return evs[len(evs)-1]
+}
+
+func (ec *EventCatcher) EventsCount() int {
+	return len(ec.evs)
+}
+
+func (ec *EventCatcher) EventsByVariantCount(eVar EventVariant) int {
+	evs, ok := ec.evsByVariant[eVar]
+	if !ok {
+		return 0
+	}
+	return len(evs)
+}
+
+func (ec *EventCatcher) NthEvent(idx int) EventI {
+	if idx >= len(ec.evs) {
+		panic(fmt.Sprintf("idx %d exceeds bounds of caught events (size %d)", idx, len(ec.evs)))
+	}
+	return ec.evs[idx]
+}
+
+func (ec *EventCatcher) NthEventByVariant(eVar EventVariant, idx int) EventI {
+	evs, ok := ec.evsByVariant[eVar]
+	if !ok {
+		panic(fmt.Sprintf("no %s events have been caught", eVar))
+	}
+	if idx >= len(evs) {
+		panic(fmt.Sprintf("idx %d exceeds bounds of caught %s events (size %d)", idx, eVar, len(evs)))
+	}
+	return evs[idx]
+}
+
 var _ = FDescribe("MatchService", func() {
 	var m *server.MatchService
+	var eventCatcher *EventCatcher
 	BeforeEach(func() {
 		realLoggerService := log.NewLoggerService(server.GetLoggerConfig())
 		realAuthService := server.NewAuthenticationService(nil)
@@ -28,10 +107,11 @@ var _ = FDescribe("MatchService", func() {
 			return roleName, nil
 		}
 		mockAuthService.Stub("GetRole", getRoleStub)
-		realMatchService := server.NewMatchService(nil)
-		realMatchService.AddDependency(mockAuthService)
-		realMatchService.AddDependency(realLoggerService)
-		m = NewMatchServiceMock(realMatchService)
+		m = server.NewMatchService(nil)
+		m.AddDependency(mockAuthService)
+		m.AddDependency(realLoggerService)
+		eventCatcher = NewEventCatcher()
+		eventCatcher.AddDependency(m)
 	})
 	Describe("AddMatch", func() {
 		var match *server.Match
@@ -63,12 +143,13 @@ var _ = FDescribe("MatchService", func() {
 		})
 		It("emits a match created event", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
-			dispatchArgs := m.LastCallArgs("Dispatch")
-			Expect(dispatchArgs).To(HaveLen(1))
-			Expect(dispatchArgs[0]).To(BeAssignableToTypeOf(Event{}))
-			ev := dispatchArgs[0].(Event)
-			Expect(ev.Variant()).To(Equal(server.MATCH_CREATED))
-			Expect(ev.Payload()).To(Equal(match))
+
+			Eventually(func() int {
+				return eventCatcher.EventsByVariantCount(server.MATCH_CREATED)
+			}).Should(Equal(1))
+			expEvent := server.NewMatchCreatedEvent(match)
+			actualEvent := eventCatcher.LastEventByVariant(server.MATCH_CREATED)
+			Expect(actualEvent).To(BeEquivalentTo(expEvent))
 		})
 	})
 	Describe("RemoveMatch", func() {
@@ -88,10 +169,12 @@ var _ = FDescribe("MatchService", func() {
 			})
 			It("emits a match ended event", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
-				dispatchArgs := m.LastCallArgs("Dispatch")
-				ev := dispatchArgs[0].(Event)
-				Expect(ev.Variant()).To(Equal(server.MATCH_ENDED))
-				Expect(ev.Payload()).To(Equal(match))
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(server.MATCH_ENDED)
+				}).Should(Equal(1))
+				expEvent := server.NewMatchEndedEvent(match)
+				actualEvent := eventCatcher.LastEventByVariant(server.MATCH_ENDED)
+				Expect(actualEvent).To(BeEquivalentTo(expEvent))
 			})
 		})
 		Describe("when the match does not exist", func() {
