@@ -24,7 +24,7 @@ type MatchmakingServiceI interface {
 }
 
 type MatchmakingService struct {
-	Service[*MatchmakingConfig]
+	Service
 
 	__dependencies__ Marker
 	LoggerService    LoggerServiceI

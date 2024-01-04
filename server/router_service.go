@@ -24,7 +24,7 @@ func (rc *RouterConfig) MergeWith(other ConfigI) ConfigI {
 }
 
 type RouterService struct {
-	Service[*RouterConfig]
+	Service
 
 	__dependencies__   Marker
 	UserClientsService UserClientsServiceI

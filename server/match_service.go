@@ -131,7 +131,7 @@ type MatchServiceI interface {
 }
 
 type MatchService struct {
-	Service[*MatchServiceConfig]
+	Service
 	__dependencies__      Marker
 	LoggerService         LoggerServiceI
 	AuthenticationService AuthenticationServiceI
@@ -232,15 +232,15 @@ func (m *MatchService) ExecuteMove(matchId string, move *chess.Move) error {
 	matchBuilder.WithBoard(newBoard)
 	newMatch := matchBuilder.Build()
 
-	setMatchErr := m.setMatch(newMatch)
+	setMatchErr := m.SetMatch(newMatch)
 	if setMatchErr != nil {
 		return setMatchErr
 	}
 
 	if newMatch.Board.IsTerminal {
-		return m.removeMatch(newMatch)
+		return m.RemoveMatch(newMatch)
 	} else {
-		go m.startTimer(newMatch)
+		go m.StartTimer(newMatch)
 	}
 
 	return nil
@@ -251,7 +251,7 @@ func (m *MatchService) ChallengePlayer(challenge *Challenge) error {
 	if challenge.ChallengerKey == challenge.ChallengedKey {
 		return fmt.Errorf("cannot challenge self")
 	}
-	if !m.canStartMatchWithClientKey(challenge.ChallengerKey) {
+	if !m.CanStartMatchWithClientKey(challenge.ChallengerKey) {
 		return fmt.Errorf("challenger %s unavailable for match", challenge.ChallengerKey)
 	}
 	if challengeDuplicate, _ := m.GetChallenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
@@ -288,11 +288,11 @@ func (m *MatchService) DeclineChallenge(challengedKey, challengerKey Key) error 
 
 func (m *MatchService) AddMatch(match *Match) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("adding match %s", match.Uuid))
-	if m.canStartMatchWithClientKey(match.WhiteClientKey) {
+	if !m.CanStartMatchWithClientKey(match.WhiteClientKey) {
 		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, "white client unavailable for match"))
 		return fmt.Errorf("white client %s unavailable for match", match.WhiteClientKey)
 	}
-	if m.canStartMatchWithClientKey(match.BlackClientKey) {
+	if !m.CanStartMatchWithClientKey(match.BlackClientKey) {
 		go m.Dispatch(NewMatchCreationFailedEvent(match.BlackClientKey, "black client unavailable for match"))
 		return fmt.Errorf("black client %s unavailable for match", match.BlackClientKey)
 	}
@@ -311,7 +311,7 @@ func (m *MatchService) AddMatch(match *Match) error {
 	return nil
 }
 
-func (m *MatchService) setMatch(newMatch *Match) error {
+func (m *MatchService) SetMatch(newMatch *Match) error {
 	oldMatch, fetchCurrMatchErr := m.GetMatchById(newMatch.Uuid)
 	if fetchCurrMatchErr != nil {
 		return fetchCurrMatchErr
@@ -333,7 +333,7 @@ func (m *MatchService) setMatch(newMatch *Match) error {
 	return nil
 }
 
-func (m *MatchService) removeMatch(match *Match) error {
+func (m *MatchService) RemoveMatch(match *Match) error {
 	m.LoggerService.Log(ENV_MATCH_SERVICE, fmt.Sprintf("removing match %s", match.Uuid))
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -350,7 +350,7 @@ func (m *MatchService) removeMatch(match *Match) error {
 	return nil
 }
 
-func (m *MatchService) canStartMatchWithClientKey(clientKey Key) bool {
+func (m *MatchService) CanStartMatchWithClientKey(clientKey Key) bool {
 	role, roleErr := m.AuthenticationService.GetRole(clientKey)
 	if roleErr != nil {
 		return false
@@ -363,7 +363,7 @@ func (m *MatchService) canStartMatchWithClientKey(clientKey Key) bool {
 	return match == nil
 }
 
-func (m *MatchService) startTimer(match *Match) {
+func (m *MatchService) StartTimer(match *Match) {
 	var waitTime time.Duration
 	if match.Board.IsWhiteTurn {
 		waitTime = time.Duration(match.WhiteTimeRemainingSec) * time.Second
@@ -390,6 +390,6 @@ func (m *MatchService) startTimer(match *Match) {
 		}
 		matchBuilder.WithBoard(boardBuilder.Build())
 		newMatch := matchBuilder.Build()
-		_ = m.setMatch(newMatch)
+		_ = m.SetMatch(newMatch)
 	}
 }

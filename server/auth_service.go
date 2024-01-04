@@ -67,6 +67,7 @@ func NewAuthenticationConfig() *AuthConfig {
 }
 
 type AuthenticationServiceI interface {
+	ServiceI
 	GetRole(clientKey Key) (RoleName, error)
 
 	AddClient(clientKey Key)
@@ -77,13 +78,10 @@ type AuthenticationServiceI interface {
 	ValidateAuthInMessage(msg *Message) error
 	StripAuthFromMessage(msg *Message)
 	ValidateClientForTopic(clientKey Key, topic MessageTopic) error
-
-	getSecret(role RoleName) (string, error)
-	setRole(clientKey Key, role RoleName) error
 }
 
 type AuthenticationService struct {
-	Service[*AuthConfig]
+	Service
 
 	__dependencies__ Marker
 	LoggerService    LoggerServiceI
@@ -122,7 +120,7 @@ func (am *AuthenticationService) UpgradeAuth(clientKey Key, roleName RoleName, s
 		return validSecretErr
 	}
 
-	roleErr := am.setRole(clientKey, roleName)
+	roleErr := am.SetRole(clientKey, roleName)
 	if roleErr != nil {
 		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, roleErr.Error()))
 		return roleErr
@@ -145,7 +143,7 @@ func (am *AuthenticationService) RemoveClient(clientKey Key) error {
 }
 
 func (am *AuthenticationService) ValidateSecret(roleName RoleName, secret string) error {
-	expSecret, secretErr := am.getSecret(roleName)
+	expSecret, secretErr := am.GetSecret(roleName)
 	if secretErr != nil {
 		return secretErr
 	}
@@ -171,7 +169,7 @@ func (am *AuthenticationService) ValidateClientForTopic(clientKey Key, topic Mes
 	return nil
 }
 
-func (am *AuthenticationService) setRole(clientKey Key, role RoleName) error {
+func (am *AuthenticationService) SetRole(clientKey Key, role RoleName) error {
 	_, getRoleErr := am.GetRole(clientKey)
 	if getRoleErr != nil {
 		return getRoleErr
@@ -182,7 +180,7 @@ func (am *AuthenticationService) setRole(clientKey Key, role RoleName) error {
 	return nil
 }
 
-func (am *AuthenticationService) getSecret(role RoleName) (string, error) {
+func (am *AuthenticationService) GetSecret(role RoleName) (string, error) {
 	envName, ok := ENV_NAME_BY_ROLE_NAME[role]
 	if !ok {
 		return "", fmt.Errorf("could not find env name for role %s", role)

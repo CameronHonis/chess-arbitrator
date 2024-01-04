@@ -96,7 +96,7 @@ type MessageServiceI interface {
 }
 
 type MessageService struct {
-	Service[*MessageHandlerConfig]
+	Service
 
 	__dependencies__      Marker
 	LoggerService         LoggerServiceI

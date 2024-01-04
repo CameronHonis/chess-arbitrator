@@ -18,7 +18,7 @@ func (ac *AppConfig) MergeWith(other ConfigI) ConfigI {
 }
 
 type AppService struct {
-	Service[*AppConfig]
+	Service
 
 	__dependencies__ Marker
 	RouterService    *RouterService

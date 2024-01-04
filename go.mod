@@ -23,6 +23,7 @@ replace github.com/CameronHonis/service => ../service
 require (
 	github.com/CameronHonis/marker v0.0.0-20231220043644-4b47686a2d7b // indirect
 	github.com/CameronHonis/service v0.0.0-20231219045318-badbff1b45c2 // indirect
+	github.com/CameronHonis/stub v0.0.0-20240102233347-cfe07ec39d50 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect

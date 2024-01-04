@@ -66,7 +66,7 @@ type SubscriptionServiceI interface {
 }
 
 type SubscriptionService struct {
-	Service[*SubscriptionConfig]
+	Service
 	__dependencies__      Marker
 	AuthenticationService AuthenticationServiceI
 

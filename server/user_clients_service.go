@@ -23,16 +23,16 @@ func (uc *UserClientsConfig) MergeWith(other ConfigI) ConfigI {
 
 type UserClientsServiceI interface {
 	ServiceI
-	GetClient(clientKey string) (*Client, error)
+	GetClient(clientKey Key) (*Client, error)
 	AddNewClient(conn *websocket.Conn) (*Client, error)
 	AddClient(client *Client) error
 	RemoveClient(client *Client) error
 	BroadcastMessage(message *Message)
-	DirectMessage(message *Message, clientKey string) error
+	DirectMessage(message *Message, clientKey Key) error
 }
 
 type UserClientsService struct {
-	Service[*UserClientsConfig]
+	Service
 
 	__dependencies__      Marker
 	LoggerService         LoggerServiceI
