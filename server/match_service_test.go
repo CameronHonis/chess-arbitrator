@@ -88,7 +88,7 @@ func (ec *EventCatcher) NthEventByVariant(eVar EventVariant, idx int) EventI {
 	return evs[idx]
 }
 
-var _ = FDescribe("MatchService", func() {
+var _ = Describe("MatchService", func() {
 	var m *server.MatchService
 	var eventCatcher *EventCatcher
 	BeforeEach(func() {

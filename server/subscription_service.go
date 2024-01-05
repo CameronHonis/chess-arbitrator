@@ -58,11 +58,11 @@ func NewSubscriptionConfig() *SubscriptionConfig {
 }
 
 type SubscriptionServiceI interface {
-	SubClientTo(clientKey Key, topic MessageTopic) error
-	UnsubClientFrom(clientKey Key, topic MessageTopic) error
+	SubClient(clientKey Key, topic MessageTopic) error
+	UnsubClient(clientKey Key, topic MessageTopic) error
 	UnsubClientFromAll(clientKey Key)
-	GetSubbedTopics(clientKey Key) *Set[MessageTopic]
-	GetClientKeysSubbedToTopic(topic MessageTopic) *Set[Key]
+	SubbedTopics(clientKey Key) *Set[MessageTopic]
+	ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key]
 }
 
 type SubscriptionService struct {
@@ -84,13 +84,13 @@ func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	subService.Service = *NewService(subService, config)
 	return subService
 }
-func (sm *SubscriptionService) SubClientTo(clientKey Key, topic MessageTopic) error {
+func (sm *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error {
 	authErr := sm.AuthenticationService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr
 	}
-	subbedTopics := sm.GetSubbedTopics(clientKey)
+	subbedTopics := sm.SubbedTopics(clientKey)
 	sm.mu.Lock()
 	if subbedTopics.Has(topic) {
 		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, "already subscribed"))
@@ -99,7 +99,7 @@ func (sm *SubscriptionService) SubClientTo(clientKey Key, topic MessageTopic) er
 	subbedTopics.Add(topic)
 	sm.mu.Unlock()
 
-	subbedClientKeys := sm.GetClientKeysSubbedToTopic(topic)
+	subbedClientKeys := sm.ClientKeysSubbedToTopic(topic)
 
 	sm.mu.Lock()
 	subbedClientKeys.Add(clientKey)
@@ -109,8 +109,8 @@ func (sm *SubscriptionService) SubClientTo(clientKey Key, topic MessageTopic) er
 	return nil
 }
 
-func (sm *SubscriptionService) UnsubClientFrom(clientKey Key, topic MessageTopic) error {
-	subbedTopics := sm.GetSubbedTopics(clientKey)
+func (sm *SubscriptionService) UnsubClient(clientKey Key, topic MessageTopic) error {
+	subbedTopics := sm.SubbedTopics(clientKey)
 	sm.mu.Lock()
 	if !subbedTopics.Has(topic) {
 		return fmt.Errorf("client %s not subscribed to topic %s", clientKey, topic)
@@ -118,7 +118,7 @@ func (sm *SubscriptionService) UnsubClientFrom(clientKey Key, topic MessageTopic
 	subbedTopics.Remove(topic)
 	sm.mu.Unlock()
 
-	subbedClientKeys := sm.GetClientKeysSubbedToTopic(topic)
+	subbedClientKeys := sm.ClientKeysSubbedToTopic(topic)
 
 	sm.mu.Lock()
 	subbedClientKeys.Remove(clientKey)
@@ -139,7 +139,7 @@ func (sm *SubscriptionService) UnsubClientFromAll(clientKey Key) {
 	delete(sm.subbedTopicsByClientKey, clientKey)
 }
 
-func (sm *SubscriptionService) GetSubbedTopics(clientKey Key) *Set[MessageTopic] {
+func (sm *SubscriptionService) SubbedTopics(clientKey Key) *Set[MessageTopic] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedTopicsByClientKey[clientKey]
@@ -149,7 +149,7 @@ func (sm *SubscriptionService) GetSubbedTopics(clientKey Key) *Set[MessageTopic]
 	return sm.subbedTopicsByClientKey[clientKey]
 }
 
-func (sm *SubscriptionService) GetClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
+func (sm *SubscriptionService) ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	_, ok := sm.subbedClientKeysByTopic[topic]

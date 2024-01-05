@@ -74,10 +74,10 @@ package server
 //				_, ok := userClientsManager.clientByPublicKey[clientKey]
 //				Expect(ok).To(BeTrue())
 //
-//				subClientErr := subscriptionManager.SubClientTo(clientKey, topic)
+//				subClientErr := subscriptionManager.SubClient(clientKey, topic)
 //				Expect(subClientErr).ToNot(HaveOccurred())
-//				Expect(subscriptionManager.GetSubbedTopics(clientKey).Size()).To(Equal(1))
-//				Expect(subscriptionManager.GetClientKeysSubbedToTopic(topic).Size()).To(Equal(1))
+//				Expect(subscriptionManager.SubbedTopics(clientKey).Size()).To(Equal(1))
+//				Expect(subscriptionManager.ClientKeysSubbedToTopic(topic).Size()).To(Equal(1))
 //			})
 //			It("removes the client from the client map", func() {
 //				err := userClientsManager.RemoveClient(client)
@@ -87,8 +87,8 @@ package server
 //			It("unsubs client from all topics", func() {
 //				err := userClientsManager.RemoveClient(client)
 //				Expect(err).ToNot(HaveOccurred())
-//				Expect(subscriptionManager.GetSubbedTopics(clientKey).Size()).To(Equal(0))
-//				Expect(subscriptionManager.GetClientKeysSubbedToTopic(topic).Size()).To(Equal(0))
+//				Expect(subscriptionManager.SubbedTopics(clientKey).Size()).To(Equal(0))
+//				Expect(subscriptionManager.ClientKeysSubbedToTopic(topic).Size()).To(Equal(0))
 //			})
 //		})
 //		When("the player was never added", func() {

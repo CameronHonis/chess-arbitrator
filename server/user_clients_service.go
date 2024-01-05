@@ -103,7 +103,7 @@ func (uc *UserClientsService) GetClient(clientKey Key) (*Client, error) {
 func (uc *UserClientsService) BroadcastMessage(message *Message) {
 	msgCopy := *message
 	msgCopy.PrivateKey = ""
-	subbedClientKeys := uc.SubscriptionService.GetClientKeysSubbedToTopic(msgCopy.Topic)
+	subbedClientKeys := uc.SubscriptionService.ClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := uc.GetClient(clientKey)
 		if err != nil {

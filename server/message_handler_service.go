@@ -158,7 +158,7 @@ func (m *MessageService) HandleSubscribeRequestMessage(msg *Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
 	}
-	subErr := m.SubscriptionService.SubClientTo(msg.SenderKey, msgContent.Topic)
+	subErr := m.SubscriptionService.SubClient(msg.SenderKey, msgContent.Topic)
 	return subErr
 }
 
