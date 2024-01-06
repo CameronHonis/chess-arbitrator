@@ -92,6 +92,7 @@ func (mhc *MessageHandlerConfig) MergeWith(other ConfigI) ConfigI {
 }
 
 type MessageServiceI interface {
+	ServiceI
 	HandleMessage(msg *Message)
 }
 

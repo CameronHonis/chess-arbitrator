@@ -58,6 +58,7 @@ func NewSubscriptionConfig() *SubscriptionConfig {
 }
 
 type SubscriptionServiceI interface {
+	ServiceI
 	SubClient(clientKey Key, topic MessageTopic) error
 	UnsubClient(clientKey Key, topic MessageTopic) error
 	UnsubClientFromAll(clientKey Key)
@@ -84,77 +85,77 @@ func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	subService.Service = *NewService(subService, config)
 	return subService
 }
-func (sm *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error {
-	authErr := sm.AuthenticationService.ValidateClientForTopic(clientKey, topic)
+func (s *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error {
+	authErr := s.AuthenticationService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
-		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
+		go s.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr
 	}
-	subbedTopics := sm.SubbedTopics(clientKey)
-	sm.mu.Lock()
+	subbedTopics := s.SubbedTopics(clientKey)
+	s.mu.Lock()
 	if subbedTopics.Has(topic) {
-		go sm.Dispatch(NewSubFailedEvent(clientKey, topic, "already subscribed"))
+		go s.Dispatch(NewSubFailedEvent(clientKey, topic, "already subscribed"))
 		return fmt.Errorf("client %s already subscribed to topic %s", clientKey, topic)
 	}
 	subbedTopics.Add(topic)
-	sm.mu.Unlock()
+	s.mu.Unlock()
 
-	subbedClientKeys := sm.ClientKeysSubbedToTopic(topic)
+	subbedClientKeys := s.ClientKeysSubbedToTopic(topic)
 
-	sm.mu.Lock()
+	s.mu.Lock()
 	subbedClientKeys.Add(clientKey)
-	sm.mu.Unlock()
+	s.mu.Unlock()
 
-	sm.Dispatch(NewSubSuccessEvent(clientKey, topic))
+	s.Dispatch(NewSubSuccessEvent(clientKey, topic))
 	return nil
 }
 
-func (sm *SubscriptionService) UnsubClient(clientKey Key, topic MessageTopic) error {
-	subbedTopics := sm.SubbedTopics(clientKey)
-	sm.mu.Lock()
+func (s *SubscriptionService) UnsubClient(clientKey Key, topic MessageTopic) error {
+	subbedTopics := s.SubbedTopics(clientKey)
+	s.mu.Lock()
 	if !subbedTopics.Has(topic) {
 		return fmt.Errorf("client %s not subscribed to topic %s", clientKey, topic)
 	}
 	subbedTopics.Remove(topic)
-	sm.mu.Unlock()
+	s.mu.Unlock()
 
-	subbedClientKeys := sm.ClientKeysSubbedToTopic(topic)
+	subbedClientKeys := s.ClientKeysSubbedToTopic(topic)
 
-	sm.mu.Lock()
+	s.mu.Lock()
 	subbedClientKeys.Remove(clientKey)
-	sm.mu.Unlock()
+	s.mu.Unlock()
 	return nil
 }
 
-func (sm *SubscriptionService) UnsubClientFromAll(clientKey Key) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	subbedTopics, ok := sm.subbedTopicsByClientKey[clientKey]
+func (s *SubscriptionService) UnsubClientFromAll(clientKey Key) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	subbedTopics, ok := s.subbedTopicsByClientKey[clientKey]
 	if !ok {
 		return
 	}
 	for _, topic := range subbedTopics.Flatten() {
-		sm.subbedClientKeysByTopic[topic].Remove(clientKey)
+		s.subbedClientKeysByTopic[topic].Remove(clientKey)
 	}
-	delete(sm.subbedTopicsByClientKey, clientKey)
+	delete(s.subbedTopicsByClientKey, clientKey)
 }
 
-func (sm *SubscriptionService) SubbedTopics(clientKey Key) *Set[MessageTopic] {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	_, ok := sm.subbedTopicsByClientKey[clientKey]
+func (s *SubscriptionService) SubbedTopics(clientKey Key) *Set[MessageTopic] {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.subbedTopicsByClientKey[clientKey]
 	if !ok {
-		sm.subbedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
+		s.subbedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
 	}
-	return sm.subbedTopicsByClientKey[clientKey]
+	return s.subbedTopicsByClientKey[clientKey]
 }
 
-func (sm *SubscriptionService) ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	_, ok := sm.subbedClientKeysByTopic[topic]
+func (s *SubscriptionService) ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.subbedClientKeysByTopic[topic]
 	if !ok {
-		sm.subbedClientKeysByTopic[topic] = EmptySet[Key]()
+		s.subbedClientKeysByTopic[topic] = EmptySet[Key]()
 	}
-	return sm.subbedClientKeysByTopic[topic]
+	return s.subbedClientKeysByTopic[topic]
 }

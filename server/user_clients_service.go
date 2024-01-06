@@ -56,12 +56,10 @@ func NewUserClientsService(config *UserClientsConfig) *UserClientsService {
 func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*Client, error) {
 	client := NewClient(conn, uc.CleanupClient)
 
-	err := uc.AddClient(client)
-	if err != nil {
+	if err := uc.AddClient(client); err != nil {
 		return nil, err
-	} else {
-		return client, nil
 	}
+	return client, nil
 }
 
 func (uc *UserClientsService) AddClient(client *Client) error {
@@ -131,14 +129,18 @@ func (uc *UserClientsService) DirectMessage(message *Message, clientKey Key) err
 	return uc.writeMessage(client, &msgCopy)
 }
 
-func (uc *UserClientsService) CleanupClient(userClient *Client) {
-	_ = uc.AuthenticationService.RemoveClient(userClient.PublicKey())
+func (uc *UserClientsService) CleanupClient(client *Client) {
+	_ = uc.AuthenticationService.RemoveClient(client.PublicKey())
 }
 
-func (uc *UserClientsService) listenForUserInput(userClient *Client) {
+func (uc *UserClientsService) listenForUserInput(client *Client) {
+	if client.WSConn() == nil {
+		uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("client %s did not establish a websocket connection", client.PublicKey()))
+		return
+	}
 	for {
-		_, rawMsg, readErr := userClient.WSConn().ReadMessage()
-		_, clientErr := uc.GetClient(userClient.PublicKey())
+		_, rawMsg, readErr := client.WSConn().ReadMessage()
+		_, clientErr := uc.GetClient(client.PublicKey())
 		if clientErr != nil {
 			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), ALL_BUT_TEST_ENV)
 			return
@@ -146,10 +148,10 @@ func (uc *UserClientsService) listenForUserInput(userClient *Client) {
 		if readErr != nil {
 			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), ALL_BUT_TEST_ENV)
 			// assume all readErrs are disconnects
-			_ = uc.RemoveClient(userClient)
+			_ = uc.RemoveClient(client)
 			return
 		}
-		if err := uc.readMessage(userClient.PublicKey(), rawMsg); err != nil {
+		if err := uc.readMessage(client.PublicKey(), rawMsg); err != nil {
 			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), ALL_BUT_TEST_ENV)
 
 		}
