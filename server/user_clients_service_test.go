@@ -3,12 +3,14 @@ package server_test
 import (
 	"github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
-	"github.com/CameronHonis/log"
+	. "github.com/CameronHonis/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func BuildTestServices() *server.UserClientsService {
+	loggerConfig := NewLoggerConfig()
+	loggerConfig.MutedEnvs.Add(server.ENV_SERVER)
 	subService := server.NewSubscriptionService(server.NewSubscriptionConfig())
 	mockSubService := NewSubServiceMock(subService)
 
@@ -18,13 +20,15 @@ func BuildTestServices() *server.UserClientsService {
 	authService := server.NewAuthenticationService(server.NewAuthenticationConfig())
 	mockAuthService := NewAuthServiceMock(authService)
 
-	loggerService := log.NewLoggerService(log.NewLoggerConfig())
+	loggerService := NewLoggerService(loggerConfig)
+	mockLoggerService := NewLoggerServiceMock(loggerService)
 
 	ucs := server.NewUserClientsService(server.NewUserClientsConfig())
 	ucs.AddDependency(mockSubService)
 	ucs.AddDependency(mockMsgService)
 	ucs.AddDependency(mockAuthService)
-	ucs.AddDependency(loggerService)
+	ucs.AddDependency(mockLoggerService)
+
 	return ucs
 }
 
@@ -103,5 +107,8 @@ var _ = Describe("UserClientsService", func() {
 			clientKeysSubbedToTopicCallArgs := subServiceMock.LastCallArgs("ClientKeysSubbedToTopic")
 			Expect(clientKeysSubbedToTopicCallArgs[0]).To(Equal(topic))
 		})
+		// TODO: implement once stub generator exists
+		//When("subscribers are listening on the topic", func() {
+		//})
 	})
 })
