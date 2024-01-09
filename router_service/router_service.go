@@ -1,6 +1,7 @@
-package server
+package router_service
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 	"net/http"
@@ -27,7 +28,7 @@ type RouterService struct {
 	Service
 
 	__dependencies__   Marker
-	UserClientsService UserClientsServiceI
+	UserClientsService user_clients_service.UserClientsServiceI
 
 	__state__ Marker
 }

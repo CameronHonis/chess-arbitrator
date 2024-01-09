@@ -1,32 +1,34 @@
-package server_test
+package user_clients_service_test
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/message_service"
+	. "github.com/CameronHonis/chess-arbitrator/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/server"
-	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
+	"github.com/CameronHonis/chess-arbitrator/subscription_service"
+	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-func BuildTestServices() *server.UserClientsService {
+func BuildTestServices() *user_clients_service.UserClientsService {
 	loggerConfig := NewLoggerConfig()
 	loggerConfig.MutedEnvs.Add(models.ENV_SERVER)
-	subService := server.NewSubscriptionService(server.NewSubscriptionConfig())
-	mockSubService := NewSubServiceMock(subService)
+	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
+	mockSubService := subscription_service.NewSubServiceMock(subService)
 
-	msgService := server.NewMessageHandlerService(server.NewMessageHandlerConfig())
-	mockMsgService := NewMessageServiceMock(msgService)
+	msgService := message_service.NewMessageHandlerService(message_service.NewMessageHandlerConfig())
+	mockMsgService := message_service.NewMessageServiceMock(msgService)
 
 	authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
-	mockAuthService := NewAuthServiceMock(authService)
+	mockAuthService := auth_service.NewAuthServiceMock(authService)
 
 	loggerService := NewLoggerService(loggerConfig)
 	mockLoggerService := NewLoggerServiceMock(loggerService)
 
-	ucs := server.NewUserClientsService(server.NewUserClientsConfig())
+	ucs := user_clients_service.NewUserClientsService(user_clients_service.NewUserClientsConfig())
 	ucs.AddDependency(mockSubService)
 	ucs.AddDependency(mockMsgService)
 	ucs.AddDependency(mockAuthService)
@@ -40,7 +42,7 @@ type TestMessageContentType struct {
 }
 
 var _ = Describe("UserClientsService", func() {
-	var uc *server.UserClientsService
+	var uc *user_clients_service.UserClientsService
 	var client *models.Client
 	BeforeEach(func() {
 		uc = BuildTestServices()
@@ -74,7 +76,7 @@ var _ = Describe("UserClientsService", func() {
 			})
 			It("unsubs client from all topics", func() {
 				Expect(uc.RemoveClient(client)).ToNot(HaveOccurred())
-				subServiceMock := uc.SubscriptionService.(*SubServiceMock)
+				subServiceMock := uc.SubscriptionService.(*subscription_service.SubServiceMock)
 				unsubAllCount := subServiceMock.MethodCallCount("UnsubClientFromAll")
 				Expect(unsubAllCount).To(Equal(1))
 				unsubAllArgs := subServiceMock.LastCallArgs("UnsubClientFromAll")
@@ -104,7 +106,7 @@ var _ = Describe("UserClientsService", func() {
 		})
 		It("queries the subscribers on the message topic", func() {
 			uc.BroadcastMessage(msg)
-			subServiceMock := uc.SubscriptionService.(*SubServiceMock)
+			subServiceMock := uc.SubscriptionService.(*subscription_service.SubServiceMock)
 			clientKeysSubbedToTopicCallCount := subServiceMock.MethodCallCount("ClientKeysSubbedToTopic")
 			Expect(clientKeysSubbedToTopicCallCount).To(Equal(1))
 			clientKeysSubbedToTopicCallArgs := subServiceMock.LastCallArgs("ClientKeysSubbedToTopic")

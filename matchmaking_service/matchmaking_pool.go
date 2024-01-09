@@ -1,4 +1,4 @@
-package server
+package matchmaking_service
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 type MMPoolNode struct {
 	next          *MMPoolNode
 	prev          *MMPoolNode
-	clientProfile *ClientProfile
+	clientProfile *models.ClientProfile
 	timeJoined    int64
 }
 
@@ -28,7 +28,7 @@ func NewMatchmakingPool() *MatchmakingPool {
 	}
 }
 
-func (mmp *MatchmakingPool) AddClient(client *ClientProfile) error {
+func (mmp *MatchmakingPool) AddClient(client *models.ClientProfile) error {
 	if _, ok := mmp.nodeByClientKey[client.ClientKey]; ok {
 		return fmt.Errorf("client with key %s already in pool", client.ClientKey)
 	}

@@ -1,8 +1,13 @@
-package server
+package main
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/match_service"
+	"github.com/CameronHonis/chess-arbitrator/matchmaking_service"
+	"github.com/CameronHonis/chess-arbitrator/message_service"
+	"github.com/CameronHonis/chess-arbitrator/router_service"
+	"github.com/CameronHonis/chess-arbitrator/subscription_service"
+	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	. "github.com/CameronHonis/log"
 )
 
@@ -12,14 +17,14 @@ func BuildServices() *AppService {
 	// init services
 	appService = NewAppService(GetAppConfig())
 	loggerService := NewLoggerService(GetLoggerConfig())
-	routerService := NewRouterService(GetRouterConfig())
-	userClientsService := NewUserClientsService(GetUserClientsConfig())
+	routerService := router_service.NewRouterService(GetRouterConfig())
+	userClientsService := user_clients_service.NewUserClientsService(GetUserClientsConfig())
 	// NOTE: mixture of `get...config` and `new...config` is intentional, trying both out
-	msgService := NewMessageHandlerService(NewMessageHandlerConfig())
-	subService := NewSubscriptionService(NewSubscriptionConfig())
+	msgService := message_service.NewMessageHandlerService(message_service.NewMessageHandlerConfig())
+	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
 	authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
 	matchService := match_service.NewMatchService(match_service.NewMatchServiceConfig())
-	matchmakingService := NewMatchmakingService(NewMatchmakingConfig())
+	matchmakingService := matchmaking_service.NewMatchmakingService(matchmaking_service.NewMatchmakingConfig())
 
 	// inject dependencies
 	appService.AddDependency(routerService)

@@ -1,20 +1,20 @@
-package mocks
+package message_service
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/mocks"
 	. "github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/stub"
 )
 
 type MessageServiceMock struct {
 	Stubbed[MessageService]
-	ServiceMock
+	mocks.ServiceMock
 }
 
 func NewMessageServiceMock(msgService *MessageService) *MessageServiceMock {
 	s := &MessageServiceMock{}
 	s.Stubbed = *NewStubbed(s, msgService)
-	s.ServiceMock = *NewServiceMock(&msgService.Service)
+	s.ServiceMock = *mocks.NewServiceMock(&msgService.Service)
 	return s
 }
 

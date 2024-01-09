@@ -1,10 +1,9 @@
-package server_test
+package subscription_service_test
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/server"
-	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
+	"github.com/CameronHonis/chess-arbitrator/subscription_service"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -12,12 +11,12 @@ import (
 var _ = Describe("SubscriptionService", func() {
 	var topic models.MessageTopic
 	var clientKey models.Key
-	var subService *server.SubscriptionService
+	var subService *subscription_service.SubscriptionService
 	BeforeEach(func() {
 		clientKey = "some-public-key"
 		authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
-		mockAuthService := NewAuthServiceMock(authService)
-		subService = server.NewSubscriptionService(server.NewSubscriptionConfig())
+		mockAuthService := auth_service.NewAuthServiceMock(authService)
+		subService = subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
 		subService.AddDependency(mockAuthService)
 	})
 	Describe("::SubbedTopics", func() {

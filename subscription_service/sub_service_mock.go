@@ -1,21 +1,21 @@
-package mocks
+package subscription_service
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/mocks"
 	. "github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/set"
 	. "github.com/CameronHonis/stub"
 )
 
 type SubServiceMock struct {
 	Stubbed[SubscriptionService]
-	ServiceMock
+	mocks.ServiceMock
 }
 
 func NewSubServiceMock(subService *SubscriptionService) *SubServiceMock {
 	s := &SubServiceMock{}
 	s.Stubbed = *NewStubbed(s, subService)
-	s.ServiceMock = *NewServiceMock(&subService.Service)
+	s.ServiceMock = *mocks.NewServiceMock(&subService.Service)
 	return s
 }
 

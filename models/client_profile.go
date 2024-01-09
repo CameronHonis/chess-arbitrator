@@ -1,15 +1,13 @@
-package server
-
-import "github.com/CameronHonis/chess-arbitrator/models"
+package models
 
 type ClientProfile struct {
-	ClientKey  models.Key
+	ClientKey  Key
 	Elo        int
 	WinStreak  int
 	LossStreak int
 }
 
-func NewClientProfile(clientKey models.Key, elo int) *ClientProfile {
+func NewClientProfile(clientKey Key, elo int) *ClientProfile {
 	return &ClientProfile{
 		ClientKey:  clientKey,
 		Elo:        elo,

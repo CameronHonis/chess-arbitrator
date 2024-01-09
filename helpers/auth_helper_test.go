@@ -1,7 +1,6 @@
-package server_test
+package helpers_test
 
 import (
-	. "github.com/CameronHonis/chess-arbitrator/helpers"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"

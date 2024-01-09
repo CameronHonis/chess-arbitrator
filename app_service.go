@@ -1,6 +1,7 @@
-package server
+package main
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/router_service"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 )
@@ -21,7 +22,7 @@ type AppService struct {
 	Service
 
 	__dependencies__ Marker
-	RouterService    *RouterService
+	RouterService    *router_service.RouterService
 
 	__state__ Marker
 }

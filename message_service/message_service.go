@@ -1,11 +1,13 @@
-package server
+package message_service
 
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/match_service"
+	"github.com/CameronHonis/chess-arbitrator/matchmaking_service"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/chess-arbitrator/subscription_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -71,9 +73,9 @@ type MessageService struct {
 	__dependencies__      Marker
 	LoggerService         LoggerServiceI
 	AuthenticationService auth_service.AuthenticationServiceI
-	SubscriptionService   SubscriptionServiceI
+	SubscriptionService   subscription_service.SubscriptionServiceI
 	MatchService          match_service.MatchServiceI
-	MatchmakingService    MatchmakingServiceI
+	MatchmakingService    matchmaking_service.MatchmakingServiceI
 
 	__state__ Marker
 }
@@ -115,7 +117,7 @@ func (m *MessageService) HandleMessage(msg *models.Message) {
 
 func (m *MessageService) HandleFindMatchMessage(msg *models.Message) error {
 	// TODO: query for elo, winStreak, lossStreak
-	return m.MatchmakingService.AddClient(&ClientProfile{
+	return m.MatchmakingService.AddClient(&models.ClientProfile{
 		ClientKey:  msg.SenderKey,
 		Elo:        1000,
 		WinStreak:  0,

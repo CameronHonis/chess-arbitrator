@@ -1,7 +1,8 @@
-package server
+package matchmaking_service
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -12,9 +13,9 @@ var _ = Describe("MatchmakingPool", func() {
 		matchmakingPool = NewMatchmakingPool()
 	})
 	Describe("AddClient", func() {
-		var clientProfile *ClientProfile
+		var clientProfile *models.ClientProfile
 		BeforeEach(func() {
-			clientProfile = NewClientProfile("some-client-key", 1000)
+			clientProfile = models.NewClientProfile("some-client-key", 1000)
 		})
 		Context("when the client is not already in the pool", func() {
 			It("should add the client to the pool", func() {
@@ -42,9 +43,9 @@ var _ = Describe("MatchmakingPool", func() {
 			})
 		})
 		Context("when a client is already in the pool", func() {
-			var otherClientProfile *ClientProfile
+			var otherClientProfile *models.ClientProfile
 			BeforeEach(func() {
-				otherClientProfile = NewClientProfile("some-other-client-key", 1000)
+				otherClientProfile = models.NewClientProfile("some-other-client-key", 1000)
 				mMPoolNode := &MMPoolNode{
 					clientProfile: otherClientProfile,
 				}
@@ -71,11 +72,11 @@ var _ = Describe("MatchmakingPool", func() {
 		})
 	})
 	Describe("RemoveClient", func() {
-		var clientA, clientB, clientC *ClientProfile
+		var clientA, clientB, clientC *models.ClientProfile
 		BeforeEach(func() {
-			clientA = NewClientProfile("client-key-a", 1000)
-			clientB = NewClientProfile("client-key-b", 1000)
-			clientC = NewClientProfile("client-key-c", 1000)
+			clientA = models.NewClientProfile("client-key-a", 1000)
+			clientB = models.NewClientProfile("client-key-b", 1000)
+			clientC = models.NewClientProfile("client-key-c", 1000)
 			err := matchmakingPool.AddClient(clientA)
 			Expect(err).To(BeNil())
 			err = matchmakingPool.AddClient(clientB)

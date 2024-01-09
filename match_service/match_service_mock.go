@@ -1,8 +1,8 @@
-package mocks
+package match_service
 
 import (
 	"github.com/CameronHonis/chess"
-	. "github.com/CameronHonis/chess-arbitrator/match_service"
+	"github.com/CameronHonis/chess-arbitrator/mocks"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/set"
 	. "github.com/CameronHonis/stub"
@@ -10,13 +10,13 @@ import (
 
 type MatchServiceMock struct {
 	Stubbed[MatchService]
-	ServiceMock
+	mocks.ServiceMock
 }
 
 func NewMatchServiceMock(matchService *MatchService) *MatchServiceMock {
 	ms := &MatchServiceMock{}
 	ms.Stubbed = *NewStubbed(ms, matchService)
-	ms.ServiceMock = *NewServiceMock(&matchService.Service)
+	ms.ServiceMock = *mocks.NewServiceMock(&matchService.Service)
 	return ms
 }
 

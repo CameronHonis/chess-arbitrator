@@ -1,4 +1,4 @@
-package server
+package matchmaking_service
 
 import (
 	"fmt"
@@ -21,8 +21,8 @@ func NewMatchmakingConfig() *MatchmakingConfig {
 
 type MatchmakingServiceI interface {
 	ServiceI
-	AddClient(client *ClientProfile) error
-	RemoveClient(client *ClientProfile) error
+	AddClient(client *models.ClientProfile) error
+	RemoveClient(client *models.ClientProfile) error
 }
 
 type MatchmakingService struct {
@@ -47,7 +47,7 @@ func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 	return matchmakingService
 }
 
-func (mm *MatchmakingService) AddClient(client *ClientProfile) error {
+func (mm *MatchmakingService) AddClient(client *models.ClientProfile) error {
 	mm.LoggerService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
 	addErr := mm.pool.AddClient(client)
 	if addErr != nil {
@@ -57,7 +57,7 @@ func (mm *MatchmakingService) AddClient(client *ClientProfile) error {
 	return nil
 }
 
-func (mm *MatchmakingService) RemoveClient(client *ClientProfile) error {
+func (mm *MatchmakingService) RemoveClient(client *models.ClientProfile) error {
 	return mm.pool.RemoveClient(client.ClientKey)
 }
 
@@ -96,7 +96,7 @@ func (mm *MatchmakingService) loopMatchmaking() {
 	}
 }
 
-func (mm *MatchmakingService) matchClients(clientA *ClientProfile, clientB *ClientProfile) error {
+func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, clientB *models.ClientProfile) error {
 	removeErr := mm.pool.RemoveClient(clientA.ClientKey)
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientA.ClientKey, removeErr)
@@ -113,11 +113,11 @@ func (mm *MatchmakingService) matchClients(clientA *ClientProfile, clientB *Clie
 	return nil
 }
 
-func IsMatchable(clientA *ClientProfile, clientB *ClientProfile, longestWaitSeconds int64) bool {
+func IsMatchable(clientA *models.ClientProfile, clientB *models.ClientProfile, longestWaitSeconds int64) bool {
 	return weightProfileDiff(clientA, clientB, longestWaitSeconds) <= 100
 }
 
-func weightProfileDiff(p1 *ClientProfile, p2 *ClientProfile, longestWaitSeconds int64) float64 {
+func weightProfileDiff(p1 *models.ClientProfile, p2 *models.ClientProfile, longestWaitSeconds int64) float64 {
 	eloDiff := math.Abs(float64(p1.Elo - p2.Elo))
 	eloCoeff := 100 / (float64(longestWaitSeconds) + 50) // asymptotic curve approaches 0, 2 @ t=0, 1 @ t=50, 0.5 @ t=100
 	return eloDiff * eloCoeff

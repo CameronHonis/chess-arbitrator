@@ -1,10 +1,12 @@
-package server
+package user_clients_service
 
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/message_service"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/chess-arbitrator/subscription_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -39,8 +41,8 @@ type UserClientsService struct {
 
 	__dependencies__      Marker
 	LoggerService         LoggerServiceI
-	MessageService        MessageServiceI
-	SubscriptionService   SubscriptionServiceI
+	MessageService        message_service.MessageServiceI
+	SubscriptionService   subscription_service.SubscriptionServiceI
 	AuthenticationService auth_service.AuthenticationServiceI
 
 	__state__         Marker
