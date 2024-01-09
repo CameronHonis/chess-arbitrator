@@ -1,21 +1,21 @@
-package server_test
+package models_test
 
 import (
 	"fmt"
-	. "github.com/CameronHonis/chess-arbitrator/server"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Messages", func() {
-	var message *Message
+	var message *models.Message
 	var messageJson []byte
 
 	BeforeEach(func() {
-		message = &Message{
+		message = &models.Message{
 			Topic:       "auth",
-			ContentType: CONTENT_TYPE_AUTH,
-			Content: &AuthMessageContent{
+			ContentType: models.CONTENT_TYPE_AUTH,
+			Content: &models.AuthMessageContent{
 				PublicKey:  "some-public-key",
 				PrivateKey: "some-private-key",
 			},
@@ -35,7 +35,7 @@ var _ = Describe("Messages", func() {
 				messageJson = []byte(`{"contentType": "AUTH", "content":{"publicKey":"some-public-key","privateKey": "some-private-key"}}`)
 			})
 			It("does not return an error", func() {
-				_, err := UnmarshalToMessage(messageJson)
+				_, err := models.UnmarshalToMessage(messageJson)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -44,7 +44,7 @@ var _ = Describe("Messages", func() {
 				messageJson = []byte(`{"topic": "auth", "content":{"publicKey":"some-public-key","privateKey": "some-private-key"}}`)
 			})
 			It("returns an error", func() {
-				_, err := UnmarshalToMessage(messageJson)
+				_, err := models.UnmarshalToMessage(messageJson)
 				expErr := fmt.Errorf("could not extract content type from %s while constructing Message content", string(messageJson))
 				Expect(err).To(Equal(expErr))
 			})
@@ -54,17 +54,17 @@ var _ = Describe("Messages", func() {
 				messageJson = []byte(`{"topic": "auth", "contentType": "AUTH"}`)
 			})
 			It("returns an error", func() {
-				_, err := UnmarshalToMessage(messageJson)
+				_, err := models.UnmarshalToMessage(messageJson)
 				expErr := fmt.Errorf("could not extract content map from %s while constructing Message content", string(messageJson))
 				Expect(err).To(Equal(expErr))
 			})
 		})
 		When("when the message type is MESSAGE_TOPIC_AUTH", func() {
 			BeforeEach(func() {
-				message = &Message{
+				message = &models.Message{
 					Topic:       "auth",
-					ContentType: CONTENT_TYPE_AUTH,
-					Content: &AuthMessageContent{
+					ContentType: models.CONTENT_TYPE_AUTH,
+					Content: &models.AuthMessageContent{
 						PublicKey:  "some-public-key",
 						PrivateKey: "some-private-key",
 					},
@@ -72,7 +72,7 @@ var _ = Describe("Messages", func() {
 				messageJson = []byte(`{"topic": "auth", "contentType": "AUTH", "content":{"publicKey":"some-public-key","privateKey":"some-private-key"}}`)
 			})
 			It("returns a message with its Content as a AuthMessageContent", func() {
-				realMessage, err := UnmarshalToMessage(messageJson)
+				realMessage, err := models.UnmarshalToMessage(messageJson)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(realMessage).To(Equal(message))
 			})

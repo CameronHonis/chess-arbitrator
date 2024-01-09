@@ -1,4 +1,4 @@
-package server
+package models
 
 import (
 	"github.com/gorilla/websocket"
@@ -13,16 +13,13 @@ type Client struct {
 	cleanup    func(*Client)
 }
 
-func NewClient(conn *websocket.Conn, cleanup func(*Client)) *Client {
-	pubKey, priKey := GenerateKeyset()
-
-	uc := &Client{
-		publicKey:  pubKey,
-		privateKey: priKey,
-		conn:       conn,
-		cleanup:    cleanup,
+func NewClient(pubKey, priKey Key, conn *websocket.Conn, cleanup func(*Client)) *Client {
+	return &Client{
+		pubKey,
+		priKey,
+		conn,
+		cleanup,
 	}
-	return uc
 }
 
 func (c *Client) PublicKey() Key {

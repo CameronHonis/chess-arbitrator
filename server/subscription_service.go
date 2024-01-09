@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 	. "github.com/CameronHonis/set"
@@ -47,8 +49,6 @@ func NewSubFailedEvent(clientKey Key, topic MessageTopic, reason string) *SubFai
 	}
 }
 
-type MessageTopic string
-
 type SubscriptionConfig struct {
 	ConfigI
 }
@@ -69,7 +69,7 @@ type SubscriptionServiceI interface {
 type SubscriptionService struct {
 	Service
 	__dependencies__      Marker
-	AuthenticationService AuthenticationServiceI
+	AuthenticationService auth_service.AuthenticationServiceI
 
 	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[Key]

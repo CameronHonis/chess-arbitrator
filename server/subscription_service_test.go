@@ -1,6 +1,8 @@
 package server_test
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
 	. "github.com/onsi/ginkgo/v2"
@@ -8,12 +10,12 @@ import (
 )
 
 var _ = Describe("SubscriptionService", func() {
-	var topic server.MessageTopic
-	var clientKey server.Key
+	var topic models.MessageTopic
+	var clientKey models.Key
 	var subService *server.SubscriptionService
 	BeforeEach(func() {
 		clientKey = "some-public-key"
-		authService := server.NewAuthenticationService(server.NewAuthenticationConfig())
+		authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
 		mockAuthService := NewAuthServiceMock(authService)
 		subService = server.NewSubscriptionService(server.NewSubscriptionConfig())
 		subService.AddDependency(mockAuthService)

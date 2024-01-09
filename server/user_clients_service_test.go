@@ -1,6 +1,9 @@
 package server_test
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
 	. "github.com/CameronHonis/log"
@@ -10,14 +13,14 @@ import (
 
 func BuildTestServices() *server.UserClientsService {
 	loggerConfig := NewLoggerConfig()
-	loggerConfig.MutedEnvs.Add(server.ENV_SERVER)
+	loggerConfig.MutedEnvs.Add(models.ENV_SERVER)
 	subService := server.NewSubscriptionService(server.NewSubscriptionConfig())
 	mockSubService := NewSubServiceMock(subService)
 
 	msgService := server.NewMessageHandlerService(server.NewMessageHandlerConfig())
 	mockMsgService := NewMessageServiceMock(msgService)
 
-	authService := server.NewAuthenticationService(server.NewAuthenticationConfig())
+	authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
 	mockAuthService := NewAuthServiceMock(authService)
 
 	loggerService := NewLoggerService(loggerConfig)
@@ -38,17 +41,17 @@ type TestMessageContentType struct {
 
 var _ = Describe("UserClientsService", func() {
 	var uc *server.UserClientsService
-	var client *server.Client
+	var client *models.Client
 	BeforeEach(func() {
 		uc = BuildTestServices()
-		client = server.NewClient(nil, nil)
+		client = helpers.CreateClient(nil, nil)
 	})
 	Describe("::AddClient", func() {
 		When("the client hasn't been added", func() {
 			It("adds the client to the map", func() {
 				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
 				Expect(uc.GetClient(client.PublicKey())).Error().ToNot(HaveOccurred())
-				Expect(uc.GetClient(client.PublicKey())).To(BeAssignableToTypeOf(&server.Client{}))
+				Expect(uc.GetClient(client.PublicKey())).To(BeAssignableToTypeOf(&models.Client{}))
 			})
 		})
 		When("the client already exists", func() {
@@ -85,11 +88,11 @@ var _ = Describe("UserClientsService", func() {
 		})
 	})
 	Describe("::BroadcastMessage", func() {
-		var topic server.MessageTopic
-		var msg *server.Message
+		var topic models.MessageTopic
+		var msg *models.Message
 		BeforeEach(func() {
 			topic = "some-topic"
-			msg = &server.Message{
+			msg = &models.Message{
 				SenderKey:   "some-sender-key",
 				PrivateKey:  "some-private-key",
 				Topic:       topic,

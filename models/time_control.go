@@ -1,4 +1,4 @@
-package server
+package models
 
 type TimeControl struct {
 	InitialTimeSec      int64 `json:"initialTimeSec"`

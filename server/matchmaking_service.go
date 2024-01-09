@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/match_service"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -28,7 +30,7 @@ type MatchmakingService struct {
 
 	__dependencies__ Marker
 	LoggerService    LoggerServiceI
-	MatchService     MatchServiceI
+	MatchService     match_service.MatchServiceI
 
 	__state__ Marker
 	pool      *MatchmakingPool
@@ -46,12 +48,12 @@ func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 }
 
 func (mm *MatchmakingService) AddClient(client *ClientProfile) error {
-	mm.LoggerService.Log(ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+	mm.LoggerService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
 	addErr := mm.pool.AddClient(client)
 	if addErr != nil {
 		return addErr
 	}
-	mm.LoggerService.Log(ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	mm.LoggerService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
 	return nil
 }
 
@@ -84,9 +86,9 @@ func (mm *MatchmakingService) loopMatchmaking() {
 			if IsMatchable(clientA, clientB, waitTime) {
 				matchErr := mm.matchClients(clientA, clientB)
 				if matchErr != nil {
-					mm.LoggerService.LogRed(ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
+					mm.LoggerService.LogRed(models.ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
-					mm.LoggerService.LogGreen(ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
+					mm.LoggerService.LogGreen(models.ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
 				}
 			}
 			currPoolNode = currPoolNode.next
@@ -103,7 +105,7 @@ func (mm *MatchmakingService) matchClients(clientA *ClientProfile, clientB *Clie
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
-	match := NewMatch(clientA.ClientKey, clientB.ClientKey, NewBulletTimeControl())
+	match := models.NewMatch(clientA.ClientKey, clientB.ClientKey, models.NewBulletTimeControl())
 	addMatchErr := mm.MatchService.AddMatch(match)
 	if addMatchErr != nil {
 		return fmt.Errorf("error adding match %s to match manager: %s", match.Uuid, addMatchErr)

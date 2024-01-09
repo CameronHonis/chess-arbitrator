@@ -1,4 +1,4 @@
-package server
+package models
 
 type Challenge struct {
 	ChallengerKey     Key          `json:"challengerKey"`

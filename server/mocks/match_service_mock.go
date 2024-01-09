@@ -2,7 +2,8 @@ package mocks
 
 import (
 	"github.com/CameronHonis/chess"
-	. "github.com/CameronHonis/chess-arbitrator/server"
+	. "github.com/CameronHonis/chess-arbitrator/match_service"
+	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/set"
 	. "github.com/CameronHonis/stub"
 )

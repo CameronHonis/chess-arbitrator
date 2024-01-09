@@ -2,6 +2,9 @@ package server
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -23,12 +26,12 @@ func (uc *UserClientsConfig) MergeWith(other ConfigI) ConfigI {
 
 type UserClientsServiceI interface {
 	ServiceI
-	GetClient(clientKey Key) (*Client, error)
-	AddNewClient(conn *websocket.Conn) (*Client, error)
-	AddClient(client *Client) error
-	RemoveClient(client *Client) error
-	BroadcastMessage(message *Message)
-	DirectMessage(message *Message, clientKey Key) error
+	GetClient(clientKey models.Key) (*models.Client, error)
+	AddNewClient(conn *websocket.Conn) (*models.Client, error)
+	AddClient(client *models.Client) error
+	RemoveClient(client *models.Client) error
+	BroadcastMessage(message *models.Message)
+	DirectMessage(message *models.Message, clientKey models.Key) error
 }
 
 type UserClientsService struct {
@@ -38,23 +41,23 @@ type UserClientsService struct {
 	LoggerService         LoggerServiceI
 	MessageService        MessageServiceI
 	SubscriptionService   SubscriptionServiceI
-	AuthenticationService AuthenticationServiceI
+	AuthenticationService auth_service.AuthenticationServiceI
 
 	__state__         Marker
 	mu                sync.Mutex
-	clientByPublicKey map[Key]*Client
+	clientByPublicKey map[models.Key]*models.Client
 }
 
 func NewUserClientsService(config *UserClientsConfig) *UserClientsService {
 	userClientsService := &UserClientsService{
-		clientByPublicKey: make(map[Key]*Client),
+		clientByPublicKey: make(map[models.Key]*models.Client),
 	}
 	userClientsService.Service = *NewService(userClientsService, config)
 	return userClientsService
 }
 
-func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*Client, error) {
-	client := NewClient(conn, uc.CleanupClient)
+func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
+	client := helpers.CreateClient(conn, uc.CleanupClient)
 
 	if err := uc.AddClient(client); err != nil {
 		return nil, err
@@ -62,7 +65,7 @@ func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*Client, error
 	return client, nil
 }
 
-func (uc *UserClientsService) AddClient(client *Client) error {
+func (uc *UserClientsService) AddClient(client *models.Client) error {
 	uc.mu.Lock()
 	if _, ok := uc.clientByPublicKey[client.PublicKey()]; ok {
 		return fmt.Errorf("client with key %s already exists", client.PublicKey())
@@ -73,7 +76,7 @@ func (uc *UserClientsService) AddClient(client *Client) error {
 	return nil
 }
 
-func (uc *UserClientsService) RemoveClient(client *Client) error {
+func (uc *UserClientsService) RemoveClient(client *models.Client) error {
 	pubKey := client.PublicKey()
 
 	uc.mu.Lock()
@@ -88,7 +91,7 @@ func (uc *UserClientsService) RemoveClient(client *Client) error {
 	return nil
 }
 
-func (uc *UserClientsService) GetClient(clientKey Key) (*Client, error) {
+func (uc *UserClientsService) GetClient(clientKey models.Key) (*models.Client, error) {
 	defer uc.mu.Unlock()
 	uc.mu.Lock()
 	client, ok := uc.clientByPublicKey[clientKey]
@@ -98,25 +101,25 @@ func (uc *UserClientsService) GetClient(clientKey Key) (*Client, error) {
 	return client, nil
 }
 
-func (uc *UserClientsService) BroadcastMessage(message *Message) {
+func (uc *UserClientsService) BroadcastMessage(message *models.Message) {
 	msgCopy := *message
 	msgCopy.PrivateKey = ""
 	subbedClientKeys := uc.SubscriptionService.ClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := uc.GetClient(clientKey)
 		if err != nil {
-			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
+			uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
 			continue
 		}
 		writeErr := uc.writeMessage(client, &msgCopy)
 		if writeErr != nil {
-			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error broadcasting to client: %s", writeErr), ALL_BUT_TEST_ENV)
+			uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("error broadcasting to client: %s", writeErr), ALL_BUT_TEST_ENV)
 			continue
 		}
 	}
 }
 
-func (uc *UserClientsService) DirectMessage(message *Message, clientKey Key) error {
+func (uc *UserClientsService) DirectMessage(message *models.Message, clientKey models.Key) error {
 	if message.Topic != "directMessage" && message.Topic != "" {
 		return fmt.Errorf("direct messages expected to not have a topic, given %s", message.Topic)
 	}
@@ -129,39 +132,39 @@ func (uc *UserClientsService) DirectMessage(message *Message, clientKey Key) err
 	return uc.writeMessage(client, &msgCopy)
 }
 
-func (uc *UserClientsService) CleanupClient(client *Client) {
+func (uc *UserClientsService) CleanupClient(client *models.Client) {
 	_ = uc.AuthenticationService.RemoveClient(client.PublicKey())
 }
 
-func (uc *UserClientsService) listenForUserInput(client *Client) {
+func (uc *UserClientsService) listenForUserInput(client *models.Client) {
 	if client.WSConn() == nil {
-		uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("client %s did not establish a websocket connection", client.PublicKey()))
+		uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("client %s did not establish a websocket connection", client.PublicKey()))
 		return
 	}
 	for {
 		_, rawMsg, readErr := client.WSConn().ReadMessage()
 		_, clientErr := uc.GetClient(client.PublicKey())
 		if clientErr != nil {
-			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), ALL_BUT_TEST_ENV)
+			uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), ALL_BUT_TEST_ENV)
 			return
 		}
 		if readErr != nil {
-			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), ALL_BUT_TEST_ENV)
+			uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), ALL_BUT_TEST_ENV)
 			// assume all readErrs are disconnects
 			_ = uc.RemoveClient(client)
 			return
 		}
 		if err := uc.readMessage(client.PublicKey(), rawMsg); err != nil {
-			uc.LoggerService.LogRed(ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), ALL_BUT_TEST_ENV)
+			uc.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), ALL_BUT_TEST_ENV)
 
 		}
 	}
 
 }
 
-func (uc *UserClientsService) readMessage(clientKey Key, rawMsg []byte) error {
+func (uc *UserClientsService) readMessage(clientKey models.Key, rawMsg []byte) error {
 	uc.LoggerService.Log(string(clientKey), ">> ", string(rawMsg))
-	msg, unmarshalErr := UnmarshalToMessage(rawMsg)
+	msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
 	if unmarshalErr != nil {
 		return fmt.Errorf("error unmarshalling message: %s", unmarshalErr)
 	}
@@ -175,7 +178,7 @@ func (uc *UserClientsService) readMessage(clientKey Key, rawMsg []byte) error {
 	return nil
 }
 
-func (uc *UserClientsService) writeMessage(client *Client, msg *Message) error {
+func (uc *UserClientsService) writeMessage(client *models.Client, msg *models.Message) error {
 	client, err := uc.GetClient(msg.SenderKey)
 	if err != nil {
 		return err

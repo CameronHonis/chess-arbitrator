@@ -1,7 +1,9 @@
-package server_test
+package match_service_test
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/server"
 	. "github.com/CameronHonis/chess-arbitrator/server/mocks"
 	"github.com/CameronHonis/log"
@@ -89,17 +91,17 @@ func (ec *EventCatcher) NthEventByVariant(eVar EventVariant, idx int) EventI {
 }
 
 var _ = Describe("MatchService", func() {
-	var m *server.MatchService
+	var m *MatchService
 	var eventCatcher *EventCatcher
 	BeforeEach(func() {
 		realLoggerService := log.NewLoggerService(server.GetLoggerConfig())
-		realAuthService := server.NewAuthenticationService(nil)
+		realAuthService := auth_service.NewAuthenticationService(nil)
 		mockAuthService := NewAuthServiceMock(realAuthService)
-		getRoleStub := func(rec *server.AuthenticationService, clientKey server.Key) (server.RoleName, error) {
-			roleName := map[server.Key]server.RoleName{
-				"client1": server.PLEB,
-				"client2": server.PLEB,
-				"client3": server.PLEB,
+		getRoleStub := func(rec *auth_service.AuthenticationService, clientKey models.Key) (server.RoleName, error) {
+			roleName := map[models.Key]server.RoleName{
+				"client1": auth_service.PLEB,
+				"client2": auth_service.PLEB,
+				"client3": auth_service.PLEB,
 			}[clientKey]
 			if roleName == "" {
 				return "", fmt.Errorf("no role for %s", clientKey)
@@ -107,27 +109,27 @@ var _ = Describe("MatchService", func() {
 			return roleName, nil
 		}
 		mockAuthService.Stub("GetRole", getRoleStub)
-		m = server.NewMatchService(nil)
+		m = NewMatchService(nil)
 		m.AddDependency(mockAuthService)
 		m.AddDependency(realLoggerService)
 		eventCatcher = NewEventCatcher()
 		eventCatcher.AddDependency(m)
 	})
 	Describe("AddMatch", func() {
-		var match *server.Match
+		var match *models.Match
 		BeforeEach(func() {
-			match = server.NewMatch(
+			match = models.NewMatch(
 				"client1",
 				"client2",
-				server.NewBulletTimeControl(),
+				models.NewBulletTimeControl(),
 			)
 		})
 		Describe("when one of the players in the proposed match is already in a match", func() {
 			BeforeEach(func() {
-				ongoingMatch := server.NewMatch(
+				ongoingMatch := models.NewMatch(
 					"client1",
 					"client3",
-					server.NewBulletTimeControl(),
+					models.NewBulletTimeControl(),
 				)
 				Expect(m.AddMatch(ongoingMatch)).To(Succeed())
 			})
@@ -145,17 +147,17 @@ var _ = Describe("MatchService", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
 
 			Eventually(func() int {
-				return eventCatcher.EventsByVariantCount(server.MATCH_CREATED)
+				return eventCatcher.EventsByVariantCount(MATCH_CREATED)
 			}).Should(Equal(1))
-			expEvent := server.NewMatchCreatedEvent(match)
-			actualEvent := eventCatcher.LastEventByVariant(server.MATCH_CREATED)
+			expEvent := NewMatchCreatedEvent(match)
+			actualEvent := eventCatcher.LastEventByVariant(MATCH_CREATED)
 			Expect(actualEvent).To(BeEquivalentTo(expEvent))
 		})
 	})
 	Describe("RemoveMatch", func() {
-		var match *server.Match
+		var match *models.Match
 		BeforeEach(func() {
-			match = server.NewMatch("client1", "client2", server.NewBulletTimeControl())
+			match = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
 		})
 		Describe("when the match exists", func() {
 			BeforeEach(func() {
@@ -170,10 +172,10 @@ var _ = Describe("MatchService", func() {
 			It("emits a match ended event", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
 				Eventually(func() int {
-					return eventCatcher.EventsByVariantCount(server.MATCH_ENDED)
+					return eventCatcher.EventsByVariantCount(MATCH_ENDED)
 				}).Should(Equal(1))
-				expEvent := server.NewMatchEndedEvent(match)
-				actualEvent := eventCatcher.LastEventByVariant(server.MATCH_ENDED)
+				expEvent := NewMatchEndedEvent(match)
+				actualEvent := eventCatcher.LastEventByVariant(MATCH_ENDED)
 				Expect(actualEvent).To(BeEquivalentTo(expEvent))
 			})
 		})

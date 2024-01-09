@@ -1,7 +1,8 @@
 package server_test
 
 import (
-	. "github.com/CameronHonis/chess-arbitrator/server"
+	. "github.com/CameronHonis/chess-arbitrator/helpers"
+	. "github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

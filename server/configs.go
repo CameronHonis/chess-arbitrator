@@ -1,14 +1,9 @@
 package server
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 )
-
-const ENV_SERVER = "server"
-const ENV_CLIENT = "client"
-const ENV_MATCHMAKING = "matchmaking"
-const ENV_MATCH_SERVICE = "match_service"
-const ENV_TIMER = "timer"
 
 func GetAppConfig() *AppConfig {
 	return NewAppConfig()
@@ -16,11 +11,11 @@ func GetAppConfig() *AppConfig {
 
 func GetLoggerConfig() *LoggerConfig {
 	logConfigBuilder := NewConfigBuilder()
-	logConfigBuilder.WithDecorator(ENV_SERVER, WrapGreen)
-	logConfigBuilder.WithDecorator(ENV_CLIENT, WrapBlue)
-	logConfigBuilder.WithDecorator(ENV_MATCHMAKING, WrapMagenta)
-	logConfigBuilder.WithDecorator(ENV_MATCH_SERVICE, WrapBrown)
-	logConfigBuilder.WithDecorator(ENV_TIMER, WrapOrange)
+	logConfigBuilder.WithDecorator(models.ENV_SERVER, WrapGreen)
+	logConfigBuilder.WithDecorator(models.ENV_CLIENT, WrapBlue)
+	logConfigBuilder.WithDecorator(models.ENV_MATCHMAKING, WrapMagenta)
+	logConfigBuilder.WithDecorator(models.ENV_MATCH_SERVICE, WrapBrown)
+	logConfigBuilder.WithDecorator(models.ENV_TIMER, WrapOrange)
 	//logConfigBuilder.WithMutedEnv("server")
 	//logConfigBuilder.WithMutedEnv("client")
 	//logConfigBuilder.WithMutedEnv("matchmaking")

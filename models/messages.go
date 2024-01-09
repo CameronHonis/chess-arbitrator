@@ -1,10 +1,12 @@
-package server
+package models
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/CameronHonis/chess"
 )
+
+type MessageTopic string
 
 type Message struct {
 	SenderKey   Key          `json:"senderKey"`
