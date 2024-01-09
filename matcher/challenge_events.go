@@ -1,4 +1,4 @@
-package match_service
+package matcher
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/models"

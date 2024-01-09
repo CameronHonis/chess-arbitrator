@@ -1,4 +1,4 @@
-package main
+package app_service
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/models"

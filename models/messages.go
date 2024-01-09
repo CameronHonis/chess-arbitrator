@@ -114,7 +114,7 @@ type FindMatchMessageContent struct {
 }
 
 type MatchUpdateMessageContent struct {
-	Match *Match `json:"match"`
+	Match *Match `json:"matcher"`
 }
 
 type MoveMessageContent struct {

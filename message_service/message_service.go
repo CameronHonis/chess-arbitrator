@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
-	"github.com/CameronHonis/chess-arbitrator/match_service"
-	"github.com/CameronHonis/chess-arbitrator/matchmaking_service"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
+	"github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/subscription_service"
 	. "github.com/CameronHonis/log"
@@ -74,8 +74,8 @@ type MessageService struct {
 	LoggerService         LoggerServiceI
 	AuthenticationService auth_service.AuthenticationServiceI
 	SubscriptionService   subscription_service.SubscriptionServiceI
-	MatchService          match_service.MatchServiceI
-	MatchmakingService    matchmaking_service.MatchmakingServiceI
+	MatchService          matcher.MatchServiceI
+	MatchmakingService    matchmaking.MatchmakingServiceI
 
 	__state__ Marker
 }

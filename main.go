@@ -1,11 +1,12 @@
 package main
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/app_service"
 	"sync"
 )
 
 func main() {
-	app := BuildServices()
+	app := app_service.BuildServices()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

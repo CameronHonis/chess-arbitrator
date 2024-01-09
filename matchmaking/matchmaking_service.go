@@ -1,8 +1,8 @@
-package matchmaking_service
+package matchmaking
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/match_service"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
@@ -30,7 +30,7 @@ type MatchmakingService struct {
 
 	__dependencies__ Marker
 	LoggerService    LoggerServiceI
-	MatchService     match_service.MatchServiceI
+	MatchService     matcher.MatchServiceI
 
 	__state__ Marker
 	pool      *MatchmakingPool
@@ -64,10 +64,10 @@ func (mm *MatchmakingService) RemoveClient(client *models.ClientProfile) error {
 func (mm *MatchmakingService) loopMatchmaking() {
 	for {
 		time.Sleep(time.Second)
-		if mm.pool.head == mm.pool.tail {
+		if mm.pool.Head() == mm.pool.Tail() {
 			continue
 		}
-		currPoolNode := mm.pool.head
+		currPoolNode := mm.pool.Head()
 		for currPoolNode != nil && currPoolNode.next != nil {
 			waitTime := time.Now().Unix() - currPoolNode.timeJoined
 			bestMatchPoolNode := currPoolNode.next
@@ -108,7 +108,7 @@ func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, client
 	match := models.NewMatch(clientA.ClientKey, clientB.ClientKey, models.NewBulletTimeControl())
 	addMatchErr := mm.MatchService.AddMatch(match)
 	if addMatchErr != nil {
-		return fmt.Errorf("error adding match %s to match manager: %s", match.Uuid, addMatchErr)
+		return fmt.Errorf("error adding matcher %s to matcher manager: %s", match.Uuid, addMatchErr)
 	}
 	return nil
 }

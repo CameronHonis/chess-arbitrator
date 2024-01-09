@@ -1,4 +1,4 @@
-package match_service
+package matcher
 
 import (
 	"github.com/CameronHonis/chess"
@@ -9,11 +9,11 @@ import (
 )
 
 type MatchServiceMock struct {
-	Stubbed[MatchService]
+	Stubbed[MatcherService]
 	mocks.ServiceMock
 }
 
-func NewMatchServiceMock(matchService *MatchService) *MatchServiceMock {
+func NewMatchServiceMock(matchService *MatcherService) *MatchServiceMock {
 	ms := &MatchServiceMock{}
 	ms.Stubbed = *NewStubbed(ms, matchService)
 	ms.ServiceMock = *mocks.NewServiceMock(&matchService.Service)

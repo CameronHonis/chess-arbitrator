@@ -1,11 +1,10 @@
-package match_service_test
+package matcher_test
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator"
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/server"
 	"github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -90,18 +89,18 @@ func (ec *EventCatcher) NthEventByVariant(eVar EventVariant, idx int) EventI {
 	return evs[idx]
 }
 
-var _ = Describe("MatchService", func() {
-	var m *MatchService
+var _ = Describe("MatcherService", func() {
+	var m *matcher.MatcherService
 	var eventCatcher *EventCatcher
 	BeforeEach(func() {
-		realLoggerService := log.NewLoggerService(main.GetLoggerConfig())
+		realLoggerService := log.NewLoggerService(log.NewLoggerConfig())
 		realAuthService := auth_service.NewAuthenticationService(nil)
 		mockAuthService := auth_service.NewAuthServiceMock(realAuthService)
-		getRoleStub := func(rec *auth_service.AuthenticationService, clientKey models.Key) (server.RoleName, error) {
-			roleName := map[models.Key]server.RoleName{
-				"client1": auth_service.PLEB,
-				"client2": auth_service.PLEB,
-				"client3": auth_service.PLEB,
+		getRoleStub := func(rec *auth_service.AuthenticationService, clientKey models.Key) (models.RoleName, error) {
+			roleName := map[models.Key]models.RoleName{
+				"client1": models.PLEB,
+				"client2": models.PLEB,
+				"client3": models.PLEB,
 			}[clientKey]
 			if roleName == "" {
 				return "", fmt.Errorf("no role for %s", clientKey)
@@ -109,7 +108,7 @@ var _ = Describe("MatchService", func() {
 			return roleName, nil
 		}
 		mockAuthService.Stub("GetRole", getRoleStub)
-		m = NewMatchService(nil)
+		m = matcher.NewMatcherService(nil)
 		m.AddDependency(mockAuthService)
 		m.AddDependency(realLoggerService)
 		eventCatcher = NewEventCatcher()
@@ -124,7 +123,7 @@ var _ = Describe("MatchService", func() {
 				models.NewBulletTimeControl(),
 			)
 		})
-		Describe("when one of the players in the proposed match is already in a match", func() {
+		Describe("when one of the players in the proposed matcher is already in a matcher", func() {
 			BeforeEach(func() {
 				ongoingMatch := models.NewMatch(
 					"client1",
@@ -137,20 +136,20 @@ var _ = Describe("MatchService", func() {
 				Expect(m.AddMatch(match)).ToNot(Succeed())
 			})
 		})
-		It("adds the match to the active matches", func() {
+		It("adds the matcher to the active matches", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
 			Expect(m.GetMatchById(match.Uuid)).To(Equal(match))
 			Expect(m.GetMatchByClientKey(match.BlackClientKey)).To(Equal(match))
 			Expect(m.GetMatchByClientKey(match.WhiteClientKey)).To(Equal(match))
 		})
-		It("emits a match created event", func() {
+		It("emits a matcher created event", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
 
 			Eventually(func() int {
-				return eventCatcher.EventsByVariantCount(MATCH_CREATED)
+				return eventCatcher.EventsByVariantCount(matcher.MATCH_CREATED)
 			}).Should(Equal(1))
-			expEvent := NewMatchCreatedEvent(match)
-			actualEvent := eventCatcher.LastEventByVariant(MATCH_CREATED)
+			expEvent := matcher.NewMatchCreatedEvent(match)
+			actualEvent := eventCatcher.LastEventByVariant(matcher.MATCH_CREATED)
 			Expect(actualEvent).To(BeEquivalentTo(expEvent))
 		})
 	})
@@ -159,27 +158,27 @@ var _ = Describe("MatchService", func() {
 		BeforeEach(func() {
 			match = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
 		})
-		Describe("when the match exists", func() {
+		Describe("when the matcher exists", func() {
 			BeforeEach(func() {
 				Expect(m.AddMatch(match)).To(Succeed())
 			})
-			It("removes the match from the active matches", func() {
+			It("removes the matcher from the active matches", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
 				Expect(m.GetMatchById(match.Uuid)).Error().To(HaveOccurred())
 				Expect(m.GetMatchByClientKey(match.WhiteClientKey)).Error().To(HaveOccurred())
 				Expect(m.GetMatchByClientKey(match.BlackClientKey)).Error().To(HaveOccurred())
 			})
-			It("emits a match ended event", func() {
+			It("emits a matcher ended event", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
 				Eventually(func() int {
-					return eventCatcher.EventsByVariantCount(MATCH_ENDED)
+					return eventCatcher.EventsByVariantCount(matcher.MATCH_ENDED)
 				}).Should(Equal(1))
-				expEvent := NewMatchEndedEvent(match)
-				actualEvent := eventCatcher.LastEventByVariant(MATCH_ENDED)
+				expEvent := matcher.NewMatchEndedEvent(match)
+				actualEvent := eventCatcher.LastEventByVariant(matcher.MATCH_ENDED)
 				Expect(actualEvent).To(BeEquivalentTo(expEvent))
 			})
 		})
-		Describe("when the match does not exist", func() {
+		Describe("when the matcher does not exist", func() {
 			It("returns an error", func() {
 				Expect(m.RemoveMatch(match)).To(HaveOccurred())
 			})
@@ -197,7 +196,7 @@ var _ = Describe("MatchService", func() {
 	//		newMatch.Board = newBoard
 	//		newMatch.LastMoveTime = &newTime
 	//	})
-	//	Describe("when the match exists", func() {
+	//	Describe("when the matcher exists", func() {
 	//		var prevMatch *Match
 	//		BeforeEach(func() {
 	//			prevMatch = NewMatch("client1", "client2", NewBulletTimeControl())
@@ -208,19 +207,19 @@ var _ = Describe("MatchService", func() {
 	//			m.matchIdByClientKey[prevMatch.WhiteClientKey] = prevMatch.Uuid
 	//			m.matchIdByClientKey[prevMatch.BlackClientKey] = prevMatch.Uuid
 	//		})
-	//		It("updates the match", func() {
+	//		It("updates the matcher", func() {
 	//			err := m.setMatch(newMatch)
 	//			Expect(err).ToNot(HaveOccurred())
 	//			Expect(m.matchByMatchId[newMatch.Uuid]).To(Equal(newMatch))
 	//		})
-	//		It("emits a match updated event", func() {
+	//		It("emits a matcher updated event", func() {
 	//			err := m.setMatch(newMatch)
 	//			Expect(err).ToNot(HaveOccurred())
 	//			Expect(el.Events).To(HaveLen(1))
 	//			Expect(el.Events[0].Variant()).To(Equal(MATCH_UPDATED))
 	//			Expect(el.Events[0].Payload()).To(Equal(newMatch))
 	//		})
-	//		Describe("when the new match differs by client id", func() {
+	//		Describe("when the new matcher differs by client id", func() {
 	//			BeforeEach(func() {
 	//				newMatch = NewMatch("other-client1", "client2", NewBulletTimeControl())
 	//				newMatch.WhiteClientKey = "other-client1"
@@ -232,7 +231,7 @@ var _ = Describe("MatchService", func() {
 	//				Expect(err).To(HaveOccurred())
 	//			})
 	//		})
-	//		Describe("when the new match differs by time control", func() {
+	//		Describe("when the new matcher differs by time control", func() {
 	//			BeforeEach(func() {
 	//				newMatch = NewMatch("client1", "client2", NewRapidTimeControl())
 	//				newMatch.WhiteClientKey = "client1"
@@ -245,7 +244,7 @@ var _ = Describe("MatchService", func() {
 	//			})
 	//		})
 	//	})
-	//	Describe("when the match does not exist", func() {
+	//	Describe("when the matcher does not exist", func() {
 	//		BeforeEach(func() {
 	//			Expect(m.matchByMatchId).ToNot(HaveKey(newMatch.Uuid))
 	//		})
@@ -260,10 +259,10 @@ var _ = Describe("MatchService", func() {
 	//
 	//})
 	//Describe("ExecuteMove", func() {
-	//	var match *Match
+	//	var matcher *Match
 	//	var move chess.Move
 	//	BeforeEach(func() {
-	//		match = NewMatch("client1", "client2", NewBulletTimeControl())
+	//		matcher = NewMatch("client1", "client2", NewBulletTimeControl())
 	//		move = chess.Move{
 	//			Piece:               chess.WHITE_PAWN,
 	//			StartSquare:         &chess.Square{Rank: 2, File: 4},
@@ -273,37 +272,37 @@ var _ = Describe("MatchService", func() {
 	//			PawnUpgradedTo:      chess.EMPTY,
 	//		}
 	//	})
-	//	Describe("when the match doesnt exist", func() {
+	//	Describe("when the matcher doesnt exist", func() {
 	//		BeforeEach(func() {
-	//			_, getMatchErr := m.GetMatchById(match.Uuid)
+	//			_, getMatchErr := m.GetMatchById(matcher.Uuid)
 	//			Expect(getMatchErr).To(HaveOccurred())
 	//		})
 	//		It("returns an error", func() {
-	//			err := m.ExecuteMove(match.Uuid, &move)
+	//			err := m.ExecuteMove(matcher.Uuid, &move)
 	//			Expect(err).To(HaveOccurred())
 	//		})
 	//	})
-	//	Describe("when the match exists", func() {
+	//	Describe("when the matcher exists", func() {
 	//		BeforeEach(func() {
-	//			match = NewMatch("client1", "client2", NewBulletTimeControl())
-	//			addMatchErr := m.AddMatch(match)
+	//			matcher = NewMatch("client1", "client2", NewBulletTimeControl())
+	//			addMatchErr := m.AddMatch(matcher)
 	//			Expect(addMatchErr).ToNot(HaveOccurred())
-	//			Expect(m.matchByMatchId).To(HaveKey(match.Uuid))
+	//			Expect(m.matchByMatchId).To(HaveKey(matcher.Uuid))
 	//		})
 	//		Describe("when the move is illegal", func() {
 	//			BeforeEach(func() {
 	//				move = chess.Move{chess.WHITE_PAWN, &chess.Square{8, 8}, &chess.Square{4, 4}, chess.EMPTY, make([]*chess.Square, 0), chess.EMPTY}
 	//			})
 	//			It("returns an error", func() {
-	//				err := m.ExecuteMove(match.Uuid, &move)
+	//				err := m.ExecuteMove(matcher.Uuid, &move)
 	//				Expect(err).To(HaveOccurred())
 	//			})
 	//		})
-	//		It("Updates the match", func() {
-	//			err := m.ExecuteMove(match.Uuid, &move)
+	//		It("Updates the matcher", func() {
+	//			err := m.ExecuteMove(matcher.Uuid, &move)
 	//			Expect(err).ToNot(HaveOccurred())
-	//			expBoard := chess.GetBoardFromMove(match.Board, &move)
-	//			Expect(m.matchByMatchId[match.Uuid].Board).To(Equal(expBoard))
+	//			expBoard := chess.GetBoardFromMove(matcher.Board, &move)
+	//			Expect(m.matchByMatchId[matcher.Uuid].Board).To(Equal(expBoard))
 	//		})
 	//	})
 	//})
