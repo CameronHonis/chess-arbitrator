@@ -20,8 +20,8 @@ func NewMatcherServiceMock(matchService *MatcherService) *MatcherServiceMock {
 	return ms
 }
 
-func (ms *MatcherServiceMock) GetMatchById(matchId string) (*Match, error) {
-	out := ms.Call("GetMatchById", matchId)
+func (ms *MatcherServiceMock) MatchById(matchId string) (*Match, error) {
+	out := ms.Call("MatchById", matchId)
 	var err error
 	if out[1] != nil {
 		err = out[1].(error)
@@ -29,8 +29,8 @@ func (ms *MatcherServiceMock) GetMatchById(matchId string) (*Match, error) {
 	return out[0].(*Match), err
 }
 
-func (ms *MatcherServiceMock) GetMatchByClientKey(clientKey Key) (*Match, error) {
-	out := ms.Call("GetMatchByClientKey", clientKey)
+func (ms *MatcherServiceMock) MatchByClientKey(clientKey Key) (*Match, error) {
+	out := ms.Call("MatchByClientKey", clientKey)
 	var err error
 	if out[1] != nil {
 		err = out[1].(error)
@@ -38,8 +38,8 @@ func (ms *MatcherServiceMock) GetMatchByClientKey(clientKey Key) (*Match, error)
 	return out[0].(*Match), err
 }
 
-func (ms *MatcherServiceMock) GetChallenges(challengerKey Key) (*Set[*Challenge], error) {
-	out := ms.Call("GetChallenges", challengerKey)
+func (ms *MatcherServiceMock) Challenges(challengerKey Key) (*Set[*Challenge], error) {
+	out := ms.Call("Challenges", challengerKey)
 	var err error
 	if out[1] != nil {
 		err = out[1].(error)
@@ -47,8 +47,8 @@ func (ms *MatcherServiceMock) GetChallenges(challengerKey Key) (*Set[*Challenge]
 	return out[0].(*Set[*Challenge]), err
 }
 
-func (ms *MatcherServiceMock) GetChallenge(challengerKey Key, receiverKey Key) (*Challenge, error) {
-	out := ms.Call("GetChallenge", challengerKey, receiverKey)
+func (ms *MatcherServiceMock) Challenge(challengerKey Key, receiverKey Key) (*Challenge, error) {
+	out := ms.Call("Challenge", challengerKey, receiverKey)
 	var err error
 	if out[1] != nil {
 		err = out[1].(error)

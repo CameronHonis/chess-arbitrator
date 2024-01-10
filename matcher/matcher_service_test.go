@@ -138,9 +138,9 @@ var _ = Describe("MatcherService", func() {
 		})
 		It("adds the matcher to the active matches", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
-			Expect(m.GetMatchById(match.Uuid)).To(Equal(match))
-			Expect(m.GetMatchByClientKey(match.BlackClientKey)).To(Equal(match))
-			Expect(m.GetMatchByClientKey(match.WhiteClientKey)).To(Equal(match))
+			Expect(m.MatchById(match.Uuid)).To(Equal(match))
+			Expect(m.MatchByClientKey(match.BlackClientKey)).To(Equal(match))
+			Expect(m.MatchByClientKey(match.WhiteClientKey)).To(Equal(match))
 		})
 		It("emits a matcher created event", func() {
 			Expect(m.AddMatch(match)).To(Succeed())
@@ -164,9 +164,9 @@ var _ = Describe("MatcherService", func() {
 			})
 			It("removes the matcher from the active matches", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
-				Expect(m.GetMatchById(match.Uuid)).Error().To(HaveOccurred())
-				Expect(m.GetMatchByClientKey(match.WhiteClientKey)).Error().To(HaveOccurred())
-				Expect(m.GetMatchByClientKey(match.BlackClientKey)).Error().To(HaveOccurred())
+				Expect(m.MatchById(match.Uuid)).Error().To(HaveOccurred())
+				Expect(m.MatchByClientKey(match.WhiteClientKey)).Error().To(HaveOccurred())
+				Expect(m.MatchByClientKey(match.BlackClientKey)).Error().To(HaveOccurred())
 			})
 			It("emits a matcher ended event", func() {
 				Expect(m.RemoveMatch(match)).To(Succeed())
@@ -274,7 +274,7 @@ var _ = Describe("MatcherService", func() {
 	//	})
 	//	Describe("when the matcher doesnt exist", func() {
 	//		BeforeEach(func() {
-	//			_, getMatchErr := m.GetMatchById(matcher.Uuid)
+	//			_, getMatchErr := m.MatchById(matcher.Uuid)
 	//			Expect(getMatchErr).To(HaveOccurred())
 	//		})
 	//		It("returns an error", func() {
