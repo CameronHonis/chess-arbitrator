@@ -9,21 +9,6 @@ import (
 import "fmt"
 import "github.com/gorilla/websocket"
 
-type RouterServiceConfig struct {
-	Port uint
-}
-
-func NewRouterServiceConfig() *RouterServiceConfig {
-	return &RouterServiceConfig{
-		Port: 8080,
-	}
-}
-
-func (rc *RouterServiceConfig) MergeWith(other ConfigI) ConfigI {
-	newConfig := *(other.(*RouterServiceConfig))
-	return &newConfig
-}
-
 type RouterServiceI interface {
 	ServiceI
 	StartWSServer()

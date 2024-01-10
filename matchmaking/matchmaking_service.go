@@ -8,6 +8,7 @@ import (
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -26,11 +27,13 @@ type MatchmakingService struct {
 
 	__state__ Marker
 	pool      *MatchmakingPool
+	mu        sync.Mutex
 }
 
 func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 	matchmakingService := &MatchmakingService{
 		pool: NewMatchmakingPool(),
+		mu:   sync.Mutex{},
 	}
 	matchmakingService.Service = *NewService(matchmakingService, config)
 
@@ -41,7 +44,9 @@ func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 
 func (mm *MatchmakingService) AddClient(client *models.ClientProfile) error {
 	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+	mm.mu.Lock()
 	addErr := mm.pool.AddClient(client)
+	mm.mu.Unlock()
 	if addErr != nil {
 		return addErr
 	}
@@ -50,16 +55,20 @@ func (mm *MatchmakingService) AddClient(client *models.ClientProfile) error {
 }
 
 func (mm *MatchmakingService) RemoveClient(client *models.ClientProfile) error {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
 	return mm.pool.RemoveClient(client.ClientKey)
 }
 
 func (mm *MatchmakingService) loopMatchmaking() {
 	for {
 		time.Sleep(time.Second)
+		mm.mu.Lock()
 		if mm.pool.Head() == mm.pool.Tail() {
 			continue
 		}
 		currPoolNode := mm.pool.Head()
+		mm.mu.Unlock()
 		for currPoolNode != nil && currPoolNode.next != nil {
 			waitTime := time.Now().Unix() - currPoolNode.timeJoined
 			bestMatchPoolNode := currPoolNode.next
@@ -89,11 +98,15 @@ func (mm *MatchmakingService) loopMatchmaking() {
 }
 
 func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, clientB *models.ClientProfile) error {
+	mm.mu.Lock()
 	removeErr := mm.pool.RemoveClient(clientA.ClientKey)
+	mm.mu.Unlock()
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientA.ClientKey, removeErr)
 	}
+	mm.mu.Lock()
 	removeErr = mm.pool.RemoveClient(clientB.ClientKey)
+	mm.mu.Unlock()
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}

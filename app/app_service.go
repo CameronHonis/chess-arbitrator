@@ -14,7 +14,7 @@ type AppService struct {
 	service.Service
 
 	__dependencies__ Marker
-	RouterService    *router_service.RouterServiceI
+	RouterService    router_service.RouterServiceI
 
 	__state__ Marker
 }

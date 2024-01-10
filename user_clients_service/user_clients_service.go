@@ -34,8 +34,8 @@ type UserClientsService struct {
 	AuthService      auth_service.AuthenticationServiceI
 
 	__state__         Marker
-	mu                sync.Mutex
 	clientByPublicKey map[models.Key]*models.Client
+	mu                sync.Mutex
 }
 
 func NewUserClientsService(config *UserClientsServiceConfig) *UserClientsService {
@@ -82,9 +82,9 @@ func (uc *UserClientsService) RemoveClient(client *models.Client) error {
 }
 
 func (uc *UserClientsService) GetClient(clientKey models.Key) (*models.Client, error) {
-	defer uc.mu.Unlock()
 	uc.mu.Lock()
 	client, ok := uc.clientByPublicKey[clientKey]
+	uc.mu.Unlock()
 	if !ok {
 		return nil, fmt.Errorf("no client with public key %s", clientKey)
 	}
