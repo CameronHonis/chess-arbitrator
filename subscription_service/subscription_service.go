@@ -10,14 +10,6 @@ import (
 	"sync"
 )
 
-type SubscriptionServiceConfig struct {
-	ConfigI
-}
-
-func NewSubscriptionServiceConfig() *SubscriptionServiceConfig {
-	return &SubscriptionServiceConfig{}
-}
-
 type SubscriptionServiceI interface {
 	ServiceI
 	SubClient(clientKey Key, topic MessageTopic) error

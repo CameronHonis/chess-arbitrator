@@ -14,18 +14,6 @@ import (
 	"sync"
 )
 
-type UserClientsServiceConfig struct {
-}
-
-func NewUserClientsServiceConfig() *UserClientsServiceConfig {
-	return &UserClientsServiceConfig{}
-}
-
-func (uc *UserClientsServiceConfig) MergeWith(other ConfigI) ConfigI {
-	newConfig := *(other.(*UserClientsServiceConfig))
-	return &newConfig
-}
-
 type UserClientsServiceI interface {
 	ServiceI
 	GetClient(clientKey models.Key) (*models.Client, error)
