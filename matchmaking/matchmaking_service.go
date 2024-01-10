@@ -11,14 +11,6 @@ import (
 	"time"
 )
 
-type MatchmakingConfig struct {
-	ConfigI
-}
-
-func NewMatchmakingConfig() *MatchmakingConfig {
-	return &MatchmakingConfig{}
-}
-
 type MatchmakingServiceI interface {
 	ServiceI
 	AddClient(client *models.ClientProfile) error
@@ -29,8 +21,8 @@ type MatchmakingService struct {
 	Service
 
 	__dependencies__ Marker
-	LoggerService    LoggerServiceI
-	MatchService     matcher.MatchServiceI
+	LogService       LoggerServiceI
+	MatchService     matcher.MatcherServiceI
 
 	__state__ Marker
 	pool      *MatchmakingPool
@@ -48,12 +40,12 @@ func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 }
 
 func (mm *MatchmakingService) AddClient(client *models.ClientProfile) error {
-	mm.LoggerService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
 	addErr := mm.pool.AddClient(client)
 	if addErr != nil {
 		return addErr
 	}
-	mm.LoggerService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
 	return nil
 }
 
@@ -86,9 +78,9 @@ func (mm *MatchmakingService) loopMatchmaking() {
 			if IsMatchable(clientA, clientB, waitTime) {
 				matchErr := mm.matchClients(clientA, clientB)
 				if matchErr != nil {
-					mm.LoggerService.LogRed(models.ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
+					mm.LogService.LogRed(models.ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
-					mm.LoggerService.LogGreen(models.ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
+					mm.LogService.LogGreen(models.ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
 				}
 			}
 			currPoolNode = currPoolNode.next

@@ -14,9 +14,9 @@ var _ = Describe("SubscriptionService", func() {
 	var subService *subscription_service.SubscriptionService
 	BeforeEach(func() {
 		clientKey = "some-public-key"
-		authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
+		authService := auth_service.NewAuthenticationService(auth_service.NewAuthServiceConfig())
 		mockAuthService := auth_service.NewAuthServiceMock(authService)
-		subService = subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
+		subService = subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
 		subService.AddDependency(mockAuthService)
 	})
 	Describe("::SubbedTopics", func() {

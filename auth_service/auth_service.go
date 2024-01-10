@@ -36,7 +36,7 @@ type AuthenticationService struct {
 	mu           sync.Mutex
 }
 
-func NewAuthenticationService(config *AuthConfig) *AuthenticationService {
+func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService {
 	authService := &AuthenticationService{}
 	authService.Service = *NewService(authService, config)
 	return authService

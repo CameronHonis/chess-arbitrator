@@ -14,7 +14,8 @@ import (
 	"time"
 )
 
-type MatchServiceI interface {
+type MatcherServiceI interface {
+	ServiceI
 	GetMatchById(matchId string) (*models.Match, error)
 	GetMatchByClientKey(clientKey models.Key) (*models.Match, error)
 	GetChallenges(challengerKey models.Key) (*Set[*models.Challenge], error)
@@ -31,9 +32,9 @@ type MatchServiceI interface {
 
 type MatcherService struct {
 	Service
-	__dependencies__      Marker
-	LoggerService         LoggerServiceI
-	AuthenticationService auth_service.AuthenticationServiceI
+	__dependencies__ Marker
+	LogService       LoggerServiceI
+	AuthService      auth_service.AuthenticationServiceI
 
 	__state__                Marker
 	matchByMatchId           map[string]*models.Match
@@ -146,7 +147,7 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 }
 
 func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
 	if challenge.ChallengerKey == challenge.ChallengedKey {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, "cannot challenge self"))
 		return fmt.Errorf("cannot challenge self")
@@ -165,7 +166,7 @@ func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
 }
 
 func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		go m.Dispatch(NewMatchCreationFailedEvent(challengerKey, "challenged unavailable for matcher"))
@@ -176,19 +177,19 @@ func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key
 }
 
 func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
 }
 
 func (m *MatcherService) DeclineChallenge(challengedKey, challengerKey models.Key) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
 }
 
 func (m *MatcherService) AddMatch(match *models.Match) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("adding matcher %s", match.Uuid))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("adding matcher %s", match.Uuid))
 	if !m.CanStartMatchWithClientKey(match.WhiteClientKey) {
 		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, "white client unavailable for matcher"))
 		return fmt.Errorf("white client %s unavailable for matcher", match.WhiteClientKey)
@@ -200,10 +201,10 @@ func (m *MatcherService) AddMatch(match *models.Match) error {
 
 	m.mu.Lock()
 	m.matchByMatchId[match.Uuid] = match
-	if role, _ := m.AuthenticationService.GetRole(match.WhiteClientKey); role != models.BOT {
+	if role, _ := m.AuthService.GetRole(match.WhiteClientKey); role != models.BOT {
 		m.matchIdByClientKey[match.WhiteClientKey] = match.Uuid
 	}
-	if role, _ := m.AuthenticationService.GetRole(match.BlackClientKey); role != models.BOT {
+	if role, _ := m.AuthService.GetRole(match.BlackClientKey); role != models.BOT {
 		m.matchIdByClientKey[match.BlackClientKey] = match.Uuid
 	}
 	m.mu.Unlock()
@@ -235,7 +236,7 @@ func (m *MatcherService) SetMatch(newMatch *models.Match) error {
 }
 
 func (m *MatcherService) RemoveMatch(match *models.Match) error {
-	m.LoggerService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("removing matcher %s", match.Uuid))
+	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("removing matcher %s", match.Uuid))
 	m.mu.Lock()
 	if _, ok := m.matchByMatchId[match.Uuid]; !ok {
 		return fmt.Errorf("matcher with id %s doesn't exist", match.Uuid)
@@ -254,7 +255,7 @@ func (m *MatcherService) RemoveMatch(match *models.Match) error {
 }
 
 func (m *MatcherService) CanStartMatchWithClientKey(clientKey models.Key) bool {
-	role, roleErr := m.AuthenticationService.GetRole(clientKey)
+	role, roleErr := m.AuthService.GetRole(clientKey)
 	if roleErr != nil {
 		return false
 	}
@@ -277,7 +278,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	time.Sleep(waitTime)
 	currMatch, _ := m.GetMatchById(match.Uuid)
 	if currMatch == nil {
-		m.LoggerService.LogRed(models.ENV_TIMER, "matcher not found")
+		m.LogService.LogRed(models.ENV_TIMER, "matcher not found")
 		return
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {

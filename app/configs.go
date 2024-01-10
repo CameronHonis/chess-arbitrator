@@ -1,4 +1,4 @@
-package app_service
+package app
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/models"
@@ -7,8 +7,8 @@ import (
 	. "github.com/CameronHonis/log"
 )
 
-func GetAppConfig() *AppConfig {
-	return NewAppConfig()
+func GetAppConfig() *AppServiceConfig {
+	return NewAppServiceConfig()
 }
 
 func GetLoggerConfig() *LoggerConfig {
@@ -27,10 +27,10 @@ func GetLoggerConfig() *LoggerConfig {
 	return logConfigBuilder.Build()
 }
 
-func GetRouterConfig() *router_service.RouterConfig {
-	return router_service.NewRouterConfig()
+func GetRouterConfig() *router_service.RouterServiceConfig {
+	return router_service.NewRouterServiceConfig()
 }
 
-func GetUserClientsConfig() *user_clients_service.UserClientsConfig {
-	return user_clients_service.NewUserClientsConfig()
+func GetUserClientsConfig() *user_clients_service.UserClientsServiceConfig {
+	return user_clients_service.NewUserClientsServiceConfig()
 }

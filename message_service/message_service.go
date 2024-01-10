@@ -2,7 +2,6 @@ package message_service
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
@@ -13,55 +12,6 @@ import (
 	. "github.com/CameronHonis/service"
 )
 
-const (
-	ECHO         EventVariant = "ECHO"
-	MOVE_FAILURE              = "MOVE_FAILURE"
-)
-
-type EchoEventPayload struct {
-	Message string
-}
-
-type EchoEvent struct{ Event }
-
-func NewEchoEvent(message string) *EchoEvent {
-	return &EchoEvent{
-		Event: *NewEvent(ECHO, &EchoEventPayload{
-			Message: message,
-		}),
-	}
-}
-
-type MoveFailureEventPayload struct {
-	MatchId string
-	Move    *chess.Move
-	Reason  string
-}
-
-type MoveFailureEvent struct{ Event }
-
-func NewMoveFailureEvent(matchId string, move *chess.Move, reason string) *MoveFailureEvent {
-	return &MoveFailureEvent{
-		Event: *NewEvent(MOVE_FAILURE, &MoveFailureEventPayload{
-			MatchId: matchId,
-			Move:    move,
-			Reason:  reason,
-		}),
-	}
-}
-
-type MessageHandlerConfig struct {
-}
-
-func NewMessageHandlerConfig() *MessageHandlerConfig {
-	return &MessageHandlerConfig{}
-}
-
-func (mhc *MessageHandlerConfig) MergeWith(other ConfigI) ConfigI {
-	newConfig := *(other.(*MessageHandlerConfig))
-	return &newConfig
-}
-
 type MessageServiceI interface {
 	ServiceI
 	HandleMessage(msg *models.Message)
@@ -70,17 +20,17 @@ type MessageServiceI interface {
 type MessageService struct {
 	Service
 
-	__dependencies__      Marker
-	LoggerService         LoggerServiceI
-	AuthenticationService auth_service.AuthenticationServiceI
-	SubscriptionService   subscription_service.SubscriptionServiceI
-	MatchService          matcher.MatchServiceI
-	MatchmakingService    matchmaking.MatchmakingServiceI
+	__dependencies__   Marker
+	LogService         LoggerServiceI
+	AuthService        auth_service.AuthenticationServiceI
+	SubService         subscription_service.SubscriptionServiceI
+	MatcherService     matcher.MatcherServiceI
+	MatchmakingService matchmaking.MatchmakingServiceI
 
 	__state__ Marker
 }
 
-func NewMessageHandlerService(config *MessageHandlerConfig) *MessageService {
+func NewMessageHandlerService(config *MessageServiceConfig) *MessageService {
 	messageHandler := &MessageService{}
 	messageHandler.Service = *NewService(messageHandler, config)
 
@@ -88,7 +38,7 @@ func NewMessageHandlerService(config *MessageHandlerConfig) *MessageService {
 }
 
 func (m *MessageService) HandleMessage(msg *models.Message) {
-	m.LoggerService.Log(models.ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
+	m.LogService.Log(models.ENV_CLIENT, fmt.Sprintf("handling message %s", msg))
 	var handleMsgErr error
 	switch msg.ContentType {
 	case models.CONTENT_TYPE_ECHO:
@@ -111,7 +61,7 @@ func (m *MessageService) HandleMessage(msg *models.Message) {
 		handleMsgErr = m.HandleRevokeChallengeMessage(msg)
 	}
 	if handleMsgErr != nil {
-		m.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
+		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
 	}
 }
 
@@ -130,7 +80,7 @@ func (m *MessageService) HandleSubscribeRequestMessage(msg *models.Message) erro
 	if !ok {
 		return fmt.Errorf("could not cast message to SubscribeRequestMessageContent")
 	}
-	subErr := m.SubscriptionService.SubClient(msg.SenderKey, msgContent.Topic)
+	subErr := m.SubService.SubClient(msg.SenderKey, msgContent.Topic)
 	return subErr
 }
 
@@ -148,7 +98,7 @@ func (m *MessageService) HandleRequestUpgradeAuthMessage(msg *models.Message) er
 	if !ok {
 		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	return m.AuthenticationService.UpgradeAuth(msg.SenderKey, msgContent.Role, msgContent.Secret)
+	return m.AuthService.UpgradeAuth(msg.SenderKey, msgContent.Role, msgContent.Secret)
 }
 
 func (m *MessageService) HandleMoveMessage(moveMsg *models.Message) error {
@@ -156,7 +106,7 @@ func (m *MessageService) HandleMoveMessage(moveMsg *models.Message) error {
 	if !ok {
 		return fmt.Errorf("invalid move message content")
 	}
-	moveErr := m.MatchService.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
+	moveErr := m.MatcherService.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
 	if moveErr != nil {
 		go m.Dispatch(NewMoveFailureEvent(moveMsgContent.MatchId, moveMsgContent.Move, moveErr.Error()))
 		return nil
@@ -169,7 +119,7 @@ func (m *MessageService) HandleChallengePlayerMessage(challengeMsg *models.Messa
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}
-	challengeErr := m.MatchService.ChallengePlayer(challengeMsgContent.Challenge)
+	challengeErr := m.MatcherService.ChallengePlayer(challengeMsgContent.Challenge)
 	if challengeErr != nil {
 		return nil
 	}
@@ -181,7 +131,7 @@ func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error
 	if !ok {
 		return fmt.Errorf("invalid accept challenge message content")
 	}
-	acceptChallengeErr := m.MatchService.AcceptChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	acceptChallengeErr := m.MatcherService.AcceptChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
 	if acceptChallengeErr != nil {
 		return nil
 	}
@@ -193,9 +143,9 @@ func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) erro
 	if !ok {
 		return fmt.Errorf("invalid decline challenge message content")
 	}
-	declineChallengeErr := m.MatchService.DeclineChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	declineChallengeErr := m.MatcherService.DeclineChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
 	if declineChallengeErr != nil {
-		m.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not decline challenge: %s", declineChallengeErr))
+		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not decline challenge: %s", declineChallengeErr))
 	}
 	return nil
 }
@@ -205,9 +155,9 @@ func (m *MessageService) HandleRevokeChallengeMessage(msg *models.Message) error
 	if !ok {
 		return fmt.Errorf("invalid revoke challenge message content")
 	}
-	revokeChallengeErr := m.MatchService.RevokeChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	revokeChallengeErr := m.MatcherService.RevokeChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
 	if revokeChallengeErr != nil {
-		m.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not revoke challenge: %s", revokeChallengeErr))
+		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not revoke challenge: %s", revokeChallengeErr))
 	}
 	return nil
 }

@@ -10,51 +10,12 @@ import (
 	"sync"
 )
 
-const (
-	SUB_SUCCESSFUL EventVariant = "SUB_SUCCESSFUL"
-	SUB_FAILED                  = "SUB_FAILED"
-)
-
-type SubSuccessfulPayload struct {
-	ClientKey Key
-	Topic     MessageTopic
-}
-
-type SubSuccessfulEvent struct{ Event }
-
-func NewSubSuccessEvent(clientKey Key, topic MessageTopic) *SubSuccessfulEvent {
-	return &SubSuccessfulEvent{
-		Event: *NewEvent(SUB_SUCCESSFUL, &SubSuccessfulPayload{
-			ClientKey: clientKey,
-			Topic:     topic,
-		}),
-	}
-}
-
-type SubFailedPayload struct {
-	ClientKey Key
-	Topic     MessageTopic
-	Reason    string
-}
-
-type SubFailedEvent struct{ Event }
-
-func NewSubFailedEvent(clientKey Key, topic MessageTopic, reason string) *SubFailedEvent {
-	return &SubFailedEvent{
-		Event: *NewEvent(SUB_FAILED, &SubFailedPayload{
-			ClientKey: clientKey,
-			Topic:     topic,
-			Reason:    reason,
-		}),
-	}
-}
-
-type SubscriptionConfig struct {
+type SubscriptionServiceConfig struct {
 	ConfigI
 }
 
-func NewSubscriptionConfig() *SubscriptionConfig {
-	return &SubscriptionConfig{}
+func NewSubscriptionServiceConfig() *SubscriptionServiceConfig {
+	return &SubscriptionServiceConfig{}
 }
 
 type SubscriptionServiceI interface {
@@ -68,8 +29,8 @@ type SubscriptionServiceI interface {
 
 type SubscriptionService struct {
 	Service
-	__dependencies__      Marker
-	AuthenticationService auth_service.AuthenticationServiceI
+	__dependencies__ Marker
+	AuthService      auth_service.AuthenticationServiceI
 
 	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[Key]
@@ -77,7 +38,7 @@ type SubscriptionService struct {
 	mu                      sync.Mutex
 }
 
-func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
+func NewSubscriptionService(config *SubscriptionServiceConfig) *SubscriptionService {
 	subService := &SubscriptionService{
 		subbedClientKeysByTopic: make(map[MessageTopic]*Set[Key]),
 		subbedTopicsByClientKey: make(map[Key]*Set[MessageTopic]),
@@ -86,7 +47,7 @@ func NewSubscriptionService(config *SubscriptionConfig) *SubscriptionService {
 	return subService
 }
 func (s *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error {
-	authErr := s.AuthenticationService.ValidateClientForTopic(clientKey, topic)
+	authErr := s.AuthService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go s.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr

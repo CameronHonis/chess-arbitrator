@@ -1,4 +1,4 @@
-package app_service
+package app
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth_service"
@@ -20,10 +20,10 @@ func BuildServices() *AppService {
 	routerService := router_service.NewRouterService(GetRouterConfig())
 	userClientsService := user_clients_service.NewUserClientsService(GetUserClientsConfig())
 	// NOTE: mixture of `get...config` and `new...config` is intentional, trying both out
-	msgService := message_service.NewMessageHandlerService(message_service.NewMessageHandlerConfig())
-	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
-	authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
-	matchService := matcher.NewMatcherService(matcher.NewMatchServiceConfig())
+	msgService := message_service.NewMessageHandlerService(message_service.NewMessageServiceConfig())
+	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
+	authService := auth_service.NewAuthenticationService(auth_service.NewAuthServiceConfig())
+	matchService := matcher.NewMatcherService(matcher.NewMatcherServiceConfig())
 	matchmakingService := matchmaking.NewMatchmakingService(matchmaking.NewMatchmakingConfig())
 
 	// inject dependencies

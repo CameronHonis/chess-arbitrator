@@ -16,19 +16,19 @@ import (
 func BuildTestServices() *user_clients_service.UserClientsService {
 	loggerConfig := NewLoggerConfig()
 	loggerConfig.MutedEnvs.Add(models.ENV_SERVER)
-	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionConfig())
+	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
 	mockSubService := subscription_service.NewSubServiceMock(subService)
 
-	msgService := message_service.NewMessageHandlerService(message_service.NewMessageHandlerConfig())
+	msgService := message_service.NewMessageHandlerService(message_service.NewMessageServiceConfig())
 	mockMsgService := message_service.NewMessageServiceMock(msgService)
 
-	authService := auth_service.NewAuthenticationService(auth_service.NewAuthenticationConfig())
+	authService := auth_service.NewAuthenticationService(auth_service.NewAuthServiceConfig())
 	mockAuthService := auth_service.NewAuthServiceMock(authService)
 
 	loggerService := NewLoggerService(loggerConfig)
 	mockLoggerService := NewLoggerServiceMock(loggerService)
 
-	ucs := user_clients_service.NewUserClientsService(user_clients_service.NewUserClientsConfig())
+	ucs := user_clients_service.NewUserClientsService(user_clients_service.NewUserClientsServiceConfig())
 	ucs.AddDependency(mockSubService)
 	ucs.AddDependency(mockMsgService)
 	ucs.AddDependency(mockAuthService)
@@ -76,7 +76,7 @@ var _ = Describe("UserClientsService", func() {
 			})
 			It("unsubs client from all topics", func() {
 				Expect(uc.RemoveClient(client)).ToNot(HaveOccurred())
-				subServiceMock := uc.SubscriptionService.(*subscription_service.SubServiceMock)
+				subServiceMock := uc.SubService.(*subscription_service.SubServiceMock)
 				unsubAllCount := subServiceMock.MethodCallCount("UnsubClientFromAll")
 				Expect(unsubAllCount).To(Equal(1))
 				unsubAllArgs := subServiceMock.LastCallArgs("UnsubClientFromAll")
@@ -106,7 +106,7 @@ var _ = Describe("UserClientsService", func() {
 		})
 		It("queries the subscribers on the message topic", func() {
 			uc.BroadcastMessage(msg)
-			subServiceMock := uc.SubscriptionService.(*subscription_service.SubServiceMock)
+			subServiceMock := uc.SubService.(*subscription_service.SubServiceMock)
 			clientKeysSubbedToTopicCallCount := subServiceMock.MethodCallCount("ClientKeysSubbedToTopic")
 			Expect(clientKeysSubbedToTopicCallCount).To(Equal(1))
 			clientKeysSubbedToTopicCallArgs := subServiceMock.LastCallArgs("ClientKeysSubbedToTopic")

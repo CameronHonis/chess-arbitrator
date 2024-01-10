@@ -9,19 +9,24 @@ import (
 import "fmt"
 import "github.com/gorilla/websocket"
 
-type RouterConfig struct {
+type RouterServiceConfig struct {
 	Port uint
 }
 
-func NewRouterConfig() *RouterConfig {
-	return &RouterConfig{
+func NewRouterServiceConfig() *RouterServiceConfig {
+	return &RouterServiceConfig{
 		Port: 8080,
 	}
 }
 
-func (rc *RouterConfig) MergeWith(other ConfigI) ConfigI {
-	newConfig := *(other.(*RouterConfig))
+func (rc *RouterServiceConfig) MergeWith(other ConfigI) ConfigI {
+	newConfig := *(other.(*RouterServiceConfig))
 	return &newConfig
+}
+
+type RouterServiceI interface {
+	ServiceI
+	StartWSServer()
 }
 
 type RouterService struct {
@@ -33,7 +38,7 @@ type RouterService struct {
 	__state__ Marker
 }
 
-func NewRouterService(config *RouterConfig) *RouterService {
+func NewRouterService(config *RouterServiceConfig) *RouterService {
 	routerService := &RouterService{}
 	routerService.Service = *NewService(routerService, config)
 	return routerService
@@ -53,7 +58,7 @@ func (rs *RouterService) StartWSServer() {
 		}
 	})
 
-	config := rs.Config().(*RouterConfig)
+	config := rs.Config().(*RouterServiceConfig)
 	port := config.Port
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {

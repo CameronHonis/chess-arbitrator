@@ -8,6 +8,6 @@ type MatcherServiceConfig struct {
 	ConfigI
 }
 
-func NewMatchServiceConfig() *MatcherServiceConfig {
+func NewMatcherServiceConfig() *MatcherServiceConfig {
 	return &MatcherServiceConfig{}
 }

@@ -4,10 +4,10 @@ import (
 	. "github.com/CameronHonis/service"
 )
 
-type AuthConfig struct {
+type AuthServiceConfig struct {
 	ConfigI
 }
 
-func NewAuthenticationConfig() *AuthConfig {
-	return &AuthConfig{}
+func NewAuthServiceConfig() *AuthServiceConfig {
+	return &AuthServiceConfig{}
 }
