@@ -231,7 +231,7 @@ func (m *MatcherService) SetMatch(newMatch *models.Match) error {
 	m.matchByMatchId[newMatch.Uuid] = newMatch
 	m.mu.Unlock()
 
-	m.Dispatch(NewMatchUpdated(newMatch))
+	go m.Dispatch(NewMatchUpdated(newMatch))
 	return nil
 }
 

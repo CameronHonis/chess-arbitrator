@@ -67,7 +67,7 @@ func (s *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error
 	subbedClientKeys.Add(clientKey)
 	s.mu.Unlock()
 
-	s.Dispatch(NewSubSuccessEvent(clientKey, topic))
+	go s.Dispatch(NewSubSuccessEvent(clientKey, topic))
 	return nil
 }
 

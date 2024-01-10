@@ -61,17 +61,17 @@ func (am *AuthenticationService) AddClient(clientKey models.Key) {
 func (am *AuthenticationService) UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error {
 	validSecretErr := am.ValidateSecret(roleName, secret)
 	if validSecretErr != nil {
-		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, validSecretErr.Error()))
+		go am.Dispatch(NewAuthenticationDeniedEvent(clientKey, validSecretErr.Error()))
 		return validSecretErr
 	}
 
 	roleErr := am.SetRole(clientKey, roleName)
 	if roleErr != nil {
-		am.Dispatch(NewAuthenticationDeniedEvent(clientKey, roleErr.Error()))
+		go am.Dispatch(NewAuthenticationDeniedEvent(clientKey, roleErr.Error()))
 		return roleErr
 	}
 
-	am.Dispatch(NewAuthenticationGrantedEvent(clientKey, roleName))
+	go am.Dispatch(NewAuthenticationGrantedEvent(clientKey, roleName))
 	return nil
 }
 

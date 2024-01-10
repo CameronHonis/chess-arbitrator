@@ -89,7 +89,7 @@ func (m *MessageService) HandleEchoMessage(msg *models.Message) error {
 	if !ok {
 		return fmt.Errorf("could not cast message to EchoMessageContent")
 	}
-	m.Dispatch(NewEchoEvent(msgContent.Message))
+	go m.Dispatch(NewEchoEvent(msgContent.Message))
 	return nil
 }
 
