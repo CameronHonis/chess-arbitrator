@@ -2,8 +2,8 @@ package models
 
 import (
 	"github.com/CameronHonis/chess"
+	"github.com/CameronHonis/chess-arbitrator/helpers"
 	"github.com/google/uuid"
-	"math/rand"
 	"time"
 )
 
@@ -95,8 +95,7 @@ func (mb *MatchBuilder) WithLastMoveTime(lastMoveTime *time.Time) *MatchBuilder 
 }
 
 func (mb *MatchBuilder) WithClientKeys(clientAKey Key, clientBKey Key) *MatchBuilder {
-	rand.Seed(time.Now().UnixNano())
-	clientAIsWhite := rand.Intn(2) == 0
+	clientAIsWhite := helpers.RandomBool()
 	var whiteClientKey, blackClientKey Key
 	if clientAIsWhite {
 		whiteClientKey = clientAKey
