@@ -1,20 +1,20 @@
-package auth_service
+package mocks
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/mocks"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/stub"
 )
 
 type AuthServiceMock struct {
-	Stubbed[AuthenticationService]
-	mocks.ServiceMock
+	Stubbed[auth.AuthenticationService]
+	ServiceMock
 }
 
-func NewAuthServiceMock(authService *AuthenticationService) *AuthServiceMock {
+func NewAuthServiceMock(authService *auth.AuthenticationService) *AuthServiceMock {
 	as := &AuthServiceMock{}
 	as.Stubbed = *NewStubbed(as, authService)
-	as.ServiceMock = *mocks.NewServiceMock(&authService.Service)
+	as.ServiceMock = *NewServiceMock(&authService.Service)
 	return as
 }
 

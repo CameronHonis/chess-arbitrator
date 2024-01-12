@@ -2,7 +2,7 @@ package subscription_service
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -22,7 +22,7 @@ type SubscriptionServiceI interface {
 type SubscriptionService struct {
 	Service
 	__dependencies__ Marker
-	AuthService      auth_service.AuthenticationServiceI
+	AuthService      auth.AuthenticationServiceI
 
 	__state__               Marker
 	subbedClientKeysByTopic map[MessageTopic]*Set[Key]

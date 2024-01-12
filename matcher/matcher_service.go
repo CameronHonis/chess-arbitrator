@@ -3,7 +3,7 @@ package matcher
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
@@ -34,7 +34,7 @@ type MatcherService struct {
 	Service
 	__dependencies__ Marker
 	LogService       LoggerServiceI
-	AuthService      auth_service.AuthenticationServiceI
+	AuthService      auth.AuthenticationServiceI
 
 	__state__                Marker
 	matchByMatchId           map[string]*models.Match
@@ -148,17 +148,16 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 
 func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
 	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
-	if challenge.ChallengerKey == challenge.ChallengedKey {
-		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, "cannot challenge self"))
-		return fmt.Errorf("cannot challenge self")
+	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
+		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
 	}
-	if !m.CanStartMatchWithClientKey(challenge.ChallengerKey) {
-		return fmt.Errorf("challenger %s unavailable for matcher", challenge.ChallengerKey)
-	}
-	if challengeDuplicate, _ := m.Challenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
-		return fmt.Errorf("challenge already exists")
-	}
+
 	m.mu.Lock()
+	isBotChallenge := challenge.BotName != ""
+	if isBotChallenge {
+		// NOTE: bot challenge needs a bot server client key
+		challenge.ChallengedKey = m.AuthService.ClientKeysByRole(models.BOT).Flatten()[0]
+	}
 	m.challengeByChallengerKey[challenge.ChallengerKey].Add(challenge)
 	m.mu.Unlock()
 	go m.Dispatch(NewChallengeCreatedEvent(challenge))
@@ -265,6 +264,31 @@ func (m *MatcherService) CanStartMatchWithClientKey(clientKey models.Key) bool {
 
 	match, _ := m.MatchByClientKey(clientKey)
 	return match == nil
+}
+
+func (m *MatcherService) ValidateChallenge(challenge *models.Challenge) error {
+	if challenge.ChallengedKey == "" {
+		if challenge.BotName == "" {
+			return fmt.Errorf("challenged key and bot name cannot both be zero values")
+		}
+		if !m.AuthService.BotClientExists() {
+			return fmt.Errorf("bot server offline")
+		}
+	} else {
+		if challenge.BotName != "" {
+			return fmt.Errorf("challenged key and bot name cannot both be populated")
+		}
+	}
+	if challenge.ChallengerKey == challenge.ChallengedKey {
+		return fmt.Errorf("cannot challenge self")
+	}
+	if !m.CanStartMatchWithClientKey(challenge.ChallengerKey) {
+		return fmt.Errorf("challenger %s unavailable for matcher", challenge.ChallengerKey)
+	}
+	if challengeDuplicate, _ := m.Challenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
+		return fmt.Errorf("challenge already exists")
+	}
+	return nil
 }
 
 func (m *MatcherService) StartTimer(match *models.Match) {

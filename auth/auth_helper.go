@@ -1,4 +1,4 @@
-package helpers
+package auth
 
 import (
 	"crypto/sha256"

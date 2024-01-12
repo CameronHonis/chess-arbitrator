@@ -1,7 +1,8 @@
 package subscription_service_test
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/auth"
+	"github.com/CameronHonis/chess-arbitrator/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/subscription_service"
 	. "github.com/onsi/ginkgo/v2"
@@ -14,8 +15,8 @@ var _ = Describe("SubscriptionService", func() {
 	var subService *subscription_service.SubscriptionService
 	BeforeEach(func() {
 		clientKey = "some-public-key"
-		authService := auth_service.NewAuthenticationService(auth_service.NewAuthServiceConfig())
-		mockAuthService := auth_service.NewAuthServiceMock(authService)
+		authService := auth.NewAuthenticationService(auth.NewAuthServiceConfig())
+		mockAuthService := mocks.NewAuthServiceMock(authService)
 		subService = subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
 		subService.AddDependency(mockAuthService)
 	})

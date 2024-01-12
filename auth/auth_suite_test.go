@@ -1,4 +1,4 @@
-package helpers_test
+package auth_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestHelpers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Helpers Suite")
+	RunSpecs(t, "Auth Suite")
 }

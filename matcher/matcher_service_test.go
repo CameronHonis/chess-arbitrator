@@ -2,8 +2,9 @@ package matcher_test
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
+	"github.com/CameronHonis/chess-arbitrator/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
@@ -94,9 +95,9 @@ var _ = Describe("MatcherService", func() {
 	var eventCatcher *EventCatcher
 	BeforeEach(func() {
 		realLoggerService := log.NewLoggerService(log.NewLoggerConfig())
-		realAuthService := auth_service.NewAuthenticationService(nil)
-		mockAuthService := auth_service.NewAuthServiceMock(realAuthService)
-		getRoleStub := func(rec *auth_service.AuthenticationService, clientKey models.Key) (models.RoleName, error) {
+		realAuthService := auth.NewAuthenticationService(nil)
+		mockAuthService := mocks.NewAuthServiceMock(realAuthService)
+		getRoleStub := func(rec *auth.AuthenticationService, clientKey models.Key) (models.RoleName, error) {
 			roleName := map[models.Key]models.RoleName{
 				"client1": models.PLEB,
 				"client2": models.PLEB,

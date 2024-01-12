@@ -1,8 +1,7 @@
 package user_clients_service_test
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
-	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/message_service"
 	. "github.com/CameronHonis/chess-arbitrator/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
@@ -22,8 +21,8 @@ func BuildTestServices() *user_clients_service.UserClientsService {
 	msgService := message_service.NewMessageHandlerService(message_service.NewMessageServiceConfig())
 	mockMsgService := message_service.NewMessageServiceMock(msgService)
 
-	authService := auth_service.NewAuthenticationService(auth_service.NewAuthServiceConfig())
-	mockAuthService := auth_service.NewAuthServiceMock(authService)
+	authService := auth.NewAuthenticationService(auth.NewAuthServiceConfig())
+	mockAuthService := NewAuthServiceMock(authService)
 
 	loggerService := NewLoggerService(loggerConfig)
 	mockLoggerService := NewLoggerServiceMock(loggerService)
@@ -46,7 +45,7 @@ var _ = Describe("UserClientsService", func() {
 	var client *models.Client
 	BeforeEach(func() {
 		uc = BuildTestServices()
-		client = helpers.CreateClient(nil, nil)
+		client = auth.CreateClient(nil, nil)
 	})
 	Describe("::AddClient", func() {
 		When("the client hasn't been added", func() {

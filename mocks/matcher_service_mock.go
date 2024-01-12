@@ -1,22 +1,22 @@
-package matcher
+package mocks
 
 import (
 	"github.com/CameronHonis/chess"
-	"github.com/CameronHonis/chess-arbitrator/mocks"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/set"
 	. "github.com/CameronHonis/stub"
 )
 
 type MatcherServiceMock struct {
-	Stubbed[MatcherService]
-	mocks.ServiceMock
+	Stubbed[matcher.MatcherService]
+	ServiceMock
 }
 
-func NewMatcherServiceMock(matchService *MatcherService) *MatcherServiceMock {
+func NewMatcherServiceMock(matchService *matcher.MatcherService) *MatcherServiceMock {
 	ms := &MatcherServiceMock{}
 	ms.Stubbed = *NewStubbed(ms, matchService)
-	ms.ServiceMock = *mocks.NewServiceMock(&matchService.Service)
+	ms.ServiceMock = *NewServiceMock(&matchService.Service)
 	return ms
 }
 

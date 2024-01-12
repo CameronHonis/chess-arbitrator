@@ -1,12 +1,12 @@
-package auth_service
+package auth
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/helpers"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/set"
 	"os"
 	"sync"
 )
@@ -14,6 +14,8 @@ import (
 type AuthenticationServiceI interface {
 	ServiceI
 	GetRole(clientKey models.Key) (models.RoleName, error)
+	ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key]
+	BotClientExists() bool
 
 	AddClient(clientKey models.Key)
 	UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error
@@ -31,9 +33,10 @@ type AuthenticationService struct {
 	__dependencies__ Marker
 	LoggerService    LoggerServiceI
 
-	__state__    Marker
-	roleByClient map[models.Key]models.RoleName
-	mu           sync.Mutex
+	__state__        Marker
+	roleByClient     map[models.Key]models.RoleName
+	clientKeysByRole map[models.RoleName]*set.Set[models.Key]
+	mu               sync.Mutex
 }
 
 func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService {
@@ -52,9 +55,30 @@ func (am *AuthenticationService) GetRole(clientKey models.Key) (models.RoleName,
 	return role, nil
 }
 
+func (am *AuthenticationService) ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key] {
+	am.mu.Lock()
+	clientKeys, ok := am.clientKeysByRole[roleName]
+	am.mu.Unlock()
+	if !ok {
+		return set.EmptySet[models.Key]()
+	}
+	return clientKeys
+}
+
+func (am *AuthenticationService) BotClientExists() bool {
+	botClientKeys := am.ClientKeysByRole(models.BOT)
+	return botClientKeys.Size() > 0
+}
+
 func (am *AuthenticationService) AddClient(clientKey models.Key) {
 	am.mu.Lock()
 	am.roleByClient[clientKey] = models.PLEB
+	clientKeys, ok := am.clientKeysByRole[models.PLEB]
+	if !ok {
+		clientKeys = set.EmptySet[models.Key]()
+		am.clientKeysByRole[models.PLEB] = clientKeys
+	}
+	clientKeys.Add(clientKey)
 	am.mu.Unlock()
 }
 
@@ -99,7 +123,7 @@ func (am *AuthenticationService) ValidateSecret(roleName models.RoleName, secret
 }
 
 func (am *AuthenticationService) ValidateAuthInMessage(msg *models.Message) error {
-	isValidAuth := helpers.ValidatePrivateKey(msg.SenderKey, msg.PrivateKey)
+	isValidAuth := ValidatePrivateKey(msg.SenderKey, msg.PrivateKey)
 	if !isValidAuth {
 		return fmt.Errorf("invalid auth")
 	}
@@ -115,12 +139,21 @@ func (am *AuthenticationService) ValidateClientForTopic(clientKey models.Key, to
 }
 
 func (am *AuthenticationService) SetRole(clientKey models.Key, role models.RoleName) error {
-	_, getRoleErr := am.GetRole(clientKey)
+	oldRole, getRoleErr := am.GetRole(clientKey)
 	if getRoleErr != nil {
 		return getRoleErr
 	}
 	am.mu.Lock()
 	am.roleByClient[clientKey] = role
+	if oldRoleClients, ok := am.clientKeysByRole[oldRole]; ok {
+		oldRoleClients.Remove(clientKey)
+	}
+	newRoleClientKeys, ok := am.clientKeysByRole[role]
+	if !ok {
+		newRoleClientKeys = set.EmptySet[models.Key]()
+		am.clientKeysByRole[role] = newRoleClientKeys
+	}
+	newRoleClientKeys.Add(clientKey)
 	am.mu.Unlock()
 	return nil
 }

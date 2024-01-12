@@ -2,8 +2,7 @@ package user_clients_service
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
-	"github.com/CameronHonis/chess-arbitrator/helpers"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/message_service"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/subscription_service"
@@ -31,7 +30,7 @@ type UserClientsService struct {
 	LogService       LoggerServiceI
 	MsgService       message_service.MessageServiceI
 	SubService       subscription_service.SubscriptionServiceI
-	AuthService      auth_service.AuthenticationServiceI
+	AuthService      auth.AuthenticationServiceI
 
 	__state__         Marker
 	clientByPublicKey map[models.Key]*models.Client
@@ -47,7 +46,7 @@ func NewUserClientsService(config *UserClientsServiceConfig) *UserClientsService
 }
 
 func (uc *UserClientsService) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
-	client := helpers.CreateClient(conn, uc.CleanupClient)
+	client := auth.CreateClient(conn, uc.CleanupClient)
 
 	if err := uc.AddClient(client); err != nil {
 		return nil, err

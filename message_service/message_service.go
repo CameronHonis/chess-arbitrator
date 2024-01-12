@@ -2,7 +2,7 @@ package message_service
 
 import (
 	"fmt"
-	"github.com/CameronHonis/chess-arbitrator/auth_service"
+	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/models"
@@ -22,7 +22,7 @@ type MessageService struct {
 
 	__dependencies__   Marker
 	LogService         LoggerServiceI
-	AuthService        auth_service.AuthenticationServiceI
+	AuthService        auth.AuthenticationServiceI
 	SubService         subscription_service.SubscriptionServiceI
 	MatcherService     matcher.MatcherServiceI
 	MatchmakingService matchmaking.MatchmakingServiceI

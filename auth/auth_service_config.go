@@ -1,4 +1,4 @@
-package auth_service
+package auth
 
 import (
 	. "github.com/CameronHonis/service"
