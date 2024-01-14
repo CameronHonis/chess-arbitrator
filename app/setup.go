@@ -29,6 +29,7 @@ func BuildServices() *AppService {
 	// inject dependencies
 	appService.AddDependency(routerService)
 	routerService.AddDependency(userClientsService)
+	routerService.AddDependency(loggerService)
 	userClientsService.AddDependency(loggerService)
 	userClientsService.AddDependency(msgService)
 	userClientsService.AddDependency(subService)
