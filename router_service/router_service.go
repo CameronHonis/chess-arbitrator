@@ -1,8 +1,8 @@
 package router_service
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	"github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -20,7 +20,7 @@ type RouterService struct {
 	Service
 
 	__dependencies__   Marker
-	UserClientsService user_clients_service.UserClientsServiceI
+	UserClientsService clients_manager.ClientsManagerI
 	Logger             log.LoggerServiceI
 
 	__state__ Marker

@@ -1,18 +1,18 @@
-package user_clients_service_test
+package clients_manager_test
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth"
+	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/message_service"
 	. "github.com/CameronHonis/chess-arbitrator/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/subscription_service"
-	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-func BuildTestServices() *user_clients_service.UserClientsService {
+func BuildTestServices() *clients_manager.ClientsManager {
 	loggerConfig := NewLoggerConfig()
 	loggerConfig.MutedEnvs.Add(models.ENV_SERVER)
 	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
@@ -27,7 +27,7 @@ func BuildTestServices() *user_clients_service.UserClientsService {
 	loggerService := NewLoggerService(loggerConfig)
 	mockLoggerService := NewLoggerServiceMock(loggerService)
 
-	ucs := user_clients_service.NewUserClientsService(user_clients_service.NewUserClientsServiceConfig())
+	ucs := clients_manager.NewClientsManager(clients_manager.NewClientsManagerConfig())
 	ucs.AddDependency(mockSubService)
 	ucs.AddDependency(mockMsgService)
 	ucs.AddDependency(mockAuthService)
@@ -40,8 +40,8 @@ type TestMessageContentType struct {
 	SomePayload string `json:"somePayload"`
 }
 
-var _ = Describe("UserClientsService", func() {
-	var uc *user_clients_service.UserClientsService
+var _ = Describe("ClientsManager", func() {
+	var uc *clients_manager.ClientsManager
 	var client *models.Client
 	BeforeEach(func() {
 		uc = BuildTestServices()

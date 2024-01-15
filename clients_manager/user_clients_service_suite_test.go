@@ -1,4 +1,4 @@
-package user_clients_service_test
+package clients_manager_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestUserClientsService(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "UserClientsService Suite")
+	RunSpecs(t, "ClientsManager Suite")
 }

@@ -1,9 +1,9 @@
 package app
 
 import (
+	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/router_service"
-	"github.com/CameronHonis/chess-arbitrator/user_clients_service"
 	. "github.com/CameronHonis/log"
 )
 
@@ -31,6 +31,6 @@ func GetRouterConfig() *router_service.RouterServiceConfig {
 	return router_service.NewRouterServiceConfig()
 }
 
-func GetUserClientsConfig() *user_clients_service.UserClientsServiceConfig {
-	return user_clients_service.NewUserClientsServiceConfig()
+func GetUserClientsConfig() *clients_manager.ClientsManagerConfig {
+	return clients_manager.NewClientsManagerConfig()
 }
