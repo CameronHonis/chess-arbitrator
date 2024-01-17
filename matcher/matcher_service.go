@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+// NOTE: generator compilation broken
+// //go:generate mockgen -destination matcher_service_mock.go . MatcherServiceI
 type MatcherServiceI interface {
 	ServiceI
 	MatchById(matchId string) (*models.Match, error)

@@ -11,6 +11,7 @@ import (
 import "fmt"
 import "github.com/gorilla/websocket"
 
+//go:generate mockgen -destination mock/router_service_mock.go . RouterServiceI
 type RouterServiceI interface {
 	ServiceI
 	StartWSServer()

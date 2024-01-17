@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+//go:generate mockgen -destination mock/client_manager_mock.go . ClientsManagerI
 type ClientsManagerI interface {
 	ServiceI
 	GetClient(clientKey models.Key) (*models.Client, error)

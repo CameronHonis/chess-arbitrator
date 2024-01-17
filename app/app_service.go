@@ -6,6 +6,7 @@ import (
 	"github.com/CameronHonis/service"
 )
 
+//go:generate mockgen -destination mock/app_service_mock.go . AppServiceI
 type AppServiceI interface {
 	service.ServiceI
 }
