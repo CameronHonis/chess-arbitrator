@@ -2,25 +2,25 @@ package matcher
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/service"
 )
 
 const (
-	MATCH_CREATED         = "MATCH_CREATED"
-	MATCH_ENDED           = "MATCH_ENDED"
-	MATCH_UPDATED         = "MATCH_UPDATED"
-	MATCH_CREATION_FAILED = "MATCH_CREATION_FAILED"
+	MATCH_CREATED         service.EventVariant = "MATCH_CREATED"
+	MATCH_ENDED                                = "MATCH_ENDED"
+	MATCH_UPDATED                              = "MATCH_UPDATED"
+	MATCH_CREATION_FAILED                      = "MATCH_CREATION_FAILED"
 )
 
 type MatchCreatedEventPayload struct {
 	Match *models.Match
 }
 
-type MatchCreatedEvent struct{ Event }
+type MatchCreatedEvent struct{ service.Event }
 
 func NewMatchCreatedEvent(match *models.Match) *MatchCreatedEvent {
 	return &MatchCreatedEvent{
-		Event: *NewEvent(MATCH_CREATED, &MatchCreatedEventPayload{
+		Event: *service.NewEvent(MATCH_CREATED, &MatchCreatedEventPayload{
 			Match: match,
 		}),
 	}
@@ -30,11 +30,11 @@ type MatchEndedEventPayload struct {
 	Match *models.Match
 }
 
-type MatchEndedEvent struct{ Event }
+type MatchEndedEvent struct{ service.Event }
 
 func NewMatchEndedEvent(match *models.Match) *MatchEndedEvent {
 	return &MatchEndedEvent{
-		Event: *NewEvent(MATCH_ENDED, &MatchEndedEventPayload{
+		Event: *service.NewEvent(MATCH_ENDED, &MatchEndedEventPayload{
 			Match: match,
 		}),
 	}
@@ -44,11 +44,11 @@ type MatchUpdatedEventPayload struct {
 	Match *models.Match
 }
 
-type MatchUpdatedEvent struct{ Event }
+type MatchUpdatedEvent struct{ service.Event }
 
 func NewMatchUpdated(match *models.Match) *MatchUpdatedEvent {
 	return &MatchUpdatedEvent{
-		Event: *NewEvent(MATCH_UPDATED, &MatchUpdatedEventPayload{
+		Event: *service.NewEvent(MATCH_UPDATED, &MatchUpdatedEventPayload{
 			Match: match,
 		}),
 	}
@@ -59,11 +59,11 @@ type MatchCreationFailedEventPayload struct {
 	Reason              string
 }
 
-type MatchCreationFailedEvent struct{ Event }
+type MatchCreationFailedEvent struct{ service.Event }
 
 func NewMatchCreationFailedEvent(challengerKey models.Key, reason string) *MatchCreationFailedEvent {
 	return &MatchCreationFailedEvent{
-		Event: *NewEvent(MATCH_CREATION_FAILED, &MatchCreationFailedEventPayload{
+		Event: *service.NewEvent(MATCH_CREATION_FAILED, &MatchCreationFailedEventPayload{
 			ChallengerClientKey: challengerKey,
 			Reason:              reason,
 		}),

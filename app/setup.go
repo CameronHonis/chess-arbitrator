@@ -5,9 +5,9 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
-	"github.com/CameronHonis/chess-arbitrator/message_service"
+	"github.com/CameronHonis/chess-arbitrator/msg_service"
 	"github.com/CameronHonis/chess-arbitrator/router_service"
-	"github.com/CameronHonis/chess-arbitrator/subscription_service"
+	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/CameronHonis/log"
 )
 
@@ -20,8 +20,8 @@ func BuildServices() *AppService {
 	routerService := router_service.NewRouterService(GetRouterConfig())
 	userClientsService := clients_manager.NewClientsManager(GetUserClientsConfig())
 	// NOTE: mixture of `get...config` and `new...config` is intentional, trying both out
-	msgService := message_service.NewMessageHandlerService(message_service.NewMessageServiceConfig())
-	subService := subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
+	msgService := msg_service.NewMessageHandlerService(msg_service.NewMessageServiceConfig())
+	subService := sub_service.NewSubscriptionService(sub_service.NewSubscriptionServiceConfig())
 	authService := auth.NewAuthenticationService(auth.NewAuthServiceConfig())
 	matchService := matcher.NewMatcherService(matcher.NewMatcherServiceConfig())
 	matchmakingService := matchmaking.NewMatchmakingService(matchmaking.NewMatchmakingConfig())

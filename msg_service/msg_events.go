@@ -1,4 +1,4 @@
-package message_service
+package msg_service
 
 import "github.com/CameronHonis/chess"
 

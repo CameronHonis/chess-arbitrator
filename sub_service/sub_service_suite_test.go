@@ -1,4 +1,4 @@
-package subscription_service_test
+package sub_service_test
 
 import (
 	"testing"
@@ -7,7 +7,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var T *testing.T
+
 func TestSubscriptionService(t *testing.T) {
+	T = t
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SubscriptionService Suite")
 }

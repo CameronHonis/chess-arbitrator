@@ -1,24 +1,34 @@
-package subscription_service_test
+package sub_service_test
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/auth"
-	"github.com/CameronHonis/chess-arbitrator/mocks"
+	mock_auth "github.com/CameronHonis/chess-arbitrator/auth/mock"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/subscription_service"
+	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/mock/gomock"
 )
+
+func BuildServices(ctrl *gomock.Controller) *sub_service.SubscriptionService {
+	authServiceMock := mock_auth.NewMockAuthenticationServiceI(ctrl)
+	authServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
+	authServiceMock.EXPECT().ValidateClientForTopic(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	subService := sub_service.NewSubscriptionService(sub_service.NewSubscriptionServiceConfig())
+	subService.AddDependency(authServiceMock)
+	return subService
+}
 
 var _ = Describe("SubscriptionService", func() {
 	var topic models.MessageTopic
 	var clientKey models.Key
-	var subService *subscription_service.SubscriptionService
+	var subService *sub_service.SubscriptionService
+	//var authServiceMock *mock_auth.MockAuthenticationServiceI
 	BeforeEach(func() {
+		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
 		clientKey = "some-public-key"
-		authService := auth.NewAuthenticationService(auth.NewAuthServiceConfig())
-		mockAuthService := mocks.NewAuthServiceMock(authService)
-		subService = subscription_service.NewSubscriptionService(subscription_service.NewSubscriptionServiceConfig())
-		subService.AddDependency(mockAuthService)
+		subService = BuildServices(ctrl)
+		//authServiceMock = subService.AuthService.(*mock_auth.MockAuthenticationServiceI)
 	})
 	Describe("::SubbedTopics", func() {
 		When("the client is not subbed to any topics", func() {

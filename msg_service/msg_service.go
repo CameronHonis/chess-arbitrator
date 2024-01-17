@@ -1,4 +1,4 @@
-package message_service
+package msg_service
 
 import (
 	"fmt"
@@ -6,33 +6,34 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/subscription_service"
-	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/chess-arbitrator/sub_service"
+	"github.com/CameronHonis/log"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
 )
 
+//go:generate mockgen -destination mock/msg_service_mock.go . MessageServiceI
 type MessageServiceI interface {
-	ServiceI
+	service.ServiceI
 	HandleMessage(msg *models.Message)
 }
 
 type MessageService struct {
-	Service
+	service.Service
 
-	__dependencies__   Marker
-	LogService         LoggerServiceI
+	__dependencies__   marker.Marker
+	LogService         log.LoggerServiceI
 	AuthService        auth.AuthenticationServiceI
-	SubService         subscription_service.SubscriptionServiceI
+	SubService         sub_service.SubscriptionServiceI
 	MatcherService     matcher.MatcherServiceI
 	MatchmakingService matchmaking.MatchmakingServiceI
 
-	__state__ Marker
+	__state__ marker.Marker
 }
 
 func NewMessageHandlerService(config *MessageServiceConfig) *MessageService {
 	messageHandler := &MessageService{}
-	messageHandler.Service = *NewService(messageHandler, config)
+	messageHandler.Service = *service.NewService(messageHandler, config)
 
 	return messageHandler
 }

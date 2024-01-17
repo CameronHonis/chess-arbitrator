@@ -1,44 +1,46 @@
-package subscription_service
+package sub_service
 
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/auth"
-	. "github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
-	. "github.com/CameronHonis/set"
+	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
+	"github.com/CameronHonis/set"
 	"sync"
 )
 
+// NOTE: compilation broken
+// //go:generate mockgen -destination mock/sub_service_mock.go . SubscriptionServiceI
 type SubscriptionServiceI interface {
-	ServiceI
-	SubClient(clientKey Key, topic MessageTopic) error
-	UnsubClient(clientKey Key, topic MessageTopic) error
-	UnsubClientFromAll(clientKey Key)
-	SubbedTopics(clientKey Key) *Set[MessageTopic]
-	ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key]
+	service.ServiceI
+	SubClient(clientKey models.Key, topic models.MessageTopic) error
+	UnsubClient(clientKey models.Key, topic models.MessageTopic) error
+	UnsubClientFromAll(clientKey models.Key)
+	SubbedTopics(clientKey models.Key) *set.Set[models.MessageTopic]
+	ClientKeysSubbedToTopic(topic models.MessageTopic) *set.Set[models.Key]
 }
 
 type SubscriptionService struct {
-	Service
-	__dependencies__ Marker
+	service.Service
+	__dependencies__ marker.Marker
 	AuthService      auth.AuthenticationServiceI
 
-	__state__               Marker
-	subbedClientKeysByTopic map[MessageTopic]*Set[Key]
-	subbedTopicsByClientKey map[Key]*Set[MessageTopic]
+	__state__               marker.Marker
+	subbedClientKeysByTopic map[models.MessageTopic]*set.Set[models.Key]
+	subbedTopicsByClientKey map[models.Key]*set.Set[models.MessageTopic]
 	mu                      sync.Mutex
 }
 
 func NewSubscriptionService(config *SubscriptionServiceConfig) *SubscriptionService {
 	subService := &SubscriptionService{
-		subbedClientKeysByTopic: make(map[MessageTopic]*Set[Key]),
-		subbedTopicsByClientKey: make(map[Key]*Set[MessageTopic]),
+		subbedClientKeysByTopic: make(map[models.MessageTopic]*set.Set[models.Key]),
+		subbedTopicsByClientKey: make(map[models.Key]*set.Set[models.MessageTopic]),
 	}
-	subService.Service = *NewService(subService, config)
+	subService.Service = *service.NewService(subService, config)
 	return subService
 }
-func (s *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error {
+func (s *SubscriptionService) SubClient(clientKey models.Key, topic models.MessageTopic) error {
 	authErr := s.AuthService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go s.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
@@ -63,7 +65,7 @@ func (s *SubscriptionService) SubClient(clientKey Key, topic MessageTopic) error
 	return nil
 }
 
-func (s *SubscriptionService) UnsubClient(clientKey Key, topic MessageTopic) error {
+func (s *SubscriptionService) UnsubClient(clientKey models.Key, topic models.MessageTopic) error {
 	subbedTopics := s.SubbedTopics(clientKey)
 	s.mu.Lock()
 	if !subbedTopics.Has(topic) {
@@ -80,7 +82,7 @@ func (s *SubscriptionService) UnsubClient(clientKey Key, topic MessageTopic) err
 	return nil
 }
 
-func (s *SubscriptionService) UnsubClientFromAll(clientKey Key) {
+func (s *SubscriptionService) UnsubClientFromAll(clientKey models.Key) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	subbedTopics, ok := s.subbedTopicsByClientKey[clientKey]
@@ -93,22 +95,22 @@ func (s *SubscriptionService) UnsubClientFromAll(clientKey Key) {
 	delete(s.subbedTopicsByClientKey, clientKey)
 }
 
-func (s *SubscriptionService) SubbedTopics(clientKey Key) *Set[MessageTopic] {
+func (s *SubscriptionService) SubbedTopics(clientKey models.Key) *set.Set[models.MessageTopic] {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.subbedTopicsByClientKey[clientKey]
 	if !ok {
-		s.subbedTopicsByClientKey[clientKey] = EmptySet[MessageTopic]()
+		s.subbedTopicsByClientKey[clientKey] = set.EmptySet[models.MessageTopic]()
 	}
 	return s.subbedTopicsByClientKey[clientKey]
 }
 
-func (s *SubscriptionService) ClientKeysSubbedToTopic(topic MessageTopic) *Set[Key] {
+func (s *SubscriptionService) ClientKeysSubbedToTopic(topic models.MessageTopic) *set.Set[models.Key] {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.subbedClientKeysByTopic[topic]
 	if !ok {
-		s.subbedClientKeysByTopic[topic] = EmptySet[Key]()
+		s.subbedClientKeysByTopic[topic] = set.EmptySet[models.Key]()
 	}
 	return s.subbedClientKeysByTopic[topic]
 }

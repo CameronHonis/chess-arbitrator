@@ -3,9 +3,9 @@ package clients_manager
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/auth"
-	"github.com/CameronHonis/chess-arbitrator/message_service"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	"github.com/CameronHonis/chess-arbitrator/subscription_service"
+	"github.com/CameronHonis/chess-arbitrator/msg_service"
+	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -28,8 +28,8 @@ type ClientsManager struct {
 
 	__dependencies__ Marker
 	LogService       LoggerServiceI
-	MsgService       message_service.MessageServiceI
-	SubService       subscription_service.SubscriptionServiceI
+	MsgService       msg_service.MessageServiceI
+	SubService       sub_service.SubscriptionServiceI
 	AuthService      auth.AuthenticationServiceI
 
 	__state__         Marker

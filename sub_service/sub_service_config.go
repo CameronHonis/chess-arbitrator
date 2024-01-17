@@ -1,4 +1,4 @@
-package subscription_service
+package sub_service
 
 import (
 	"github.com/CameronHonis/service"

@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// NOTE: compilation error
+// //go:generate mockgen -destination mock/auth_serivce_mock . AuthenticationServiceI
 type AuthenticationServiceI interface {
 	ServiceI
 	GetRole(clientKey models.Key) (models.RoleName, error)
