@@ -26,6 +26,10 @@ func (c *Client) PublicKey() Key {
 	return c.publicKey
 }
 
+func (c *Client) PrivateKey() Key {
+	return c.privateKey
+}
+
 func (c *Client) WSConn() *websocket.Conn {
 	return c.conn
 }
