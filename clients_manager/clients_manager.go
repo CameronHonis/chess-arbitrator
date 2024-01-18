@@ -45,6 +45,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	s.Service = *NewService(s, config)
 
 	s.AddEventListener(CLIENT_CREATED, s.onClientCreated)
+	s.AddEventListener(auth.AUTH_GRANTED, s.onUpgradeAuthGranted)
 
 	return s
 }
@@ -52,6 +53,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
 	client := auth.CreateClient(conn, c.CleanupClient)
 
+	c.AuthService.AddClient(client.PublicKey())
 	if err := c.AddClient(client); err != nil {
 		return nil, err
 	}
@@ -66,7 +68,6 @@ func (c *ClientsManager) AddClient(client *models.Client) error {
 	}
 	c.clientByPublicKey[client.PublicKey()] = client
 	go c.Dispatch(NewClientCreatedEvent(client))
-	go c.listenForUserInput(client)
 	return nil
 }
 
@@ -188,5 +189,18 @@ func (c *ClientsManager) onClientCreated(event EventI) bool {
 		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not send auth: ", sendAuthErr.Error())
 	}
 	go c.listenForUserInput(client)
+	return true
+}
+
+func (c *ClientsManager) onUpgradeAuthGranted(event EventI) bool {
+	payload := event.Payload().(*auth.AuthenticationGrantedPayload)
+	client, clientErr := c.GetClient(payload.ClientKey)
+	if clientErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not follow up with GRANTED upgrade auth request: could not get client from key %s", client)
+	}
+	sendErr := SendUpgradeAuthGranted(c.writeMessage, client, payload.Role)
+	if sendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not follow up with GRANTED auth upgrade request: ", sendErr.Error())
+	}
 	return true
 }

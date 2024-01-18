@@ -62,7 +62,7 @@ func (m *MessageService) HandleMessage(msg *models.Message) {
 		handleMsgErr = m.HandleRevokeChallengeMessage(msg)
 	}
 	if handleMsgErr != nil {
-		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%s\n\t%s", msg, handleMsgErr))
+		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%+v\n\t%s", msg, handleMsgErr))
 	}
 }
 

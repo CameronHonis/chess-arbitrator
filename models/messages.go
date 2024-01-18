@@ -145,7 +145,7 @@ type UpgradeAuthRequestMessageContent struct {
 }
 
 type UpgradeAuthGrantedMessageContent struct {
-	UpgradedToRole string `json:"upgradedToRole"`
+	UpgradedToRole RoleName `json:"upgradedToRole"`
 }
 
 type UpgradeAuthDeniedMessageContent struct {

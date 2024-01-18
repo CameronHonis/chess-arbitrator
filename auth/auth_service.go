@@ -42,7 +42,10 @@ type AuthenticationService struct {
 }
 
 func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService {
-	authService := &AuthenticationService{}
+	authService := &AuthenticationService{
+		roleByClient:     make(map[models.Key]models.RoleName),
+		clientKeysByRole: make(map[models.RoleName]*set.Set[models.Key]),
+	}
 	authService.Service = *NewService(authService, config)
 	return authService
 }
@@ -74,6 +77,7 @@ func (am *AuthenticationService) BotClientExists() bool {
 
 func (am *AuthenticationService) AddClient(clientKey models.Key) {
 	am.mu.Lock()
+	defer am.mu.Unlock()
 	am.roleByClient[clientKey] = models.PLEB
 	clientKeys, ok := am.clientKeysByRole[models.PLEB]
 	if !ok {
@@ -81,7 +85,6 @@ func (am *AuthenticationService) AddClient(clientKey models.Key) {
 		am.clientKeysByRole[models.PLEB] = clientKeys
 	}
 	clientKeys.Add(clientKey)
-	am.mu.Unlock()
 }
 
 func (am *AuthenticationService) UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error {

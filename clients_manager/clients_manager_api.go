@@ -14,3 +14,12 @@ func SendAuth(writer ClientWriter, client *models.Client) error {
 		},
 	})
 }
+
+func SendUpgradeAuthGranted(writer ClientWriter, client *models.Client, role models.RoleName) error {
+	return writer(client, &models.Message{
+		ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
+		Content: &models.UpgradeAuthGrantedMessageContent{
+			UpgradedToRole: role,
+		},
+	})
+}
