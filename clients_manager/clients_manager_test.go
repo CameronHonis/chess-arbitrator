@@ -8,6 +8,7 @@ import (
 	mock_msg_service "github.com/CameronHonis/chess-arbitrator/msg_service/mock"
 	mock_sub_service "github.com/CameronHonis/chess-arbitrator/sub_service/mock"
 	mock_log "github.com/CameronHonis/log/mock"
+	"github.com/CameronHonis/service/test_helpers"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,20 +45,33 @@ type TestMessageContentType struct {
 
 var _ = Describe("ClientsManager", func() {
 	var subServiceMock *mock_sub_service.MockSubscriptionServiceI
+	var eventCatcher *test_helpers.EventCatcher
 	var uc *clients_manager.ClientsManager
 	var client *models.Client
 	BeforeEach(func() {
 		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
 		uc = BuildTestServices(ctrl)
+		eventCatcher = test_helpers.NewEventCatcher()
+		eventCatcher.AddDependency(uc)
 		subServiceMock = uc.SubService.(*mock_sub_service.MockSubscriptionServiceI)
 		client = auth.CreateClient(nil, nil)
 	})
 	Describe("::AddClient", func() {
+		BeforeEach(func() {
+			eventCount := eventCatcher.EventsByVariantCount(clients_manager.CLIENT_CREATED)
+			Expect(eventCount).To(Equal(0))
+		})
 		When("the client hasn't been added", func() {
 			It("adds the client to the map", func() {
 				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
 				Expect(uc.GetClient(client.PublicKey())).Error().ToNot(HaveOccurred())
 				Expect(uc.GetClient(client.PublicKey())).To(BeAssignableToTypeOf(&models.Client{}))
+			})
+			It("emits a CLIENT_CREATED event", func() {
+				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(clients_manager.CLIENT_CREATED)
+				}).Should(Equal(1))
 			})
 		})
 		When("the client already exists", func() {

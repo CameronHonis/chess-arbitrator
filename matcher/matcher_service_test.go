@@ -33,10 +33,10 @@ func BuildServices(ctrl *gomock.Controller) *matcher.MatcherService {
 	logServiceMock.EXPECT().Log(gomock.Any(), gomock.Any()).AnyTimes()
 	logServiceMock.EXPECT().LogRed(gomock.Any(), gomock.Any()).AnyTimes()
 
-	matcher := matcher.NewMatcherService(matcher.NewMatcherServiceConfig())
-	matcher.AddDependency(authServiceMock)
-	matcher.AddDependency(logServiceMock)
-	return matcher
+	matcher_service := matcher.NewMatcherService(matcher.NewMatcherServiceConfig())
+	matcher_service.AddDependency(authServiceMock)
+	matcher_service.AddDependency(logServiceMock)
+	return matcher_service
 }
 
 var _ = Describe("MatcherService", func() {

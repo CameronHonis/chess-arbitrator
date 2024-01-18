@@ -43,6 +43,19 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 		clientByPublicKey: make(map[models.Key]*models.Client),
 	}
 	s.Service = *NewService(s, config)
+
+	s.AddEventListener(CLIENT_CREATED, func(event EventI) bool {
+		client := event.Payload().(*ClientCreatedEventPayload).Client
+		OnClientCreated(s.writeMessage, s.LogService.LogRed, client)
+		return true
+	})
+
+	s.AddEventListener(CLIENT_CREATED, func(event EventI) bool {
+		client := event.Payload().(*ClientCreatedEventPayload).Client
+		go s.listenForUserInput(client)
+		return true
+	})
+
 	return s
 }
 
@@ -57,11 +70,12 @@ func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, err
 
 func (c *ClientsManager) AddClient(client *models.Client) error {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if _, ok := c.clientByPublicKey[client.PublicKey()]; ok {
 		return fmt.Errorf("client with key %s already exists", client.PublicKey())
 	}
 	c.clientByPublicKey[client.PublicKey()] = client
-	c.mu.Unlock()
+	go c.Dispatch(NewClientCreatedEvent(client))
 	go c.listenForUserInput(client)
 	return nil
 }
