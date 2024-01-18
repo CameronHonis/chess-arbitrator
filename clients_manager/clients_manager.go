@@ -44,17 +44,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	}
 	s.Service = *NewService(s, config)
 
-	s.AddEventListener(CLIENT_CREATED, func(event EventI) bool {
-		client := event.Payload().(*ClientCreatedEventPayload).Client
-		OnClientCreated(s.writeMessage, s.LogService.LogRed, client)
-		return true
-	})
-
-	s.AddEventListener(CLIENT_CREATED, func(event EventI) bool {
-		client := event.Payload().(*ClientCreatedEventPayload).Client
-		go s.listenForUserInput(client)
-		return true
-	})
+	s.AddEventListener(CLIENT_CREATED, s.onClientCreated)
 
 	return s
 }
@@ -183,14 +173,20 @@ func (c *ClientsManager) readMessage(clientKey models.Key, rawMsg []byte) error 
 }
 
 func (c *ClientsManager) writeMessage(client *models.Client, msg *models.Message) error {
-	client, err := c.GetClient(msg.SenderKey)
-	if err != nil {
-		return err
-	}
 	msgJson, jsonErr := msg.Marshal()
 	if jsonErr != nil {
 		return jsonErr
 	}
 	c.LogService.Log(string(client.PublicKey()), "<< ", string(msgJson))
 	return client.WSConn().WriteMessage(websocket.TextMessage, msgJson)
+}
+
+func (c *ClientsManager) onClientCreated(event EventI) bool {
+	client := event.Payload().(*ClientCreatedEventPayload).Client
+	sendAuthErr := SendAuth(c.writeMessage, client)
+	if sendAuthErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not send auth: ", sendAuthErr.Error())
+	}
+	go c.listenForUserInput(client)
+	return true
 }
