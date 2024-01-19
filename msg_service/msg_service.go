@@ -52,17 +52,17 @@ func (m *MessageService) HandleMessage(msg *models.Message) {
 		handleMsgErr = m.HandleRequestUpgradeAuthMessage(msg)
 	case models.CONTENT_TYPE_MOVE:
 		handleMsgErr = m.HandleMoveMessage(msg)
-	case models.CONTENT_TYPE_CHALLENGE_PLAYER:
+	case models.CONTENT_TYPE_CHALLENGE_REQUEST:
 		handleMsgErr = m.HandleChallengePlayerMessage(msg)
-	case models.CONTENT_TYPE_ACCEPT_CHALLENGE:
+	case models.CONTENT_TYPE_CHALLENGE_ACCEPTED:
 		handleMsgErr = m.HandleAcceptChallengeMessage(msg)
-	case models.CONTENT_TYPE_DECLINE_CHALLENGE:
+	case models.CONTENT_TYPE_CHALLENGE_DECLINED:
 		handleMsgErr = m.HandleDeclineChallengeMessage(msg)
-	case models.CONTENT_TYPE_REVOKE_CHALLENGE:
+	case models.CONTENT_TYPE_CHALLENGE_REVOKED:
 		handleMsgErr = m.HandleRevokeChallengeMessage(msg)
 	}
 	if handleMsgErr != nil {
-		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%+v\n\t%s", msg, handleMsgErr))
+		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not handle message \n\t%+v\n\t%s", *msg, handleMsgErr))
 	}
 }
 
@@ -122,13 +122,13 @@ func (m *MessageService) HandleChallengePlayerMessage(challengeMsg *models.Messa
 	}
 	challengeErr := m.MatcherService.ChallengePlayer(challengeMsgContent.Challenge)
 	if challengeErr != nil {
-		return nil
+		return challengeErr
 	}
 	return nil
 }
 
 func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.AcceptChallengeMessageContent)
+	msgContent, ok := msg.Content.(*models.ChallengeAcceptedMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid accept challenge message content")
 	}
@@ -140,7 +140,7 @@ func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error
 }
 
 func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.DeclineChallengeMessageContent)
+	msgContent, ok := msg.Content.(*models.ChallengeDeclinedMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid decline challenge message content")
 	}
@@ -152,7 +152,7 @@ func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) erro
 }
 
 func (m *MessageService) HandleRevokeChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.RevokeChallengeMessageContent)
+	msgContent, ok := msg.Content.(*models.ChallengeRevokedMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid revoke challenge message content")
 	}

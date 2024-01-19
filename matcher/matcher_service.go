@@ -152,16 +152,19 @@ func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
 	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
 	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
+		return challengeErr
 	}
 
-	m.mu.Lock()
 	isBotChallenge := challenge.BotName != ""
 	if isBotChallenge {
 		// NOTE: bot challenge needs a bot server client key
 		challenge.ChallengedKey = m.AuthService.ClientKeysByRole(models.BOT).Flatten()[0]
 	}
-	m.challengeByChallengerKey[challenge.ChallengerKey].Add(challenge)
-	m.mu.Unlock()
+	challengerOutbounds, _ := m.Challenges(challenge.ChallengerKey)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	challengerOutbounds.Add(challenge)
 	go m.Dispatch(NewChallengeCreatedEvent(challenge))
 	return nil
 }

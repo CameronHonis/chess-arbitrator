@@ -63,11 +63,11 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
-		CONTENT_TYPE_CHALLENGE_PLAYER:          &ChallengePlayerMessageContent{},
+		CONTENT_TYPE_CHALLENGE_REQUEST:         &ChallengePlayerMessageContent{},
 		CONTENT_TYPE_CHALLENGE_REQUEST_FAILED:  &ChallengeRequestFailedMessageContent{},
-		CONTENT_TYPE_ACCEPT_CHALLENGE:          &AcceptChallengeMessageContent{},
-		CONTENT_TYPE_DECLINE_CHALLENGE:         &DeclineChallengeMessageContent{},
-		CONTENT_TYPE_REVOKE_CHALLENGE:          &RevokeChallengeMessageContent{},
+		CONTENT_TYPE_CHALLENGE_ACCEPTED:        &ChallengeAcceptedMessageContent{},
+		CONTENT_TYPE_CHALLENGE_DECLINED:        &ChallengeDeclinedMessageContent{},
+		CONTENT_TYPE_CHALLENGE_REVOKED:         &ChallengeRevokedMessageContent{},
 		CONTENT_TYPE_MATCH_CREATION_FAILED:     &MatchCreationFailedMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
@@ -97,11 +97,11 @@ const (
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
 	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
-	CONTENT_TYPE_CHALLENGE_PLAYER          = "CHALLENGE_PLAYER"
+	CONTENT_TYPE_CHALLENGE_REQUEST         = "CHALLENGE_REQUEST"
 	CONTENT_TYPE_CHALLENGE_REQUEST_FAILED  = "CHALLENGE_REQUEST_FAILED"
-	CONTENT_TYPE_ACCEPT_CHALLENGE          = "ACCEPT_CHALLENGE"
-	CONTENT_TYPE_DECLINE_CHALLENGE         = "DECLINE_CHALLENGE"
-	CONTENT_TYPE_REVOKE_CHALLENGE          = "REVOKE_CHALLENGE"
+	CONTENT_TYPE_CHALLENGE_ACCEPTED        = "ACCEPT_CHALLENGE"
+	CONTENT_TYPE_CHALLENGE_DECLINED        = "DECLINE_CHALLENGE"
+	CONTENT_TYPE_CHALLENGE_REVOKED         = "REVOKE_CHALLENGE"
 	CONTENT_TYPE_MATCH_CREATION_FAILED     = "MATCH_CREATION_FAILED"
 )
 
@@ -161,19 +161,20 @@ type ChallengeRequestFailedMessageContent struct {
 	Reason    string     `json:"reason"`
 }
 
-type AcceptChallengeMessageContent struct {
+type ChallengeAcceptedMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
-type DeclineChallengeMessageContent struct {
+type ChallengeDeclinedMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
-type RevokeChallengeMessageContent struct {
+type ChallengeRevokedMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
 type MatchCreationFailedMessageContent struct {
-	ChallengerKey Key    `json:"challenger"`
-	Reason        string `json:"reason"`
+	WhiteClientKey Key    `json:"whiteClientKey"`
+	BlackClientKey Key    `json:"blackClientKey"`
+	Reason         string `json:"reason"`
 }
