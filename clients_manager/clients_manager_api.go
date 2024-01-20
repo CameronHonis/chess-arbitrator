@@ -51,3 +51,21 @@ func SendChallengeRequest(deps *SendMessageDeps, challenge *models.Challenge) er
 		},
 	})
 }
+
+func SendChallengeRevoked(deps *SendMessageDeps, challengerKey models.Key) error {
+	return deps.writer(deps.client, &models.Message{
+		ContentType: models.CONTENT_TYPE_CHALLENGE_REVOKED,
+		Content: &models.ChallengeRevokedMessageContent{
+			ChallengerClientKey: challengerKey,
+		},
+	})
+}
+
+func SendChallengeDeclined(deps *SendMessageDeps, challengedKey models.Key) error {
+	return deps.writer(deps.client, &models.Message{
+		ContentType: models.CONTENT_TYPE_CHALLENGE_REVOKED,
+		Content: &models.ChallengeDeclinedMessageContent{
+			ChallengedClientKey: challengedKey,
+		},
+	})
+}

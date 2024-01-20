@@ -144,7 +144,7 @@ func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) erro
 	if !ok {
 		return fmt.Errorf("invalid decline challenge message content")
 	}
-	declineChallengeErr := m.MatcherService.DeclineChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	declineChallengeErr := m.MatcherService.DeclineChallenge(msg.SenderKey, msgContent.ChallengedClientKey)
 	if declineChallengeErr != nil {
 		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not decline challenge: %s", declineChallengeErr))
 	}

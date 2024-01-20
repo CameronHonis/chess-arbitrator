@@ -53,6 +53,8 @@ func (c *ClientsManager) OnStart() {
 	c.AddEventListener(auth.AUTH_GRANTED, c.onUpgradeAuthGranted)
 	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, c.onChallengeRequestFailed)
 	c.AddEventListener(matcher.CHALLENGE_CREATED, c.onChallengeCreated)
+	c.AddEventListener(matcher.CHALLENGE_REVOKED, c.onChallengeRevoked)
+	c.AddEventListener(matcher.CHALLENGE_DENIED, c.onChallengeDeclined)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
@@ -249,6 +251,37 @@ func (c *ClientsManager) onChallengeCreated(event EventI) bool {
 
 	sendDeps := NewSendMessageDeps(c.writeMessage, challengedClient)
 	if sendErr := SendChallengeRequest(sendDeps, payload.Challenge); sendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		return false
+	}
+	return true
+}
+
+func (c *ClientsManager) onChallengeRevoked(event EventI) bool {
+	baseErrMsg := "could not follow up on challenge revoked: "
+	payload := event.Payload().(*matcher.ChallengeRevokedEventPayload)
+	client, clientErr := c.GetClient(payload.Challenge.ChallengedKey)
+	if clientErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		return true
+	}
+	sendDeps := NewSendMessageDeps(c.writeMessage, client)
+	if sendErr := SendChallengeRevoked(sendDeps, payload.Challenge.ChallengerKey); sendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		return false
+	}
+	return true
+}
+func (c *ClientsManager) onChallengeDeclined(event EventI) bool {
+	baseErrMsg := "could not follow up on challenge declined: "
+	payload := event.Payload().(*matcher.ChallengeRevokedEventPayload)
+	client, clientErr := c.GetClient(payload.Challenge.ChallengerKey)
+	if clientErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		return true
+	}
+	sendDeps := NewSendMessageDeps(c.writeMessage, client)
+	if sendErr := SendChallengeDeclined(sendDeps, payload.Challenge.ChallengedKey); sendErr != nil {
 		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
 		return false
 	}
