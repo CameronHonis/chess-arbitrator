@@ -281,7 +281,7 @@ func (c *ClientsManager) onChallengeDeclined(event EventI) bool {
 		return true
 	}
 	sendDeps := NewSendMessageDeps(c.writeMessage, client)
-	if sendErr := SendChallengeDeclined(sendDeps, payload.Challenge.ChallengedKey); sendErr != nil {
+	if sendErr := SendChallengeUpdate(sendDeps, payload.Challenge.ChallengedKey); sendErr != nil {
 		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
 		return false
 	}

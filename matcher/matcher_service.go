@@ -29,7 +29,7 @@ type MatcherServiceI interface {
 	RequestChallenge(challenge *models.Challenge) error
 	AcceptChallenge(challengedKey, challengerKey models.Key) error
 	RevokeChallenge(challengerKey, challengedKey models.Key) error
-	DeclineChallenge(challengedKey, challengerKey models.Key) error
+	DeclineChallenge(challengerKey, challengedKey models.Key) error
 	AddMatch(match *models.Match) error
 }
 

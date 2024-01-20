@@ -68,6 +68,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_CHALLENGE_ACCEPTED:        &ChallengeAcceptedMessageContent{},
 		CONTENT_TYPE_CHALLENGE_DECLINED:        &ChallengeDeclinedMessageContent{},
 		CONTENT_TYPE_CHALLENGE_REVOKED:         &ChallengeRevokedMessageContent{},
+		CONTENT_TYPE_CHALLENGE_UPDATED:         &ChallengeUpdatedMessageContent{},
 		CONTENT_TYPE_MATCH_CREATION_FAILED:     &MatchCreationFailedMessageContent{},
 	}
 	msgContent, ok := contentStructMap[contentType]
@@ -84,25 +85,29 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 type ContentType string
 
 const (
-	CONTENT_TYPE_EMPTY                     = "EMPTY"
-	CONTENT_TYPE_ECHO                      = "ECHO"
-	CONTENT_TYPE_AUTH                      = "AUTH"
-	CONTENT_TYPE_FIND_MATCH                = "FIND_MATCH"
-	CONTENT_TYPE_MATCH_UPDATE              = "MATCH_UPDATE"
-	CONTENT_TYPE_MOVE                      = "MOVE"
-	CONTENT_TYPE_MOVE_FAILED               = "MOVE_FAILED"
-	CONTENT_TYPE_SUBSCRIBE_REQUEST         = "SUBSCRIBE_REQUEST"
-	CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED = "SUBSCRIBE_REQUEST_GRANTED"
-	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED  = "SUBSCRIBE_REQUEST_DENIED"
-	CONTENT_TYPE_UPGRADE_AUTH_REQUEST      = "UPGRADE_AUTH_REQUEST"
-	CONTENT_TYPE_UPGRADE_AUTH_GRANTED      = "UPGRADE_AUTH_GRANTED"
-	CONTENT_TYPE_UPGRADE_AUTH_DENIED       = "UPGRADE_AUTH_DENIED"
-	CONTENT_TYPE_CHALLENGE_REQUEST         = "CHALLENGE_REQUEST"
-	CONTENT_TYPE_CHALLENGE_REQUEST_FAILED  = "CHALLENGE_REQUEST_FAILED"
-	CONTENT_TYPE_CHALLENGE_ACCEPTED        = "ACCEPT_CHALLENGE"
-	CONTENT_TYPE_CHALLENGE_DECLINED        = "DECLINE_CHALLENGE"
-	CONTENT_TYPE_CHALLENGE_REVOKED         = "REVOKE_CHALLENGE"
-	CONTENT_TYPE_MATCH_CREATION_FAILED     = "MATCH_CREATION_FAILED"
+	// outbound outbound
+	CONTENT_TYPE_MATCH_UPDATE              ContentType = "MATCH_UPDATE"
+	CONTENT_TYPE_CHALLENGE_UPDATED                     = "CHALLENGE_UPDATE"
+	CONTENT_TYPE_MOVE_FAILED                           = "MOVE_FAILED"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED             = "SUBSCRIBE_REQUEST_GRANTED"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED              = "SUBSCRIBE_REQUEST_DENIED"
+	CONTENT_TYPE_UPGRADE_AUTH_GRANTED                  = "UPGRADE_AUTH_GRANTED"
+	CONTENT_TYPE_UPGRADE_AUTH_DENIED                   = "UPGRADE_AUTH_DENIED"
+	CONTENT_TYPE_CHALLENGE_REQUEST_FAILED              = "CHALLENGE_REQUEST_FAILED"
+	CONTENT_TYPE_MATCH_CREATION_FAILED                 = "MATCH_CREATION_FAILED"
+
+	// inbound types
+	CONTENT_TYPE_EMPTY                ContentType = "EMPTY"
+	CONTENT_TYPE_ECHO                             = "ECHO"
+	CONTENT_TYPE_AUTH                             = "AUTH"
+	CONTENT_TYPE_FIND_MATCH                       = "FIND_MATCH"
+	CONTENT_TYPE_MOVE                             = "MOVE"
+	CONTENT_TYPE_SUBSCRIBE_REQUEST                = "SUBSCRIBE_REQUEST"
+	CONTENT_TYPE_UPGRADE_AUTH_REQUEST             = "UPGRADE_AUTH_REQUEST"
+	CONTENT_TYPE_CHALLENGE_REQUEST                = "CHALLENGE_REQUEST"
+	CONTENT_TYPE_CHALLENGE_ACCEPTED               = "ACCEPT_CHALLENGE"
+	CONTENT_TYPE_CHALLENGE_DECLINED               = "DECLINE_CHALLENGE"
+	CONTENT_TYPE_CHALLENGE_REVOKED                = "REVOKE_CHALLENGE"
 )
 
 type AuthMessageContent struct {
@@ -171,6 +176,10 @@ type ChallengeDeclinedMessageContent struct {
 
 type ChallengeRevokedMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
+}
+
+type ChallengeUpdatedMessageContent struct {
+	Challenge `json:"challenge"`
 }
 
 type MatchCreationFailedMessageContent struct {
