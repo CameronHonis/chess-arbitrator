@@ -20,12 +20,13 @@ type MatcherServiceI interface {
 	ServiceI
 	MatchById(matchId string) (*models.Match, error)
 	MatchByClientKey(clientKey models.Key) (*models.Match, error)
-	Challenges(challengerKey models.Key) (*Set[*models.Challenge], error)
-	Challenge(challengerKey, receivingClientKey models.Key) (*models.Challenge, error)
+	InboundChallenges(challengedKey models.Key) (*Set[*models.Challenge], error)
+	OutboundChallenges(challengerKey models.Key) (*Set[*models.Challenge], error)
+	GetChallenge(challengerKey, receivingClientKey models.Key) (*models.Challenge, error)
 
 	ExecuteMove(matchId string, move *chess.Move) error
 
-	ChallengePlayer(challenge *models.Challenge) error
+	RequestChallenge(challenge *models.Challenge) error
 	AcceptChallenge(challengedKey, challengerKey models.Key) error
 	RevokeChallenge(challengerKey, challengedKey models.Key) error
 	DeclineChallenge(challengedKey, challengerKey models.Key) error
@@ -38,18 +39,20 @@ type MatcherService struct {
 	LogService       LoggerServiceI
 	AuthService      auth.AuthenticationServiceI
 
-	__state__                Marker
-	matchByMatchId           map[string]*models.Match
-	matchIdByClientKey       map[models.Key]string
-	challengeByChallengerKey map[models.Key]*Set[*models.Challenge]
-	mu                       sync.Mutex
+	__state__            Marker
+	matchByMatchId       map[string]*models.Match
+	matchIdByClientKey   map[models.Key]string
+	outboundsByClientKey map[models.Key]*Set[*models.Challenge]
+	inboundsByClientKey  map[models.Key]*Set[*models.Challenge]
+	mu                   sync.Mutex
 }
 
 func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 	matchService := &MatcherService{
-		matchByMatchId:           make(map[string]*models.Match),
-		matchIdByClientKey:       make(map[models.Key]string),
-		challengeByChallengerKey: make(map[models.Key]*Set[*models.Challenge]),
+		matchByMatchId:       make(map[string]*models.Match),
+		matchIdByClientKey:   make(map[models.Key]string),
+		outboundsByClientKey: make(map[models.Key]*Set[*models.Challenge]),
+		inboundsByClientKey:  make(map[models.Key]*Set[*models.Challenge]),
 	}
 	matchService.Service = *NewService(matchService, config)
 	return matchService
@@ -75,27 +78,48 @@ func (m *MatcherService) MatchByClientKey(clientKey models.Key) (*models.Match, 
 	return m.MatchById(matchId)
 }
 
-func (m *MatcherService) Challenges(challengerKey models.Key) (*Set[*models.Challenge], error) {
+func (m *MatcherService) InboundChallenges(challengedKey models.Key) (*Set[*models.Challenge], error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	challenges, ok := m.challengeByChallengerKey[challengerKey]
+	challenges, ok := m.inboundsByClientKey[challengedKey]
 	if !ok {
-		return EmptySet[*models.Challenge](), nil
+		challenges = EmptySet[*models.Challenge]()
+		m.inboundsByClientKey[challengedKey] = challenges
 	}
 	return challenges, nil
 }
 
-func (m *MatcherService) Challenge(challengerKey models.Key, receiverKey models.Key) (*models.Challenge, error) {
-	challenges, challengesErr := m.Challenges(challengerKey)
-	if challengesErr != nil {
-		return nil, challengesErr
+func (m *MatcherService) OutboundChallenges(challengerKey models.Key) (*Set[*models.Challenge], error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	challenges, ok := m.outboundsByClientKey[challengerKey]
+	if !ok {
+		challenges = EmptySet[*models.Challenge]()
+		m.outboundsByClientKey[challengerKey] = challenges
 	}
-	for _, challenge := range challenges.Flatten() {
-		if challenge.ChallengedKey == receiverKey {
-			return challenge, nil
-		}
+	return challenges, nil
+}
+
+func (m *MatcherService) GetChallenge(challengerKey models.Key, receiverKey models.Key) (*models.Challenge, error) {
+	outbounds, outboundsErr := m.OutboundChallenges(challengerKey)
+	if outboundsErr != nil {
+		return nil, outboundsErr
 	}
-	return nil, fmt.Errorf("challenge not found")
+
+	inbounds, inboundsErr := m.InboundChallenges(receiverKey)
+	if inboundsErr != nil {
+		return nil, inboundsErr
+	}
+
+	matches := outbounds.Intersect(inbounds).Flatten()
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("could not find challenge from %s to %s", challengerKey, receiverKey)
+	}
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("more than one challenge from %s to %s", challengerKey, receiverKey)
+	}
+
+	return matches[0], nil
 }
 
 func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
@@ -148,7 +172,7 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 	return nil
 }
 
-func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
+func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
 	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
 	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
@@ -160,18 +184,21 @@ func (m *MatcherService) ChallengePlayer(challenge *models.Challenge) error {
 		// NOTE: bot challenge needs a bot server client key
 		challenge.ChallengedKey = m.AuthService.ClientKeysByRole(models.BOT).Flatten()[0]
 	}
-	challengerOutbounds, _ := m.Challenges(challenge.ChallengerKey)
+	challengerOutbounds, _ := m.OutboundChallenges(challenge.ChallengerKey)
+	challengedInbounds, _ := m.InboundChallenges(challenge.ChallengedKey)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	challengerOutbounds.Add(challenge)
+	challengedInbounds.Add(challenge)
+
 	go m.Dispatch(NewChallengeCreatedEvent(challenge))
 	return nil
 }
 
 func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key) error {
 	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
-	challenge, challengeErr := m.Challenge(challengerKey, challengedKey)
+	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		go m.Dispatch(NewMatchCreationFailedEvent(challengerKey, "challenged unavailable for matcher"))
 		return challengeErr
@@ -290,7 +317,7 @@ func (m *MatcherService) ValidateChallenge(challenge *models.Challenge) error {
 	if !m.CanStartMatchWithClientKey(challenge.ChallengerKey) {
 		return fmt.Errorf("challenger %s unavailable for matcher", challenge.ChallengerKey)
 	}
-	if challengeDuplicate, _ := m.Challenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
+	if challengeDuplicate, _ := m.GetChallenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
 		return fmt.Errorf("challenge already exists")
 	}
 	return nil

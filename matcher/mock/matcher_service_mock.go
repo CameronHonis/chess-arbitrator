@@ -95,50 +95,6 @@ func (mr *MockMatcherServiceIMockRecorder) AddMatch(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMatch", reflect.TypeOf((*MockMatcherServiceI)(nil).AddMatch), arg0)
 }
 
-// Challenge mocks base method.
-func (m *MockMatcherServiceI) Challenge(arg0, arg1 models.Key) (*models.Challenge, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Challenge", arg0, arg1)
-	ret0, _ := ret[0].(*models.Challenge)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Challenge indicates an expected call of Challenge.
-func (mr *MockMatcherServiceIMockRecorder) Challenge(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Challenge", reflect.TypeOf((*MockMatcherServiceI)(nil).Challenge), arg0, arg1)
-}
-
-// ChallengePlayer mocks base method.
-func (m *MockMatcherServiceI) ChallengePlayer(arg0 *models.Challenge) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChallengePlayer", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ChallengePlayer indicates an expected call of ChallengePlayer.
-func (mr *MockMatcherServiceIMockRecorder) ChallengePlayer(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChallengePlayer", reflect.TypeOf((*MockMatcherServiceI)(nil).ChallengePlayer), arg0)
-}
-
-// Challenges mocks base method.
-func (m *MockMatcherServiceI) Challenges(arg0 models.Key) (*set.Set[models.Challenge], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Challenges", arg0)
-	ret0, _ := ret[0].(*set.Set[models.Challenge])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Challenges indicates an expected call of Challenges.
-func (mr *MockMatcherServiceIMockRecorder) Challenges(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Challenges", reflect.TypeOf((*MockMatcherServiceI)(nil).Challenges), arg0)
-}
-
 // Config mocks base method.
 func (m *MockMatcherServiceI) Config() service.ConfigI {
 	m.ctrl.T.Helper()
@@ -207,6 +163,36 @@ func (mr *MockMatcherServiceIMockRecorder) ExecuteMove(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteMove", reflect.TypeOf((*MockMatcherServiceI)(nil).ExecuteMove), arg0, arg1)
 }
 
+// GetChallenge mocks base method.
+func (m *MockMatcherServiceI) GetChallenge(arg0, arg1 models.Key) (*models.Challenge, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetChallenge", arg0, arg1)
+	ret0, _ := ret[0].(*models.Challenge)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetChallenge indicates an expected call of GetChallenge.
+func (mr *MockMatcherServiceIMockRecorder) GetChallenge(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChallenge", reflect.TypeOf((*MockMatcherServiceI)(nil).GetChallenge), arg0, arg1)
+}
+
+// InboundChallenges mocks base method.
+func (m *MockMatcherServiceI) InboundChallenges(arg0 models.Key) (*set.Set[*models.Challenge], error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InboundChallenges", arg0)
+	ret0, _ := ret[0].(*set.Set[*models.Challenge])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InboundChallenges indicates an expected call of InboundChallenges.
+func (mr *MockMatcherServiceIMockRecorder) InboundChallenges(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InboundChallenges", reflect.TypeOf((*MockMatcherServiceI)(nil).InboundChallenges), arg0)
+}
+
 // MatchByClientKey mocks base method.
 func (m *MockMatcherServiceI) MatchByClientKey(arg0 models.Key) (*models.Match, error) {
 	m.ctrl.T.Helper()
@@ -249,6 +235,21 @@ func (mr *MockMatcherServiceIMockRecorder) OnStart() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnStart", reflect.TypeOf((*MockMatcherServiceI)(nil).OnStart))
 }
 
+// OutboundChallenges mocks base method.
+func (m *MockMatcherServiceI) OutboundChallenges(arg0 models.Key) (*set.Set[*models.Challenge], error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OutboundChallenges", arg0)
+	ret0, _ := ret[0].(*set.Set[*models.Challenge])
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OutboundChallenges indicates an expected call of OutboundChallenges.
+func (mr *MockMatcherServiceIMockRecorder) OutboundChallenges(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OutboundChallenges", reflect.TypeOf((*MockMatcherServiceI)(nil).OutboundChallenges), arg0)
+}
+
 // RemoveEventListener mocks base method.
 func (m *MockMatcherServiceI) RemoveEventListener(arg0 int) {
 	m.ctrl.T.Helper()
@@ -259,6 +260,20 @@ func (m *MockMatcherServiceI) RemoveEventListener(arg0 int) {
 func (mr *MockMatcherServiceIMockRecorder) RemoveEventListener(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveEventListener", reflect.TypeOf((*MockMatcherServiceI)(nil).RemoveEventListener), arg0)
+}
+
+// RequestChallenge mocks base method.
+func (m *MockMatcherServiceI) RequestChallenge(arg0 *models.Challenge) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RequestChallenge", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RequestChallenge indicates an expected call of RequestChallenge.
+func (mr *MockMatcherServiceIMockRecorder) RequestChallenge(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestChallenge", reflect.TypeOf((*MockMatcherServiceI)(nil).RequestChallenge), arg0)
 }
 
 // RevokeChallenge mocks base method.

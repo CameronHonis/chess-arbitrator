@@ -209,25 +209,52 @@ var _ = Describe("MatcherService", func() {
 				)
 			})
 			It("stores the challenge", func() {
-
+				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 			})
-			It("emits a challenge request event", func() {
-
+			It("emits a challenge created event", func() {
+				_ = matcherService.RequestChallenge(challenge)
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_CREATED)
+				}).Should(Equal(1))
 			})
 			Describe("when the challenger is already in a match", func() {
+				BeforeEach(func() {
+					existingMatch := models.NewMatch(
+						"client1", "client3", models.NewBlitzTimeControl(),
+					)
+					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
+				})
 				It("returns an error", func() {
-
+					Expect(matcherService.RequestChallenge(challenge)).To(HaveOccurred())
 				})
 			})
 			Describe("when the challenged is already in a match", func() {
+				BeforeEach(func() {
+					existingMatch := models.NewMatch(
+						"client2", "client3", models.NewBlitzTimeControl(),
+					)
+					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
+				})
 				It("does not return an error", func() {
-
+					Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 				})
 				It("stores the challenge", func() {
-
+					_ = matcherService.RequestChallenge(challenge)
+					Expect(matcherService.GetChallenge("client1", "client2")).To(Equal(challenge))
 				})
-				It("emits a challenge request event", func() {
-
+				It("emits a challenge created event", func() {
+					_ = matcherService.RequestChallenge(challenge)
+					Eventually(func() int {
+						return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_CREATED)
+					}).Should(Equal(1))
+				})
+			})
+			Describe("when a challenge to that same player has already been sent", func() {
+				BeforeEach(func() {
+					Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+				})
+				It("returns an error", func() {
+					Expect(matcherService.RequestChallenge(challenge)).To(HaveOccurred())
 				})
 			})
 		})
@@ -241,31 +268,44 @@ var _ = Describe("MatcherService", func() {
 					models.NewBulletTimeControl(),
 					"someBot",
 				)
-			})
-			It("stores the challenge", func() {
-				authServiceMock.EXPECT().BotClientExists().Return(true)
+				authServiceMock.EXPECT().BotClientExists().Return(true).AnyTimes()
 				botClientKeys := set.EmptySet[models.Key]()
 				botClientKeys.Add("someBotClientKey")
-				authServiceMock.EXPECT().ClientKeysByRole(gomock.Eq(models.RoleName(models.BOT))).Return(botClientKeys)
-				Expect(matcherService.ChallengePlayer(challenge)).ToNot(HaveOccurred())
+				authServiceMock.EXPECT().ClientKeysByRole(gomock.Eq(models.RoleName(models.BOT))).Return(botClientKeys).AnyTimes()
 			})
-			It("emits a challenge request event", func() {
-
+			It("queries for the a bot client", func() {
+				authServiceMock.EXPECT().BotClientExists().Return(true)
+				_ = matcherService.RequestChallenge(challenge)
+			})
+			It("stores the challenge", func() {
+				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+			})
+			It("emits a challenge created event", func() {
+				_ = matcherService.RequestChallenge(challenge)
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_CREATED)
+				}).Should(Equal(1))
 			})
 			Describe("when the challenger is already in a match", func() {
+				BeforeEach(func() {
+					Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+				})
 				It("returns an error", func() {
-
+					Expect(matcherService.RequestChallenge(challenge)).To(HaveOccurred())
 				})
 			})
 			Describe("no bot servers are connected", func() {
-				It("does not return an error", func() {
-
+				BeforeEach(func() {
+					authServiceMock.EXPECT().BotClientExists().Return(false).AnyTimes()
 				})
-				It("stores the challenge", func() {
-
+				It("returns an error", func() {
+					Expect(matcherService.RequestChallenge(challenge)).To(HaveOccurred())
 				})
-				It("emits a challenge request event", func() {
-
+				It("emits a challenge creation failed event", func() {
+					_ = matcherService.RequestChallenge(challenge)
+					Eventually(func() int {
+						return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_REQUEST_FAILED)
+					}).Should(Equal(1))
 				})
 			})
 		})

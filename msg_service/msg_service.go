@@ -120,7 +120,7 @@ func (m *MessageService) HandleChallengePlayerMessage(challengeMsg *models.Messa
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}
-	challengeErr := m.MatcherService.ChallengePlayer(challengeMsgContent.Challenge)
+	challengeErr := m.MatcherService.RequestChallenge(challengeMsgContent.Challenge)
 	if challengeErr != nil {
 		return challengeErr
 	}
