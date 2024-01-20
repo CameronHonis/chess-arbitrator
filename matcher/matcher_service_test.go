@@ -366,4 +366,52 @@ var _ = Describe("MatcherService", func() {
 			})
 		})
 	})
+	Describe("RevokeChallenge", func() {
+		var challenge *models.Challenge
+		BeforeEach(func() {
+			challenge = models.NewChallenge(
+				"client1",
+				"client2",
+				true,
+				false,
+				models.NewBlitzTimeControl(),
+				"",
+			)
+			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+		})
+		It("removes the challenge", func() {
+			Expect(matcherService.RevokeChallenge(challenge.ChallengerKey, challenge.ChallengedKey)).ToNot(HaveOccurred())
+			Expect(matcherService.GetChallenge(challenge.ChallengerKey, challenge.ChallengedKey)).Error().To(HaveOccurred())
+		})
+		It("emits a challenge revoked event", func() {
+			_ = matcherService.RevokeChallenge(challenge.ChallengerKey, challenge.ChallengedKey)
+			Eventually(func() int {
+				return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_REVOKED)
+			}).Should(Equal(1))
+		})
+	})
+	Describe("DeclineChallenge", func() {
+		var challenge *models.Challenge
+		BeforeEach(func() {
+			challenge = models.NewChallenge(
+				"client1",
+				"client2",
+				true,
+				false,
+				models.NewBlitzTimeControl(),
+				"",
+			)
+			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+		})
+		It("removes the challenge", func() {
+			Expect(matcherService.DeclineChallenge(challenge.ChallengerKey, challenge.ChallengedKey)).ToNot(HaveOccurred())
+			Expect(matcherService.GetChallenge(challenge.ChallengerKey, challenge.ChallengedKey)).Error().To(HaveOccurred())
+		})
+		It("emits a challenge declined event", func() {
+			_ = matcherService.DeclineChallenge(challenge.ChallengerKey, challenge.ChallengedKey)
+			Eventually(func() int {
+				return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_DENIED)
+			}).Should(Equal(1))
+		})
+	})
 })

@@ -32,7 +32,7 @@ type ChallengeDeniedEventPayload struct {
 
 type ChallengeDeniedEvent struct{ Event }
 
-func NewChallengeCanceledEvent(challenge *models.Challenge) *ChallengeDeniedEvent {
+func NewChallengeDeclinedEvent(challenge *models.Challenge) *ChallengeDeniedEvent {
 	return &ChallengeDeniedEvent{
 		Event: *NewEvent(CHALLENGE_DENIED, &ChallengeDeniedEventPayload{
 			Challenge: challenge,

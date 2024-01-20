@@ -208,14 +208,34 @@ func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key
 }
 
 func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
-	panic("implement me")
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("revoking challenge from %s to %s", challengerKey, challengedKey))
+	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
+	if challengeErr != nil {
+		return challengeErr
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.inboundsByClientKey[challengedKey].Remove(challenge)
+	m.outboundsByClientKey[challengerKey].Remove(challenge)
+
+	go m.Dispatch(NewChallengeRevokedEvent(challenge))
 	return nil
 }
 
-func (m *MatcherService) DeclineChallenge(challengedKey, challengerKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
-	panic("implement me")
+func (m *MatcherService) DeclineChallenge(challengerKey, challengedKey models.Key) error {
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("declining challenge from %s to %s", challengerKey, challengedKey))
+	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
+	if challengeErr != nil {
+		return challengeErr
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.inboundsByClientKey[challengedKey].Remove(challenge)
+	m.outboundsByClientKey[challengerKey].Remove(challenge)
+
+	go m.Dispatch(NewChallengeDeclinedEvent(challenge))
 	return nil
 }
 
