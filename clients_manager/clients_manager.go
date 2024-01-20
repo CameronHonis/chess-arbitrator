@@ -3,6 +3,7 @@ package clients_manager
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/auth"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/msg_service"
 	"github.com/CameronHonis/chess-arbitrator/sub_service"
@@ -50,6 +51,8 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 func (c *ClientsManager) OnStart() {
 	c.AddEventListener(CLIENT_CREATED, c.onClientCreated)
 	c.AddEventListener(auth.AUTH_GRANTED, c.onUpgradeAuthGranted)
+	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, c.onChallengeRequestFailed)
+	c.AddEventListener(matcher.CHALLENGE_CREATED, c.onChallengeCreated)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
@@ -185,24 +188,69 @@ func (c *ClientsManager) writeMessage(client *models.Client, msg *models.Message
 }
 
 func (c *ClientsManager) onClientCreated(event EventI) bool {
+	baseErrMsg := "could not send auth: "
 	client := event.Payload().(*ClientCreatedEventPayload).Client
-	sendAuthErr := SendAuth(c.writeMessage, client)
+	sendDeps := NewSendMessageDeps(c.writeMessage, client)
+	sendAuthErr := SendAuth(sendDeps)
 	if sendAuthErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not send auth: ", sendAuthErr.Error())
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
+		return false
 	}
+
 	go c.listenForUserInput(client)
+
 	return true
 }
 
 func (c *ClientsManager) onUpgradeAuthGranted(event EventI) bool {
+	baseErrMsg := "could not follow up with GRANTED upgrade auth request: "
 	payload := event.Payload().(*auth.AuthenticationGrantedPayload)
 	client, clientErr := c.GetClient(payload.ClientKey)
 	if clientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not follow up with GRANTED upgrade auth request: could not get client from key %s", client)
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		return false
 	}
-	sendErr := SendUpgradeAuthGranted(c.writeMessage, client, payload.Role)
+
+	sendDeps := NewSendMessageDeps(c.writeMessage, client)
+	sendErr := SendUpgradeAuthGranted(sendDeps, payload.Role)
 	if sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, "could not follow up with GRANTED auth upgrade request: ", sendErr.Error())
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		return false
+	}
+	return true
+}
+
+func (c *ClientsManager) onChallengeRequestFailed(event EventI) bool {
+	baseErrMsg := "could not follow up with FAILED challenge request: "
+	payload := event.Payload().(*matcher.ChallengeRequestFailedEventPayload)
+	client, clientErr := c.GetClient(payload.Challenge.ChallengerKey)
+	if clientErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		return false
+	}
+
+	sendDeps := NewSendMessageDeps(c.writeMessage, client)
+	sendErr := SendChallengeRequestFailed(sendDeps, payload.Challenge, payload.Reason)
+	if sendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		return false
+	}
+	return true
+}
+
+func (c *ClientsManager) onChallengeCreated(event EventI) bool {
+	baseErrMsg := "could not follow up challenge request: "
+	payload := event.Payload().(*matcher.ChallengeCreatedEventPayload)
+	challengedClient, challengedClientErr := c.GetClient(payload.Challenge.ChallengedKey)
+	if challengedClientErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedClientErr.Error())
+		return false
+	}
+
+	sendDeps := NewSendMessageDeps(c.writeMessage, challengedClient)
+	if sendErr := SendChallengeRequest(sendDeps, payload.Challenge); sendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		return false
 	}
 	return true
 }

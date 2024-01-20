@@ -116,7 +116,7 @@ func (m *MessageService) HandleMoveMessage(moveMsg *models.Message) error {
 }
 
 func (m *MessageService) HandleChallengePlayerMessage(challengeMsg *models.Message) error {
-	challengeMsgContent, ok := challengeMsg.Content.(*models.ChallengePlayerMessageContent)
+	challengeMsgContent, ok := challengeMsg.Content.(*models.ChallengeRequestMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid challenge message content")
 	}

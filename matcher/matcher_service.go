@@ -173,7 +173,7 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 }
 
 func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
 	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
 		return challengeErr
@@ -197,7 +197,7 @@ func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
 }
 
 func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		go m.Dispatch(NewMatchCreationFailedEvent(challengerKey, "challenged unavailable for matcher"))
@@ -208,19 +208,19 @@ func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key
 }
 
 func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("canceling challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
 }
 
 func (m *MatcherService) DeclineChallenge(challengedKey, challengerKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("revoking challenge for challenger %s", challengerKey))
 	panic("implement me")
 	return nil
 }
 
 func (m *MatcherService) AddMatch(match *models.Match) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("adding matcher %s", match.Uuid))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("adding match %s", match.Uuid))
 	if !m.CanStartMatchWithClientKey(match.WhiteClientKey) {
 		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, "white client unavailable for matcher"))
 		return fmt.Errorf("white client %s unavailable for matcher", match.WhiteClientKey)
@@ -267,7 +267,7 @@ func (m *MatcherService) SetMatch(newMatch *models.Match) error {
 }
 
 func (m *MatcherService) RemoveMatch(match *models.Match) error {
-	m.LogService.Log(models.ENV_MATCH_SERVICE, fmt.Sprintf("removing matcher %s", match.Uuid))
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("removing matcher %s", match.Uuid))
 	m.mu.Lock()
 	if _, ok := m.matchByMatchId[match.Uuid]; !ok {
 		return fmt.Errorf("matcher with id %s doesn't exist", match.Uuid)

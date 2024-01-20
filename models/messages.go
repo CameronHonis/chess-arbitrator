@@ -63,7 +63,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_UPGRADE_AUTH_REQUEST:      &UpgradeAuthRequestMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_GRANTED:      &UpgradeAuthGrantedMessageContent{},
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
-		CONTENT_TYPE_CHALLENGE_REQUEST:         &ChallengePlayerMessageContent{},
+		CONTENT_TYPE_CHALLENGE_REQUEST:         &ChallengeRequestMessageContent{},
 		CONTENT_TYPE_CHALLENGE_REQUEST_FAILED:  &ChallengeRequestFailedMessageContent{},
 		CONTENT_TYPE_CHALLENGE_ACCEPTED:        &ChallengeAcceptedMessageContent{},
 		CONTENT_TYPE_CHALLENGE_DECLINED:        &ChallengeDeclinedMessageContent{},
@@ -152,7 +152,7 @@ type UpgradeAuthDeniedMessageContent struct {
 	Reason string `json:"reason"`
 }
 
-type ChallengePlayerMessageContent struct {
+type ChallengeRequestMessageContent struct {
 	Challenge *Challenge `json:"challenge"`
 }
 

@@ -16,7 +16,7 @@ func GetLoggerConfig() *LoggerConfig {
 	logConfigBuilder.WithDecorator(models.ENV_SERVER, WrapGreen)
 	logConfigBuilder.WithDecorator(models.ENV_CLIENT, WrapBlue)
 	logConfigBuilder.WithDecorator(models.ENV_MATCHMAKING, WrapMagenta)
-	logConfigBuilder.WithDecorator(models.ENV_MATCH_SERVICE, WrapBrown)
+	logConfigBuilder.WithDecorator(models.ENV_MATCHER_SERVICE, WrapBrown)
 	logConfigBuilder.WithDecorator(models.ENV_TIMER, WrapOrange)
 	//logConfigBuilder.WithMutedEnv("server")
 	//logConfigBuilder.WithMutedEnv("client")
