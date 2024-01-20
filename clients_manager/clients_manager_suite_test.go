@@ -9,7 +9,7 @@ import (
 
 var T *testing.T
 
-func TestUserClientsService(t *testing.T) {
+func TestClientsManager(t *testing.T) {
 	T = t
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ClientsManager Suite")

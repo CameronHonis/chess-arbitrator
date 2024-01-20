@@ -44,10 +44,12 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	}
 	s.Service = *NewService(s, config)
 
-	s.AddEventListener(CLIENT_CREATED, s.onClientCreated)
-	s.AddEventListener(auth.AUTH_GRANTED, s.onUpgradeAuthGranted)
-
 	return s
+}
+
+func (c *ClientsManager) OnStart() {
+	c.AddEventListener(CLIENT_CREATED, c.onClientCreated)
+	c.AddEventListener(auth.AUTH_GRANTED, c.onUpgradeAuthGranted)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
