@@ -4,7 +4,9 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/helpers/mocks"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/service"
 	"github.com/CameronHonis/service/test_helpers"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
@@ -12,18 +14,22 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func BuildTestServices(ctrl *gomock.Controller) *clients_manager.ClientsManager {
+func CreateServices(ctrl *gomock.Controller) *clients_manager.ClientsManager {
 	subServiceMock := mocks.NewMockSubscriptionServiceI(ctrl)
 	subServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
+	subServiceMock.EXPECT().Build().AnyTimes()
 
 	msgServiceMock := mocks.NewMockMessageServiceI(ctrl)
 	msgServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
+	msgServiceMock.EXPECT().Build().AnyTimes()
 
 	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
+	authServiceMock.EXPECT().Build().AnyTimes()
 
 	loggerServiceMock := mocks.NewMockLoggerServiceI(ctrl)
 	loggerServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
+	loggerServiceMock.EXPECT().Build().AnyTimes()
 	loggerServiceMock.EXPECT().Log(gomock.All(), gomock.Any()).AnyTimes()
 	loggerServiceMock.EXPECT().LogRed(gomock.All(), gomock.Any()).AnyTimes()
 
@@ -40,14 +46,14 @@ type TestMessageContentType struct {
 	SomePayload string `json:"somePayload"`
 }
 
-var _ = Describe("ClientsManager", func() {
+var _ = Describe("methods", func() {
 	var subServiceMock *mocks.MockSubscriptionServiceI
 	var eventCatcher *test_helpers.EventCatcher
 	var uc *clients_manager.ClientsManager
 	var client *models.Client
 	BeforeEach(func() {
 		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
-		uc = BuildTestServices(ctrl)
+		uc = CreateServices(ctrl)
 		eventCatcher = test_helpers.NewEventCatcher()
 		eventCatcher.AddDependency(uc)
 		subServiceMock = uc.SubService.(*mocks.MockSubscriptionServiceI)
@@ -132,5 +138,112 @@ var _ = Describe("ClientsManager", func() {
 		// TODO: implement once stub generator exists
 		//When("subscribers are listening on the topic", func() {
 		//})
+	})
+})
+
+var _ = Describe("side effects", func() {
+	var uc *clients_manager.ClientsManager
+	BeforeEach(func() {
+		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
+		uc = CreateServices(ctrl)
+	})
+	JustBeforeEach(func() {
+		uc.Build()
+	})
+	When("a CLIENT_CREATED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnClientCreated = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnClientCreated", func() {
+			ev := clients_manager.NewClientCreatedEvent(models.NewClient("client1", "privateKey1", nil, nil))
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
+	})
+	When("a AUTH_UPGRADE_GRANTED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnUpgradeAuthGranted = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnUpgradeAuthGranted", func() {
+			ev := auth.NewAuthUpgradeGrantedEvent("client", "role")
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
+	})
+	When("a CHALLENGE_REQUEST_FAILED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnChallengeRequestFailed = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnChallengeRequestFailed", func() {
+			ev := matcher.NewChallengeRequestFailedEvent(&models.Challenge{}, "")
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
+	})
+	When("a CHALLENGE_CREATED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnChallengeCreated = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnChallengeRequestFailed", func() {
+			ev := matcher.NewChallengeCreatedEvent(&models.Challenge{})
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
+	})
+	When("a CHALLENGE_REVOKED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnChallengeRevoked = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnChallengeRevoked", func() {
+			ev := matcher.NewChallengeRevokedEvent(&models.Challenge{})
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
+	})
+	When("a CHALLENGE_DENIED event is dispatched", func() {
+		var eventHandlerCalled bool
+		BeforeEach(func() {
+			clients_manager.OnChallengeDenied = func(_ service.ServiceI, _ service.EventI) bool {
+				eventHandlerCalled = true
+				return true
+			}
+		})
+		It("calls OnChallengeDenied", func() {
+			ev := matcher.NewChallengeDeniedEvent(&models.Challenge{})
+			uc.Dispatch(ev)
+			Eventually(func() bool {
+				return eventHandlerCalled
+			}).Should(BeTrue())
+		})
 	})
 })

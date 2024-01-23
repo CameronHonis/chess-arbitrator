@@ -6,36 +6,36 @@ import (
 )
 
 const (
-	AUTH_GRANTED EventVariant = "AUTH_GRANTED"
-	AUTH_DENIED               = "AUTH_DENIED"
+	AUTH_UPGRADE_GRANTED EventVariant = "AUTH_UPGRADE_GRANTED"
+	AUTH_UPGRADE_DENIED               = "AUTH_UPGRADE_DENIED"
 )
 
-type AuthenticationGrantedPayload struct {
+type AuthUpgradeGrantedPayload struct {
 	ClientKey Key
 	Role      RoleName
 }
 
-type AuthenticationGrantedEvent struct{ Event }
+type AuthUpgradeGrantedEvent struct{ Event }
 
-func NewAuthenticationGrantedEvent(clientKey Key, role RoleName) *AuthenticationGrantedEvent {
-	return &AuthenticationGrantedEvent{
-		Event: *NewEvent(AUTH_GRANTED, &AuthenticationGrantedPayload{
+func NewAuthUpgradeGrantedEvent(clientKey Key, role RoleName) *AuthUpgradeGrantedEvent {
+	return &AuthUpgradeGrantedEvent{
+		Event: *NewEvent(AUTH_UPGRADE_GRANTED, &AuthUpgradeGrantedPayload{
 			ClientKey: clientKey,
 			Role:      role,
 		}),
 	}
 }
 
-type AuthenticationDeniedPayload struct {
+type AuthUpgradeDeniedPayload struct {
 	ClientKey Key
 	Reason    string
 }
 
-type AuthenticationDeniedEvent struct{ Event }
+type AuthUpgradeDeniedEvent struct{ Event }
 
-func NewAuthenticationDeniedEvent(clientKey Key, reason string) *AuthenticationDeniedEvent {
-	return &AuthenticationDeniedEvent{
-		Event: *NewEvent(AUTH_DENIED, &AuthenticationDeniedPayload{
+func NewAuthUpgradeDeniedEvent(clientKey Key, reason string) *AuthUpgradeDeniedEvent {
+	return &AuthUpgradeDeniedEvent{
+		Event: *NewEvent(AUTH_UPGRADE_DENIED, &AuthUpgradeDeniedPayload{
 			ClientKey: clientKey,
 			Reason:    reason,
 		}),

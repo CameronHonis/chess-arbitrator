@@ -238,7 +238,7 @@ func (m *MatcherService) DeclineChallenge(challengerKey, challengedKey models.Ke
 	m.inboundsByClientKey[challengedKey].Remove(challenge)
 	m.outboundsByClientKey[challengerKey].Remove(challenge)
 
-	go m.Dispatch(NewChallengeDeclinedEvent(challenge))
+	go m.Dispatch(NewChallengeDeniedEvent(challenge))
 	return nil
 }
 
@@ -377,7 +377,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	}
 }
 
-func (m *MatcherService) onChallengeAccepted(event EventI) bool {
+func (m *MatcherService) onChallengeAccepted(_ ServiceI, event EventI) bool {
 	baseErrMsg := "could not follow up on challenge accepted: "
 	challenge := event.Payload().(*ChallengeAcceptedEventPayload).Challenge
 	match := models.NewMatchBuilder().FromChallenge(challenge).Build()
