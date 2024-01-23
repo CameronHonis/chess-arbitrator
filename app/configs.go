@@ -31,6 +31,6 @@ func GetRouterConfig() *router_service.RouterServiceConfig {
 	return router_service.NewRouterServiceConfig()
 }
 
-func GetUserClientsConfig() *clients_manager.ClientsManagerConfig {
-	return clients_manager.NewClientsManagerConfig()
+func GetClientsManagerConfig() *clients_manager.ClientsManagerConfig {
+	return clients_manager.NewClientsManagerConfig(true)
 }

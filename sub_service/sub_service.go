@@ -10,8 +10,6 @@ import (
 	"sync"
 )
 
-// NOTE: compilation broken
-// //go:generate mockgen -destination mock/sub_service_mock.go . SubscriptionServiceI
 type SubscriptionServiceI interface {
 	service.ServiceI
 	SubClient(clientKey models.Key, topic models.MessageTopic) error

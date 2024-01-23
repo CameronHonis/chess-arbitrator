@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-//go:generate mockgen -destination mock/matchmaking_service_mock.go . MatchmakingServiceI
 type MatchmakingServiceI interface {
 	ServiceI
 	AddClient(client *models.ClientProfile) error

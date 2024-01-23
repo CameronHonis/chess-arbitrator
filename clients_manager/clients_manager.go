@@ -14,7 +14,6 @@ import (
 	"sync"
 )
 
-//go:generate mockgen -destination mock/client_manager_mock.go . ClientsManagerI
 type ClientsManagerI interface {
 	ServiceI
 	GetClient(clientKey models.Key) (*models.Client, error)
@@ -48,7 +47,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	return s
 }
 
-func (c *ClientsManager) OnStart() {
+func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(CLIENT_CREATED, c.onClientCreated)
 	c.AddEventListener(auth.AUTH_GRANTED, c.onUpgradeAuthGranted)
 	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, c.onChallengeRequestFailed)
@@ -242,48 +241,72 @@ func (c *ClientsManager) onChallengeRequestFailed(event EventI) bool {
 
 func (c *ClientsManager) onChallengeCreated(event EventI) bool {
 	baseErrMsg := "could not follow up challenge request: "
-	payload := event.Payload().(*matcher.ChallengeCreatedEventPayload)
-	challengedClient, challengedClientErr := c.GetClient(payload.Challenge.ChallengedKey)
-	if challengedClientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedClientErr.Error())
-		return false
+	challenge := event.Payload().(*matcher.ChallengeCreatedEventPayload).Challenge
+	challengerSendErr, challengedSendErr := c.sendChallengeUpdate(challenge.ChallengerKey, challenge.ChallengedKey, challenge)
+
+	if challengerSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+	}
+	if challengedSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 
-	sendDeps := NewSendMessageDeps(c.writeMessage, challengedClient)
-	if sendErr := SendChallengeRequest(sendDeps, payload.Challenge); sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
-		return false
-	}
 	return true
 }
 
 func (c *ClientsManager) onChallengeRevoked(event EventI) bool {
 	baseErrMsg := "could not follow up on challenge revoked: "
-	payload := event.Payload().(*matcher.ChallengeRevokedEventPayload)
-	client, clientErr := c.GetClient(payload.Challenge.ChallengedKey)
-	if clientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
-		return true
+	challenge := event.Payload().(*matcher.ChallengeRevokedEventPayload).Challenge
+	challengerSendErr, challengedSendErr := c.sendChallengeUpdate(challenge.ChallengerKey, challenge.ChallengedKey, nil)
+
+	if challengerSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
-	sendDeps := NewSendMessageDeps(c.writeMessage, client)
-	if sendErr := SendChallengeRevoked(sendDeps, payload.Challenge.ChallengerKey); sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
-		return false
+	if challengedSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
+	}
+
+	return true
+}
+
+func (c *ClientsManager) onChallengeDeclined(event EventI) bool {
+	baseErrMsg := "could not follow up on challenge declined: "
+	challenge := event.Payload().(*matcher.ChallengeDeniedEventPayload).Challenge
+	challengerSendErr, challengedSendErr := c.sendChallengeUpdate(challenge.ChallengerKey, challenge.ChallengedKey, nil)
+
+	if challengerSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+	}
+	if challengedSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 	return true
 }
-func (c *ClientsManager) onChallengeDeclined(event EventI) bool {
-	baseErrMsg := "could not follow up on challenge declined: "
-	payload := event.Payload().(*matcher.ChallengeRevokedEventPayload)
-	client, clientErr := c.GetClient(payload.Challenge.ChallengerKey)
-	if clientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
-		return true
+
+func (c *ClientsManager) onChallengeAccepted(event EventI) bool {
+	baseErrMsg := "could not follow up on challenge accepted: "
+	challenge := event.Payload().(*matcher.ChallengeAcceptedEventPayload).Challenge
+	challengerSendErr, challengedSendErr := c.sendChallengeUpdate(challenge.ChallengerKey, challenge.ChallengedKey, nil)
+
+	if challengerSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
-	sendDeps := NewSendMessageDeps(c.writeMessage, client)
-	if sendErr := SendChallengeUpdate(sendDeps, payload.Challenge.ChallengedKey); sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
-		return false
+	if challengedSendErr != nil {
+		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 	return true
+}
+
+func (c *ClientsManager) sendChallengeUpdate(challengerKey, challengedKey models.Key, challenge *models.Challenge) (challengerSendErr error, challengedSendErr error) {
+	challengerClient, challengerErr := c.GetClient(challengerKey)
+	if challengerClient != nil {
+		deps := NewSendMessageDeps(c.writeMessage, challengerClient)
+		challengerErr = SendChallengeUpdate(deps, challenge)
+	}
+	challengedClient, challengedErr := c.GetClient(challengedKey)
+	if challengedClient != nil {
+		deps := NewSendMessageDeps(c.writeMessage, challengedClient)
+		challengedErr = SendChallengeUpdate(deps, challenge)
+	}
+	return challengerErr, challengedErr
 }

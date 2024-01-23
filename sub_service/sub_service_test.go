@@ -1,7 +1,7 @@
 package sub_service_test
 
 import (
-	mock_auth "github.com/CameronHonis/chess-arbitrator/auth/mock"
+	"github.com/CameronHonis/chess-arbitrator/helpers/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/onsi/ginkgo/v2"
@@ -10,7 +10,7 @@ import (
 )
 
 func BuildServices(ctrl *gomock.Controller) *sub_service.SubscriptionService {
-	authServiceMock := mock_auth.NewMockAuthenticationServiceI(ctrl)
+	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
 	authServiceMock.EXPECT().ValidateClientForTopic(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 

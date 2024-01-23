@@ -43,29 +43,11 @@ func SendChallengeRequestFailed(deps *SendMessageDeps, challenge *models.Challen
 	})
 }
 
-func SendChallengeRequest(deps *SendMessageDeps, challenge *models.Challenge) error {
+func SendChallengeUpdate(deps *SendMessageDeps, challenge *models.Challenge) error {
 	return deps.writer(deps.client, &models.Message{
-		ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
-		Content: &models.ChallengeRequestMessageContent{
+		ContentType: models.CONTENT_TYPE_CHALLENGE_UPDATED,
+		Content: &models.ChallengeUpdatedMessageContent{
 			Challenge: challenge,
-		},
-	})
-}
-
-func SendChallengeRevoked(deps *SendMessageDeps, challengerKey models.Key) error {
-	return deps.writer(deps.client, &models.Message{
-		ContentType: models.CONTENT_TYPE_CHALLENGE_REVOKED,
-		Content: &models.ChallengeRevokedMessageContent{
-			ChallengerClientKey: challengerKey,
-		},
-	})
-}
-
-func SendChallengeDeclined(deps *SendMessageDeps, challengedKey models.Key) error {
-	return deps.writer(deps.client, &models.Message{
-		ContentType: models.CONTENT_TYPE_CHALLENGE_REVOKED,
-		Content: &models.ChallengeDeclinedMessageContent{
-			ChallengedClientKey: challengedKey,
 		},
 	})
 }

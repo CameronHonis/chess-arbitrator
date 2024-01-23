@@ -3,10 +3,9 @@ package matcher_test
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
-	mock_auth "github.com/CameronHonis/chess-arbitrator/auth/mock"
+	"github.com/CameronHonis/chess-arbitrator/helpers/mocks"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	mock_log "github.com/CameronHonis/log/mock"
 	"github.com/CameronHonis/service/test_helpers"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
@@ -16,7 +15,7 @@ import (
 )
 
 func BuildServices(ctrl *gomock.Controller) *matcher.MatcherService {
-	authServiceMock := mock_auth.NewMockAuthenticationServiceI(ctrl)
+	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
 	getRole := func(clientKey models.Key) (models.RoleName, error) {
 		roleByKey := map[models.Key]models.RoleName{
@@ -31,7 +30,7 @@ func BuildServices(ctrl *gomock.Controller) *matcher.MatcherService {
 	}
 	authServiceMock.EXPECT().GetRole(gomock.Any()).DoAndReturn(getRole).AnyTimes()
 
-	logServiceMock := mock_log.NewMockLoggerServiceI(ctrl)
+	logServiceMock := mocks.NewMockLoggerServiceI(ctrl)
 	logServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
 	logServiceMock.EXPECT().Log(gomock.Any(), gomock.Any()).AnyTimes()
 	logServiceMock.EXPECT().LogRed(gomock.Any(), gomock.Any()).AnyTimes()
@@ -44,12 +43,12 @@ func BuildServices(ctrl *gomock.Controller) *matcher.MatcherService {
 
 var _ = Describe("MatcherService", func() {
 	var matcherService *matcher.MatcherService
-	var authServiceMock *mock_auth.MockAuthenticationServiceI
+	var authServiceMock *mocks.MockAuthenticationServiceI
 	var eventCatcher *test_helpers.EventCatcher
 	BeforeEach(func() {
 		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
 		matcherService = BuildServices(ctrl)
-		authServiceMock = matcherService.AuthService.(*mock_auth.MockAuthenticationServiceI)
+		authServiceMock = matcherService.AuthService.(*mocks.MockAuthenticationServiceI)
 		eventCatcher = test_helpers.NewEventCatcher()
 		eventCatcher.AddDependency(matcherService)
 	})
@@ -412,6 +411,38 @@ var _ = Describe("MatcherService", func() {
 			Eventually(func() int {
 				return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_DENIED)
 			}).Should(Equal(1))
+		})
+	})
+	Describe("AcceptChallenge", func() {
+		When("the challenge already exists", func() {
+			var challenge *models.Challenge
+			BeforeEach(func() {
+				challenge = models.NewChallenge(
+					"client1",
+					"client2",
+					true,
+					false,
+					models.NewBulletTimeControl(),
+					"")
+				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+			})
+			It("dispatches a challenge accepted event", func() {
+				Expect(matcherService.AcceptChallenge("client1", "client2")).ToNot(HaveOccurred())
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_ACCEPTED)
+				}).Should(Equal(1))
+			})
+		})
+		When("the challenge does not exist", func() {
+			It("returns an error", func() {
+				Expect(matcherService.AcceptChallenge("client1", "client2")).To(HaveOccurred())
+			})
+			It("dispatches a challenge accept failure event", func() {
+				_ = matcherService.AcceptChallenge("client1", "client2")
+				Eventually(func() int {
+					return eventCatcher.EventsByVariantCount(matcher.CHALLENGE_ACCEPT_FAILED)
+				}).Should(Equal(1))
+			})
 		})
 	})
 })

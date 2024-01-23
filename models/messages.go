@@ -179,7 +179,7 @@ type ChallengeRevokedMessageContent struct {
 }
 
 type ChallengeUpdatedMessageContent struct {
-	Challenge `json:"challenge"`
+	Challenge *Challenge `json:"challenge"`
 }
 
 type MatchCreationFailedMessageContent struct {

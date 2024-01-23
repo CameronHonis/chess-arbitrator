@@ -12,7 +12,6 @@ import (
 	"github.com/CameronHonis/service"
 )
 
-//go:generate mockgen -destination mock/msg_service_mock.go . MessageServiceI
 type MessageServiceI interface {
 	service.ServiceI
 	HandleMessage(msg *models.Message)
@@ -132,7 +131,7 @@ func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error
 	if !ok {
 		return fmt.Errorf("invalid accept challenge message content")
 	}
-	acceptChallengeErr := m.MatcherService.AcceptChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	acceptChallengeErr := m.MatcherService.AcceptChallenge(msgContent.ChallengerClientKey, msg.SenderKey)
 	if acceptChallengeErr != nil {
 		return nil
 	}

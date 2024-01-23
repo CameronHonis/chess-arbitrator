@@ -10,6 +10,8 @@ const (
 	CHALLENGE_DENIED         = "CHALLENGE_DENIED"
 	CHALLENGE_REVOKED        = "CHALLENGE_REVOKED"
 	CHALLENGE_REQUEST_FAILED = "CHALLENGE_REQUEST_FAILED"
+	CHALLENGE_ACCEPTED       = "CHALLENGE_ACCEPTED"
+	CHALLENGE_ACCEPT_FAILED  = "CHALLENGE_ACCEPTED_FAILED"
 )
 
 type ChallengeCreatedEventPayload struct {
@@ -64,6 +66,36 @@ type ChallengeRequestFailedEvent struct{ Event }
 func NewChallengeRequestFailedEvent(challenge *models.Challenge, reason string) *ChallengeRequestFailedEvent {
 	return &ChallengeRequestFailedEvent{
 		Event: *NewEvent(CHALLENGE_REQUEST_FAILED, &ChallengeRequestFailedEventPayload{
+			Challenge: challenge,
+			Reason:    reason,
+		}),
+	}
+}
+
+type ChallengeAcceptedEventPayload struct {
+	Challenge *models.Challenge
+}
+
+type ChallengeAcceptedEvent struct{ Event }
+
+func NewChallengeAcceptedEvent(challenge *models.Challenge) *ChallengeAcceptedEvent {
+	return &ChallengeAcceptedEvent{
+		Event: *NewEvent(CHALLENGE_ACCEPTED, &ChallengeAcceptedEventPayload{
+			Challenge: challenge,
+		}),
+	}
+}
+
+type ChallengeAcceptFailedEventPayload struct {
+	Challenge *models.Challenge
+	Reason    string
+}
+
+type ChallengeAcceptFailedEvent struct{ Event }
+
+func NewChallengeAcceptFailedEvent(challenge *models.Challenge, reason string) *ChallengeAcceptFailedEvent {
+	return &ChallengeAcceptFailedEvent{
+		Event: *NewEvent(CHALLENGE_ACCEPT_FAILED, &ChallengeAcceptFailedEventPayload{
 			Challenge: challenge,
 			Reason:    reason,
 		}),

@@ -18,7 +18,7 @@ func BuildServices() *AppService {
 	appService = NewAppService(GetAppConfig())
 	loggerService := NewLoggerService(GetLoggerConfig())
 	routerService := router_service.NewRouterService(GetRouterConfig())
-	userClientsService := clients_manager.NewClientsManager(GetUserClientsConfig())
+	userClientsService := clients_manager.NewClientsManager(GetClientsManagerConfig())
 	// NOTE: mixture of `get...config` and `new...config` is intentional, trying both out
 	msgService := msg_service.NewMessageHandlerService(msg_service.NewMessageServiceConfig())
 	subService := sub_service.NewSubscriptionService(sub_service.NewSubscriptionServiceConfig())

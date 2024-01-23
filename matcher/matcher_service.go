@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-// NOTE: generator compilation broken
-// //go:generate mockgen -destination matcher_service_mock.go . MatcherServiceI
 type MatcherServiceI interface {
 	ServiceI
 	MatchById(matchId string) (*models.Match, error)
@@ -56,6 +54,10 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 	}
 	matchService.Service = *NewService(matchService, config)
 	return matchService
+}
+
+func (m *MatcherService) OnBuild() {
+	m.AddEventListener(CHALLENGE_ACCEPTED, m.onChallengeAccepted)
 }
 
 func (m *MatcherService) MatchById(matchId string) (*models.Match, error) {
@@ -196,15 +198,16 @@ func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
 	return nil
 }
 
-func (m *MatcherService) AcceptChallenge(challengedKey, challengerKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("accepting challenge with client %s", challengedKey))
+func (m *MatcherService) AcceptChallenge(challengerKey, challengedKey models.Key) error {
+	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("accepting challenge from client %s to %s", challengerKey, challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
-		go m.Dispatch(NewMatchCreationFailedEvent(challengerKey, "challenged unavailable for matcher"))
+		go m.Dispatch(NewChallengeAcceptFailedEvent(challenge, "could not get challenge"))
 		return challengeErr
 	}
-	match := models.NewMatchBuilder().FromChallenge(challenge).Build()
-	return m.AddMatch(match)
+
+	go m.Dispatch(NewChallengeAcceptedEvent(challenge))
+	return challengeErr
 }
 
 func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key) error {
@@ -372,4 +375,14 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 		newMatch := matchBuilder.Build()
 		_ = m.SetMatch(newMatch)
 	}
+}
+
+func (m *MatcherService) onChallengeAccepted(event EventI) bool {
+	baseErrMsg := "could not follow up on challenge accepted: "
+	challenge := event.Payload().(*ChallengeAcceptedEventPayload).Challenge
+	match := models.NewMatchBuilder().FromChallenge(challenge).Build()
+	if matchErr := m.AddMatch(match); matchErr != nil {
+		m.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, matchErr)
+	}
+	return true
 }

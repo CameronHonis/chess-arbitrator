@@ -2,12 +2,9 @@ package clients_manager_test
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth"
-	mock_auth "github.com/CameronHonis/chess-arbitrator/auth/mock"
 	"github.com/CameronHonis/chess-arbitrator/clients_manager"
+	"github.com/CameronHonis/chess-arbitrator/helpers/mocks"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	mock_msg_service "github.com/CameronHonis/chess-arbitrator/msg_service/mock"
-	mock_sub_service "github.com/CameronHonis/chess-arbitrator/sub_service/mock"
-	mock_log "github.com/CameronHonis/log/mock"
 	"github.com/CameronHonis/service/test_helpers"
 	"github.com/CameronHonis/set"
 	. "github.com/onsi/ginkgo/v2"
@@ -16,21 +13,21 @@ import (
 )
 
 func BuildTestServices(ctrl *gomock.Controller) *clients_manager.ClientsManager {
-	subServiceMock := mock_sub_service.NewMockSubscriptionServiceI(ctrl)
+	subServiceMock := mocks.NewMockSubscriptionServiceI(ctrl)
 	subServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
 
-	msgServiceMock := mock_msg_service.NewMockMessageServiceI(ctrl)
+	msgServiceMock := mocks.NewMockMessageServiceI(ctrl)
 	msgServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
 
-	authServiceMock := mock_auth.NewMockAuthenticationServiceI(ctrl)
+	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
 
-	loggerServiceMock := mock_log.NewMockLoggerServiceI(ctrl)
+	loggerServiceMock := mocks.NewMockLoggerServiceI(ctrl)
 	loggerServiceMock.EXPECT().SetParent(gomock.All()).AnyTimes()
 	loggerServiceMock.EXPECT().Log(gomock.All(), gomock.Any()).AnyTimes()
 	loggerServiceMock.EXPECT().LogRed(gomock.All(), gomock.Any()).AnyTimes()
 
-	ucs := clients_manager.NewClientsManager(clients_manager.NewClientsManagerConfig())
+	ucs := clients_manager.NewClientsManager(clients_manager.NewClientsManagerConfig(false))
 	ucs.AddDependency(subServiceMock)
 	ucs.AddDependency(msgServiceMock)
 	ucs.AddDependency(authServiceMock)
@@ -44,7 +41,7 @@ type TestMessageContentType struct {
 }
 
 var _ = Describe("ClientsManager", func() {
-	var subServiceMock *mock_sub_service.MockSubscriptionServiceI
+	var subServiceMock *mocks.MockSubscriptionServiceI
 	var eventCatcher *test_helpers.EventCatcher
 	var uc *clients_manager.ClientsManager
 	var client *models.Client
@@ -53,7 +50,7 @@ var _ = Describe("ClientsManager", func() {
 		uc = BuildTestServices(ctrl)
 		eventCatcher = test_helpers.NewEventCatcher()
 		eventCatcher.AddDependency(uc)
-		subServiceMock = uc.SubService.(*mock_sub_service.MockSubscriptionServiceI)
+		subServiceMock = uc.SubService.(*mocks.MockSubscriptionServiceI)
 		client = auth.CreateClient(nil, nil)
 	})
 	Describe("::AddClient", func() {
