@@ -65,9 +65,9 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_UPGRADE_AUTH_DENIED:       &UpgradeAuthDeniedMessageContent{},
 		CONTENT_TYPE_CHALLENGE_REQUEST:         &ChallengeRequestMessageContent{},
 		CONTENT_TYPE_CHALLENGE_REQUEST_FAILED:  &ChallengeRequestFailedMessageContent{},
-		CONTENT_TYPE_CHALLENGE_ACCEPTED:        &ChallengeAcceptedMessageContent{},
-		CONTENT_TYPE_CHALLENGE_DECLINED:        &ChallengeDeclinedMessageContent{},
-		CONTENT_TYPE_CHALLENGE_REVOKED:         &ChallengeRevokedMessageContent{},
+		CONTENT_TYPE_ACCEPT_CHALLENGE:          &AcceptChallengeMessageContent{},
+		CONTENT_TYPE_DECLINE_CHALLENGE:         &DeclineChallengeMessageContent{},
+		CONTENT_TYPE_REVOKE_CHALLENGE:          &RevokeChallengeMessageContent{},
 		CONTENT_TYPE_CHALLENGE_UPDATED:         &ChallengeUpdatedMessageContent{},
 		CONTENT_TYPE_MATCH_CREATION_FAILED:     &MatchCreationFailedMessageContent{},
 	}
@@ -105,9 +105,9 @@ const (
 	CONTENT_TYPE_SUBSCRIBE_REQUEST                = "SUBSCRIBE_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST             = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_CHALLENGE_REQUEST                = "CHALLENGE_REQUEST"
-	CONTENT_TYPE_CHALLENGE_ACCEPTED               = "ACCEPT_CHALLENGE"
-	CONTENT_TYPE_CHALLENGE_DECLINED               = "DECLINE_CHALLENGE"
-	CONTENT_TYPE_CHALLENGE_REVOKED                = "REVOKE_CHALLENGE"
+	CONTENT_TYPE_ACCEPT_CHALLENGE                 = "ACCEPT_CHALLENGE"
+	CONTENT_TYPE_DECLINE_CHALLENGE                = "DECLINE_CHALLENGE"
+	CONTENT_TYPE_REVOKE_CHALLENGE                 = "REVOKE_CHALLENGE"
 )
 
 type AuthMessageContent struct {
@@ -166,15 +166,15 @@ type ChallengeRequestFailedMessageContent struct {
 	Reason    string     `json:"reason"`
 }
 
-type ChallengeAcceptedMessageContent struct {
+type AcceptChallengeMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
-type ChallengeDeclinedMessageContent struct {
-	ChallengedClientKey Key `json:"challengerClientKey"`
+type DeclineChallengeMessageContent struct {
+	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 
-type ChallengeRevokedMessageContent struct {
+type RevokeChallengeMessageContent struct {
 	ChallengerClientKey Key `json:"challengerClientKey"`
 }
 

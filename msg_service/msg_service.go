@@ -53,11 +53,11 @@ func (m *MessageService) HandleMessage(msg *models.Message) {
 		handleMsgErr = m.HandleMoveMessage(msg)
 	case models.CONTENT_TYPE_CHALLENGE_REQUEST:
 		handleMsgErr = m.HandleChallengePlayerMessage(msg)
-	case models.CONTENT_TYPE_CHALLENGE_ACCEPTED:
+	case models.CONTENT_TYPE_ACCEPT_CHALLENGE:
 		handleMsgErr = m.HandleAcceptChallengeMessage(msg)
-	case models.CONTENT_TYPE_CHALLENGE_DECLINED:
+	case models.CONTENT_TYPE_DECLINE_CHALLENGE:
 		handleMsgErr = m.HandleDeclineChallengeMessage(msg)
-	case models.CONTENT_TYPE_CHALLENGE_REVOKED:
+	case models.CONTENT_TYPE_REVOKE_CHALLENGE:
 		handleMsgErr = m.HandleRevokeChallengeMessage(msg)
 	}
 	if handleMsgErr != nil {
@@ -127,7 +127,7 @@ func (m *MessageService) HandleChallengePlayerMessage(challengeMsg *models.Messa
 }
 
 func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.ChallengeAcceptedMessageContent)
+	msgContent, ok := msg.Content.(*models.AcceptChallengeMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid accept challenge message content")
 	}
@@ -139,11 +139,11 @@ func (m *MessageService) HandleAcceptChallengeMessage(msg *models.Message) error
 }
 
 func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.ChallengeDeclinedMessageContent)
+	msgContent, ok := msg.Content.(*models.DeclineChallengeMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid decline challenge message content")
 	}
-	declineChallengeErr := m.MatcherService.DeclineChallenge(msg.SenderKey, msgContent.ChallengedClientKey)
+	declineChallengeErr := m.MatcherService.DeclineChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
 	if declineChallengeErr != nil {
 		m.LogService.LogRed(models.ENV_SERVER, fmt.Sprintf("could not decline challenge: %s", declineChallengeErr))
 	}
@@ -151,7 +151,7 @@ func (m *MessageService) HandleDeclineChallengeMessage(msg *models.Message) erro
 }
 
 func (m *MessageService) HandleRevokeChallengeMessage(msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.ChallengeRevokedMessageContent)
+	msgContent, ok := msg.Content.(*models.RevokeChallengeMessageContent)
 	if !ok {
 		return fmt.Errorf("invalid revoke challenge message content")
 	}
