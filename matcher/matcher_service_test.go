@@ -3,6 +3,7 @@ package matcher_test
 import (
 	"fmt"
 	"github.com/CameronHonis/chess"
+	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/helpers/mocks"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
@@ -58,7 +59,7 @@ var _ = Describe("MatcherService", func() {
 			match = models.NewMatch(
 				"client1",
 				"client2",
-				models.NewBulletTimeControl(),
+				builders.NewBulletTimeControl(),
 			)
 		})
 		Describe("when one of the players in the proposed matcherService is already in a matcherService", func() {
@@ -66,7 +67,7 @@ var _ = Describe("MatcherService", func() {
 				ongoingMatch := models.NewMatch(
 					"client1",
 					"client3",
-					models.NewBulletTimeControl(),
+					builders.NewBulletTimeControl(),
 				)
 				Expect(matcherService.AddMatch(ongoingMatch)).To(Succeed())
 			})
@@ -94,7 +95,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("RemoveMatch", func() {
 		var match *models.Match
 		BeforeEach(func() {
-			match = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
+			match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 		})
 		Describe("when the matcherService exists", func() {
 			BeforeEach(func() {
@@ -125,7 +126,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("SetMatch", func() {
 		var newMatch *models.Match
 		BeforeEach(func() {
-			newMatch = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
+			newMatch = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 			newMatch.WhiteClientKey = "client1"
 			newMatch.BlackClientKey = "client2"
 			move := chess.Move{chess.WHITE_PAWN, &chess.Square{2, 4}, &chess.Square{4, 4}, chess.EMPTY, make([]*chess.Square, 0), chess.EMPTY}
@@ -137,7 +138,7 @@ var _ = Describe("MatcherService", func() {
 		Describe("when the match exists", func() {
 			var prevMatch *models.Match
 			BeforeEach(func() {
-				prevMatch = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
+				prevMatch = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 				prevMatch.WhiteClientKey = "client1"
 				prevMatch.BlackClientKey = "client2"
 				prevMatch.Uuid = newMatch.Uuid
@@ -163,7 +164,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the new match differs by client id", func() {
 				BeforeEach(func() {
-					newMatch = models.NewMatch("other-client1", "client2", models.NewBulletTimeControl())
+					newMatch = models.NewMatch("other-client1", "client2", builders.NewBulletTimeControl())
 					newMatch.WhiteClientKey = "other-client1"
 					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
@@ -174,7 +175,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the new matcherService differs by time control", func() {
 				BeforeEach(func() {
-					newMatch = models.NewMatch("client1", "client2", models.NewRapidTimeControl())
+					newMatch = models.NewMatch("client1", "client2", builders.NewRapidTimeControl())
 					newMatch.WhiteClientKey = "client1"
 					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
@@ -203,7 +204,7 @@ var _ = Describe("MatcherService", func() {
 					"client2",
 					true,
 					false,
-					models.NewBulletTimeControl(),
+					builders.NewBulletTimeControl(),
 					"",
 				)
 			})
@@ -219,7 +220,7 @@ var _ = Describe("MatcherService", func() {
 			Describe("when the challenger is already in a match", func() {
 				BeforeEach(func() {
 					existingMatch := models.NewMatch(
-						"client1", "client3", models.NewBlitzTimeControl(),
+						"client1", "client3", builders.NewBlitzTimeControl(),
 					)
 					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
 				})
@@ -230,7 +231,7 @@ var _ = Describe("MatcherService", func() {
 			Describe("when the challenged is already in a match", func() {
 				BeforeEach(func() {
 					existingMatch := models.NewMatch(
-						"client2", "client3", models.NewBlitzTimeControl(),
+						"client2", "client3", builders.NewBlitzTimeControl(),
 					)
 					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
 				})
@@ -264,7 +265,7 @@ var _ = Describe("MatcherService", func() {
 					"",
 					true,
 					false,
-					models.NewBulletTimeControl(),
+					builders.NewBulletTimeControl(),
 					"someBot",
 				)
 				authServiceMock.EXPECT().BotClientExists().Return(true).AnyTimes()
@@ -314,7 +315,7 @@ var _ = Describe("MatcherService", func() {
 		var match *models.Match
 		var move chess.Move
 		BeforeEach(func() {
-			match = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
+			match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 			move = chess.Move{
 				Piece:               chess.WHITE_PAWN,
 				StartSquare:         &chess.Square{Rank: 2, File: 4},
@@ -336,7 +337,7 @@ var _ = Describe("MatcherService", func() {
 		})
 		Describe("when the match exists", func() {
 			BeforeEach(func() {
-				match = models.NewMatch("client1", "client2", models.NewBulletTimeControl())
+				match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 				addMatchErr := matcherService.AddMatch(match)
 				Expect(addMatchErr).ToNot(HaveOccurred())
 				Expect(matcherService.MatchById(match.Uuid)).To(Equal(match))
@@ -373,7 +374,7 @@ var _ = Describe("MatcherService", func() {
 				"client2",
 				true,
 				false,
-				models.NewBlitzTimeControl(),
+				builders.NewBlitzTimeControl(),
 				"",
 			)
 			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
@@ -397,7 +398,7 @@ var _ = Describe("MatcherService", func() {
 				"client2",
 				true,
 				false,
-				models.NewBlitzTimeControl(),
+				builders.NewBlitzTimeControl(),
 				"",
 			)
 			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
@@ -422,7 +423,7 @@ var _ = Describe("MatcherService", func() {
 					"client2",
 					true,
 					false,
-					models.NewBulletTimeControl(),
+					builders.NewBulletTimeControl(),
 					"")
 				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 			})

@@ -13,30 +13,3 @@ func (tc *TimeControl) Equals(other *TimeControl) bool {
 		tc.TimeAfterMovesCount == other.TimeAfterMovesCount &&
 		tc.SecAfterMoves == other.SecAfterMoves
 }
-
-func NewRapidTimeControl() *TimeControl {
-	return &TimeControl{
-		InitialTimeSec:      600,
-		IncrementSec:        0,
-		TimeAfterMovesCount: 0,
-		SecAfterMoves:       0,
-	}
-}
-
-func NewBlitzTimeControl() *TimeControl {
-	return &TimeControl{
-		InitialTimeSec:      300,
-		IncrementSec:        0,
-		TimeAfterMovesCount: 0,
-		SecAfterMoves:       0,
-	}
-}
-
-func NewBulletTimeControl() *TimeControl {
-	return &TimeControl{
-		InitialTimeSec:      60,
-		IncrementSec:        0,
-		TimeAfterMovesCount: 0,
-		SecAfterMoves:       0,
-	}
-}
