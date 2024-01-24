@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/auth"
+	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
@@ -133,7 +134,7 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 		return fmt.Errorf("move %v is not legal", move)
 	}
 
-	matchBuilder := models.NewMatchBuilder().FromMatch(match)
+	matchBuilder := builders.NewMatchBuilder().FromMatch(match)
 	currTime := time.Now()
 	matchBuilder.WithLastMoveTime(&currTime)
 	secondsSinceLastMove := math.Max(currTime.Sub(*match.LastMoveTime).Seconds(), 0.1)
@@ -361,7 +362,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 		return
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {
-		matchBuilder := models.NewMatchBuilder().FromMatch(match)
+		matchBuilder := builders.NewMatchBuilder().FromMatch(match)
 		boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
 		boardBuilder.WithIsTerminal(true)
 		if match.Board.IsWhiteTurn {
@@ -380,7 +381,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 func (m *MatcherService) onChallengeAccepted(_ ServiceI, event EventI) bool {
 	baseErrMsg := "could not follow up on challenge accepted: "
 	challenge := event.Payload().(*ChallengeAcceptedEventPayload).Challenge
-	match := models.NewMatchBuilder().FromChallenge(challenge).Build()
+	match := builders.NewMatchBuilder().FromChallenge(challenge).Build()
 	if matchErr := m.AddMatch(match); matchErr != nil {
 		m.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, matchErr)
 	}
