@@ -14,7 +14,7 @@ var OnClientCreated = func(self ServiceI, event EventI) bool {
 	sendDeps := NewSendMessageDeps(c.writeMessage, client)
 	sendAuthErr := SendAuth(sendDeps)
 	if sendAuthErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
 		return false
 	}
 
@@ -29,14 +29,14 @@ var OnUpgradeAuthGranted = func(self ServiceI, event EventI) bool {
 	payload := event.Payload().(*auth.AuthUpgradeGrantedPayload)
 	client, clientErr := c.GetClient(payload.ClientKey)
 	if clientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
 		return false
 	}
 
 	sendDeps := NewSendMessageDeps(c.writeMessage, client)
 	sendErr := SendUpgradeAuthGranted(sendDeps, payload.Role)
 	if sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
 		return false
 	}
 	return true
@@ -48,14 +48,14 @@ var OnChallengeRequestFailed = func(self ServiceI, event EventI) bool {
 	payload := event.Payload().(*matcher.ChallengeRequestFailedEventPayload)
 	client, clientErr := c.GetClient(payload.Challenge.ChallengerKey)
 	if clientErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, clientErr.Error())
 		return false
 	}
 
 	sendDeps := NewSendMessageDeps(c.writeMessage, client)
 	sendErr := SendChallengeRequestFailed(sendDeps, payload.Challenge, payload.Reason)
 	if sendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
 		return false
 	}
 	return true
@@ -68,10 +68,10 @@ var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 	challengerSendErr, challengedSendErr := SendAllChallengeUpdate(c, challenge.ChallengerKey, challenge.ChallengedKey, challenge)
 
 	if challengerSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
 	if challengedSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 
 	return true
@@ -84,10 +84,10 @@ var OnChallengeRevoked = func(self ServiceI, event EventI) bool {
 	challengerSendErr, challengedSendErr := SendAllChallengeUpdate(c, challenge.ChallengerKey, challenge.ChallengedKey, nil)
 
 	if challengerSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
 	if challengedSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 
 	return true
@@ -100,10 +100,10 @@ var OnChallengeDenied = func(self ServiceI, event EventI) bool {
 	challengerSendErr, challengedSendErr := SendAllChallengeUpdate(c, challenge.ChallengerKey, challenge.ChallengedKey, nil)
 
 	if challengerSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
 	if challengedSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 	return true
 }
@@ -115,10 +115,10 @@ var OnChallengeAccepted = func(self ServiceI, event EventI) bool {
 	challengerSendErr, challengedSendErr := SendAllChallengeUpdate(c, challenge.ChallengerKey, challenge.ChallengedKey, nil)
 
 	if challengerSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSendErr.Error(), " (challenger)")
 	}
 	if challengedSendErr != nil {
-		c.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengedSendErr.Error(), " (challenged)")
 	}
 	return true
 }

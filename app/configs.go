@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/CameronHonis/chess-arbitrator/clients_manager"
+	cm "github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/helpers"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/router_service"
@@ -33,6 +33,16 @@ func GetRouterConfig() *router_service.RouterServiceConfig {
 	return router_service.NewRouterServiceConfig()
 }
 
-func GetClientsManagerConfig() *clients_manager.ClientsManagerConfig {
-	return clients_manager.NewClientsManagerConfig(true)
+func GetClientsManagerConfig() *cm.ClientsManagerConfig {
+	configBuilder := cm.NewClientsManagerConfigBuilder()
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_ECHO, cm.HandleEchoMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_FIND_MATCH, cm.HandleFindMatchMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_SUBSCRIBE_REQUEST, cm.HandleSubscribeRequestMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST, cm.HandleRequestUpgradeAuthMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_MOVE, cm.HandleMoveMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_CHALLENGE_REQUEST, cm.HandleChallengePlayerMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_ACCEPT_CHALLENGE, cm.HandleAcceptChallengeMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_DECLINE_CHALLENGE, cm.HandleDeclineChallengeMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_REVOKE_CHALLENGE, cm.HandleRevokeChallengeMessage)
+	return configBuilder.Build()
 }

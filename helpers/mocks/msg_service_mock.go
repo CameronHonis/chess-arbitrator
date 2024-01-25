@@ -119,15 +119,15 @@ func (mr *MockMessageServiceIMockRecorder) Dispatch(arg0 any) *gomock.Call {
 }
 
 // HandleMessage mocks base method.
-func (m *MockMessageServiceI) HandleMessage(arg0 *models.Message) {
+func (m *MockMessageServiceI) HandleMsg(arg0 *models.Message) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "HandleMessage", arg0)
+	m.ctrl.Call(m, "HandleMsg", arg0)
 }
 
 // HandleMessage indicates an expected call of HandleMessage.
 func (mr *MockMessageServiceIMockRecorder) HandleMessage(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleMessage", reflect.TypeOf((*MockMessageServiceI)(nil).HandleMessage), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleMsg", reflect.TypeOf((*MockMessageServiceI)(nil).HandleMsg), arg0)
 }
 
 // OnBuild mocks base method.
