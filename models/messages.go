@@ -54,7 +54,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 	contentStructMap := map[ContentType]interface{}{
 		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
 		CONTENT_TYPE_FIND_MATCH:                &FindMatchMessageContent{},
-		CONTENT_TYPE_MATCH_UPDATE:              &MatchUpdateMessageContent{},
+		CONTENT_TYPE_MATCH_UPDATED:             &MatchUpdateMessageContent{},
 		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST:         &SubscribeRequestMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED: &SubscribeRequestGrantedMessageContent{},
@@ -86,8 +86,8 @@ type ContentType string
 
 const (
 	// outbound outbound
-	CONTENT_TYPE_MATCH_UPDATE              ContentType = "MATCH_UPDATE"
-	CONTENT_TYPE_CHALLENGE_UPDATED                     = "CHALLENGE_UPDATE"
+	CONTENT_TYPE_MATCH_UPDATED             ContentType = "MATCH_UPDATED"
+	CONTENT_TYPE_CHALLENGE_UPDATED                     = "CHALLENGE_UPDATED"
 	CONTENT_TYPE_MOVE_FAILED                           = "MOVE_FAILED"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED             = "SUBSCRIBE_REQUEST_GRANTED"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED              = "SUBSCRIBE_REQUEST_DENIED"
