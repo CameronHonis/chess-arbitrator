@@ -4,7 +4,6 @@ import "fmt"
 
 func IsClientKey(s string) bool {
 	if len(s) != 64 {
-		fmt.Println("a")
 		return false
 	}
 	for _, char := range s {
