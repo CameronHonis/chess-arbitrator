@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/google/uuid"
 	"time"
@@ -30,4 +31,8 @@ func NewMatch(whiteClientKey Key, blackClientKey Key, timeControl *TimeControl) 
 		TimeControl:           timeControl,
 		LastMoveTime:          &now,
 	}
+}
+
+func (m *Match) Topic() MessageTopic {
+	return MessageTopic(fmt.Sprintf("match-%s", m.Uuid))
 }
