@@ -33,13 +33,15 @@ func BuildServices() *AppService {
 	clientsManager.AddDependency(authService)
 	clientsManager.AddDependency(matcherService)
 	clientsManager.AddDependency(matchmakingService)
-	subService.AddDependency(authService)
 	matchmakingService.AddDependency(loggerService)
 	matchmakingService.AddDependency(matcherService)
 	matcherService.AddDependency(loggerService)
 	matcherService.AddDependency(authService)
+	matcherService.AddDependency(subService)
+	subService.AddDependency(authService)
+	subService.AddDependency(loggerService)
 
-	// establish event handlers
+	appService.Build()
 
 	return appService
 }

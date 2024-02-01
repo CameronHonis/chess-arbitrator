@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/log"
 	"github.com/CameronHonis/marker"
 	"github.com/CameronHonis/service"
 	"github.com/CameronHonis/set"
@@ -23,6 +24,7 @@ type SubscriptionService struct {
 	service.Service
 	__dependencies__ marker.Marker
 	AuthService      auth.AuthenticationServiceI
+	Logger           log.LoggerServiceI
 
 	__state__               marker.Marker
 	subbedClientKeysByTopic map[models.MessageTopic]*set.Set[models.Key]
@@ -39,6 +41,7 @@ func NewSubscriptionService(config *SubscriptionServiceConfig) *SubscriptionServ
 	return subService
 }
 func (s *SubscriptionService) SubClient(clientKey models.Key, topic models.MessageTopic) error {
+	s.Logger.Log(models.SUB_SERVICE, fmt.Sprintf("subscribing client %s to topic %s", clientKey, topic))
 	authErr := s.AuthService.ValidateClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go s.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
@@ -64,6 +67,7 @@ func (s *SubscriptionService) SubClient(clientKey models.Key, topic models.Messa
 }
 
 func (s *SubscriptionService) UnsubClient(clientKey models.Key, topic models.MessageTopic) error {
+	s.Logger.Log(models.SUB_SERVICE, fmt.Sprintf("unsubscribing client %s from topic %s", clientKey, topic))
 	subbedTopics := s.SubbedTopics(clientKey)
 	s.mu.Lock()
 	if !subbedTopics.Has(topic) {
@@ -81,6 +85,7 @@ func (s *SubscriptionService) UnsubClient(clientKey models.Key, topic models.Mes
 }
 
 func (s *SubscriptionService) UnsubClientFromAll(clientKey models.Key) {
+	s.Logger.Log(models.SUB_SERVICE, fmt.Sprintf("unsubscribing client %s from all topics", clientKey))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	subbedTopics, ok := s.subbedTopicsByClientKey[clientKey]
