@@ -55,6 +55,8 @@ func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(matcher.CHALLENGE_CREATED, OnChallengeCreated)
 	c.AddEventListener(matcher.CHALLENGE_REVOKED, OnChallengeRevoked)
 	c.AddEventListener(matcher.CHALLENGE_DENIED, OnChallengeDenied)
+	c.AddEventListener(matcher.MATCH_CREATED, OnMatchCreated)
+	c.AddEventListener(matcher.MATCH_CREATION_FAILED, OnMatchCreationFailed)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
