@@ -6,6 +6,7 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/CameronHonis/log"
 	. "github.com/CameronHonis/marker"
 	. "github.com/CameronHonis/service"
@@ -29,14 +30,16 @@ type MatcherServiceI interface {
 	AcceptChallenge(challengedKey, challengerKey models.Key) error
 	RevokeChallenge(challengerKey, challengedKey models.Key) error
 	DeclineChallenge(challengerKey, challengedKey models.Key) error
+
 	AddMatch(match *models.Match) error
 }
 
 type MatcherService struct {
 	Service
 	__dependencies__ Marker
-	LogService       LoggerServiceI
+	Logger           LoggerServiceI
 	AuthService      auth.AuthenticationServiceI
+	SubService       sub_service.SubscriptionServiceI
 
 	__state__            Marker
 	matchByMatchId       map[string]*models.Match
@@ -58,7 +61,9 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 }
 
 func (m *MatcherService) OnBuild() {
-	m.AddEventListener(CHALLENGE_ACCEPTED, m.onChallengeAccepted)
+	m.AddEventListener(CHALLENGE_CREATED, onChallengeCreated)
+	m.AddEventListener(CHALLENGE_ACCEPTED, onChallengeAccepted)
+	m.AddEventListener(MATCH_CREATED, onMatchCreated)
 }
 
 func (m *MatcherService) MatchById(matchId string) (*models.Match, error) {
@@ -126,6 +131,7 @@ func (m *MatcherService) GetChallenge(challengerKey models.Key, receiverKey mode
 }
 
 func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, "executing move on match ", matchId)
 	match, getMatchErr := m.MatchById(matchId)
 	if getMatchErr != nil {
 		return getMatchErr
@@ -175,8 +181,10 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 	return nil
 }
 
-func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s challenging client %s", challenge.ChallengerKey, challenge.ChallengedKey))
+func (m *MatcherService) RequestChallenge(_challenge *models.Challenge) error {
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s challenging client %s", _challenge.ChallengerKey, _challenge.ChallengedKey))
+
+	challenge := builders.NewChallengeBuilder().FromChallenge(_challenge).WithRandomUuid().Build()
 	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
 		return challengeErr
@@ -200,11 +208,21 @@ func (m *MatcherService) RequestChallenge(challenge *models.Challenge) error {
 }
 
 func (m *MatcherService) AcceptChallenge(challengerKey, challengedKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("accepting challenge from client %s to %s", challengerKey, challengedKey))
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("accepting challenge from client %s to %s", challengerKey, challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		go m.Dispatch(NewChallengeAcceptFailedEvent(challenge, "could not get challenge"))
 		return challengeErr
+	}
+
+	m.mu.Lock()
+	m.inboundsByClientKey[challengedKey].Remove(challenge)
+	m.outboundsByClientKey[challengerKey].Remove(challenge)
+	m.mu.Unlock()
+
+	match := builders.NewMatchBuilder().FromChallenge(challenge).Build()
+	if addMatchErr := m.AddMatch(match); addMatchErr != nil {
+		return addMatchErr
 	}
 
 	go m.Dispatch(NewChallengeAcceptedEvent(challenge))
@@ -212,7 +230,7 @@ func (m *MatcherService) AcceptChallenge(challengerKey, challengedKey models.Key
 }
 
 func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("revoking challenge from %s to %s", challengerKey, challengedKey))
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("revoking challenge from %s to %s", challengerKey, challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		return challengeErr
@@ -228,7 +246,7 @@ func (m *MatcherService) RevokeChallenge(challengerKey, challengedKey models.Key
 }
 
 func (m *MatcherService) DeclineChallenge(challengerKey, challengedKey models.Key) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("declining challenge from %s to %s", challengerKey, challengedKey))
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("declining challenge from %s to %s", challengerKey, challengedKey))
 	challenge, challengeErr := m.GetChallenge(challengerKey, challengedKey)
 	if challengeErr != nil {
 		return challengeErr
@@ -244,14 +262,14 @@ func (m *MatcherService) DeclineChallenge(challengerKey, challengedKey models.Ke
 }
 
 func (m *MatcherService) AddMatch(match *models.Match) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("adding match %s", match.Uuid))
-	if !m.CanStartMatchWithClientKey(match.WhiteClientKey) {
-		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, "white client unavailable for matcher"))
-		return fmt.Errorf("white client %s unavailable for matcher", match.WhiteClientKey)
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("adding match %s", match.Uuid))
+	if whiteAvailableErr := m.validateClientAvailable(match.WhiteClientKey); whiteAvailableErr != nil {
+		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, match.BlackClientKey, "white client unavailable for matcher"))
+		return fmt.Errorf("white client %s unavailable for matcher: %s", match.WhiteClientKey, whiteAvailableErr.Error())
 	}
-	if !m.CanStartMatchWithClientKey(match.BlackClientKey) {
-		go m.Dispatch(NewMatchCreationFailedEvent(match.BlackClientKey, "black client unavailable for matcher"))
-		return fmt.Errorf("black client %s unavailable for matcher", match.BlackClientKey)
+	if blackAvailableErr := m.validateClientAvailable(match.BlackClientKey); blackAvailableErr != nil {
+		go m.Dispatch(NewMatchCreationFailedEvent(match.BlackClientKey, match.BlackClientKey, "black client unavailable for matcher"))
+		return fmt.Errorf("black client %s unavailable for matcher: %s", match.BlackClientKey, blackAvailableErr.Error())
 	}
 
 	m.mu.Lock()
@@ -291,7 +309,7 @@ func (m *MatcherService) SetMatch(newMatch *models.Match) error {
 }
 
 func (m *MatcherService) RemoveMatch(match *models.Match) error {
-	m.LogService.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("removing matcher %s", match.Uuid))
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("removing match %s", match.Uuid))
 	m.mu.Lock()
 	if _, ok := m.matchByMatchId[match.Uuid]; !ok {
 		return fmt.Errorf("matcher with id %s doesn't exist", match.Uuid)
@@ -309,17 +327,21 @@ func (m *MatcherService) RemoveMatch(match *models.Match) error {
 	return nil
 }
 
-func (m *MatcherService) CanStartMatchWithClientKey(clientKey models.Key) bool {
+func (m *MatcherService) validateClientAvailable(clientKey models.Key) error {
 	role, roleErr := m.AuthService.GetRole(clientKey)
 	if roleErr != nil {
-		return false
+		return fmt.Errorf("could not get role")
 	}
 	if role == models.BOT {
-		return true
+		// bot clients can manage many matches at a time
+		return nil
 	}
 
-	match, _ := m.MatchByClientKey(clientKey)
-	return match == nil
+	if match, _ := m.MatchByClientKey(clientKey); match != nil {
+		return fmt.Errorf("client already in match")
+	}
+
+	return nil
 }
 
 func (m *MatcherService) ValidateChallenge(challenge *models.Challenge) error {
@@ -338,7 +360,8 @@ func (m *MatcherService) ValidateChallenge(challenge *models.Challenge) error {
 	if challenge.ChallengerKey == challenge.ChallengedKey {
 		return fmt.Errorf("cannot challenge self")
 	}
-	if !m.CanStartMatchWithClientKey(challenge.ChallengerKey) {
+
+	if challengerAvailableErr := m.validateClientAvailable(challenge.ChallengerKey); challengerAvailableErr != nil {
 		return fmt.Errorf("challenger %s unavailable for matcher", challenge.ChallengerKey)
 	}
 	if challengeDuplicate, _ := m.GetChallenge(challenge.ChallengerKey, challenge.ChallengedKey); challengeDuplicate != nil {
@@ -358,7 +381,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	time.Sleep(waitTime)
 	currMatch, _ := m.MatchById(match.Uuid)
 	if currMatch == nil {
-		m.LogService.LogRed(models.ENV_TIMER, "matcher not found")
+		m.Logger.LogRed(models.ENV_TIMER, "matcher not found")
 		return
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {
@@ -378,12 +401,61 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	}
 }
 
-func (m *MatcherService) onChallengeAccepted(_ ServiceI, event EventI) bool {
+var onChallengeAccepted = func(s ServiceI, event EventI) bool {
+	matcherService := s.(*MatcherService)
 	baseErrMsg := "could not follow up on challenge accepted: "
 	challenge := event.Payload().(*ChallengeAcceptedEventPayload).Challenge
-	match := builders.NewMatchBuilder().FromChallenge(challenge).Build()
-	if matchErr := m.AddMatch(match); matchErr != nil {
-		m.LogService.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, matchErr)
+
+	challengerSubErr := matcherService.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
+	challengedSubErr := matcherService.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+
+	if challengerSubErr != nil {
+		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+	}
+	if challengedSubErr != nil {
+		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+	}
+	return true
+}
+
+var onChallengeCreated = func(s ServiceI, event EventI) bool {
+	matcherService := s.(*MatcherService)
+	baseErrMsg := "could not follow up on challenge created: "
+	challenge := event.Payload().(*ChallengeCreatedEventPayload).Challenge
+
+	challengerSubErr := matcherService.SubService.SubClient(challenge.ChallengerKey, challenge.Topic())
+	challengedSubErr := matcherService.SubService.SubClient(challenge.ChallengedKey, challenge.Topic())
+
+	if challengerSubErr != nil {
+		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+	}
+	if challengedSubErr != nil {
+		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+	}
+	if challengerSubErr != nil || challengedSubErr != nil {
+		_ = matcherService.DeclineChallenge(challenge.ChallengerKey, challenge.ChallengedKey)
+		return false
+	}
+	return true
+}
+
+var onMatchCreated = func(s ServiceI, event EventI) bool {
+	MatcherService := s.(*MatcherService)
+	baseErrMsg := "could not follow up on match created: "
+	match := event.Payload().(*MatchCreatedEventPayload).Match
+
+	whiteSubErr := MatcherService.SubService.SubClient(match.WhiteClientKey, match.Topic())
+	blackSubErr := MatcherService.SubService.SubClient(match.BlackClientKey, match.Topic())
+
+	if whiteSubErr != nil {
+		MatcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, whiteSubErr.Error(), " (white)")
+	}
+	if blackSubErr != nil {
+		MatcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, blackSubErr.Error(), " (black)")
+	}
+	if whiteSubErr != nil || blackSubErr != nil {
+		_ = MatcherService.RemoveMatch(match)
+		return false
 	}
 	return true
 }

@@ -55,17 +55,19 @@ func NewMatchUpdated(match *models.Match) *MatchUpdatedEvent {
 }
 
 type MatchCreationFailedEventPayload struct {
-	ChallengerClientKey models.Key
-	Reason              string
+	WhiteClientKey models.Key
+	BlackClientKey models.Key
+	Reason         string
 }
 
 type MatchCreationFailedEvent struct{ service.Event }
 
-func NewMatchCreationFailedEvent(challengerKey models.Key, reason string) *MatchCreationFailedEvent {
+func NewMatchCreationFailedEvent(whiteClientKey models.Key, blackClientKey models.Key, reason string) *MatchCreationFailedEvent {
 	return &MatchCreationFailedEvent{
 		Event: *service.NewEvent(MATCH_CREATION_FAILED, &MatchCreationFailedEventPayload{
-			ChallengerClientKey: challengerKey,
-			Reason:              reason,
+			WhiteClientKey: whiteClientKey,
+			BlackClientKey: blackClientKey,
+			Reason:         reason,
 		}),
 	}
 }
