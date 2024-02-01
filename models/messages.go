@@ -85,7 +85,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 type ContentType string
 
 const (
-	// outbound outbound
+	// arbitrator responses
 	CONTENT_TYPE_MATCH_UPDATED             ContentType = "MATCH_UPDATED"
 	CONTENT_TYPE_CHALLENGE_UPDATED                     = "CHALLENGE_UPDATED"
 	CONTENT_TYPE_MOVE_FAILED                           = "MOVE_FAILED"
@@ -96,7 +96,7 @@ const (
 	CONTENT_TYPE_CHALLENGE_REQUEST_FAILED              = "CHALLENGE_REQUEST_FAILED"
 	CONTENT_TYPE_MATCH_CREATION_FAILED                 = "MATCH_CREATION_FAILED"
 
-	// inbound types
+	// client requests
 	CONTENT_TYPE_EMPTY                ContentType = "EMPTY"
 	CONTENT_TYPE_ECHO                             = "ECHO"
 	CONTENT_TYPE_AUTH                             = "AUTH"
@@ -119,7 +119,7 @@ type FindMatchMessageContent struct {
 }
 
 type MatchUpdateMessageContent struct {
-	Match *Match `json:"matcher"`
+	Match *Match `json:"match"`
 }
 
 type MoveMessageContent struct {
