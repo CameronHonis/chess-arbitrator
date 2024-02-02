@@ -180,7 +180,7 @@ func (c *ClientsManager) readMessage(clientKey models.Key, rawMsg []byte) error 
 	config := c.Config().(*ClientsManagerConfig)
 	if msgHandler := config.HandlerByContentType(msg.ContentType); msgHandler != nil {
 		if handlerErr := msgHandler(c, msg); handlerErr != nil {
-			c.Logger.LogRed(models.ENV_CLIENT_MNGR, "error handling msg \n\t%+v\n\t%s", *msg, handlerErr)
+			c.Logger.LogRed(models.ENV_CLIENT_MNGR, fmt.Sprintf("error handling msg \n\t%+v\n\t%s", *msg, handlerErr))
 		}
 	} else {
 		return fmt.Errorf("no handler configured for msg %s", msg)
