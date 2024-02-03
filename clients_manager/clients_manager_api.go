@@ -67,7 +67,7 @@ func NewSendTopicDeps(writer BroadcastMessageFn, topic models.MessageTopic) *Sen
 
 func SendChallengeUpdate(deps *SendTopicDeps, challenge *models.Challenge) {
 	deps.writer(&models.Message{
-		Topic:       challenge.Topic(),
+		Topic:       deps.topic,
 		ContentType: models.CONTENT_TYPE_CHALLENGE_UPDATED,
 		Content: &models.ChallengeUpdatedMessageContent{
 			Challenge: challenge,
@@ -77,7 +77,7 @@ func SendChallengeUpdate(deps *SendTopicDeps, challenge *models.Challenge) {
 
 func SendMatchUpdate(deps *SendTopicDeps, match *models.Match) {
 	deps.writer(&models.Message{
-		Topic:       match.Topic(),
+		Topic:       deps.topic,
 		ContentType: models.CONTENT_TYPE_MATCH_UPDATED,
 		Content: &models.MatchUpdateMessageContent{
 			Match: match,

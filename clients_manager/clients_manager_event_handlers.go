@@ -53,7 +53,18 @@ var OnChallengeRequestFailed = func(self ServiceI, event EventI) bool {
 
 var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 	c := self.(*ClientsManager)
+	baseErrMsg := "could not follow up on challenge created: "
 	challenge := event.Payload().(*matcher.ChallengeCreatedEventPayload).Challenge
+
+	challengerSubErr := c.SubService.SubClient(challenge.ChallengerKey, challenge.Topic())
+	challengedSubErr := c.SubService.SubClient(challenge.ChallengedKey, challenge.Topic())
+
+	if challengerSubErr != nil {
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+	}
+	if challengedSubErr != nil {
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+	}
 
 	sendTopicDeps := NewSendTopicDeps(c.BroadcastMessage, challenge.Topic())
 	SendChallengeUpdate(sendTopicDeps, challenge)
@@ -61,36 +72,68 @@ var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 }
 
 var OnChallengeRevoked = func(self ServiceI, event EventI) bool {
-	c := self.(*ClientsManager)
+	clientManager := self.(*ClientsManager)
 	challenge := event.Payload().(*matcher.ChallengeRevokedEventPayload).Challenge
 
-	_ = c.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
-	_ = c.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
+	SendChallengeUpdate(sendTopicDeps, nil)
 
-	sendTopicDeps := NewSendTopicDeps(c.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, challenge)
+	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
+	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
 
 	return true
 }
 
 var OnChallengeDenied = func(self ServiceI, event EventI) bool {
-	c := self.(*ClientsManager)
+	clientManager := self.(*ClientsManager)
 	challenge := event.Payload().(*matcher.ChallengeDeniedEventPayload).Challenge
 
-	_ = c.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
-	_ = c.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
+	SendChallengeUpdate(sendTopicDeps, nil)
 
-	sendTopicDeps := NewSendTopicDeps(c.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, challenge)
+	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
+	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+
+	return true
+}
+
+var OnChallengeAccepted = func(s ServiceI, event EventI) bool {
+	clientManager := s.(*ClientsManager)
+	baseErrMsg := "could not follow up on challenge accepted: "
+	challenge := event.Payload().(*matcher.ChallengeAcceptedEventPayload).Challenge
+
+	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
+	SendChallengeUpdate(sendTopicDeps, nil)
+
+	challengerSubErr := clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
+	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+
+	if challengerSubErr != nil {
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+	}
+	if challengedSubErr != nil {
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+	}
 
 	return true
 }
 
 var OnMatchCreated = func(self ServiceI, event EventI) bool {
-	c := self.(*ClientsManager)
+	clientsManager := self.(*ClientsManager)
+	baseErrMsg := "could not follow up on match created: "
 	match := event.Payload().(*matcher.MatchCreatedEventPayload).Match
 
-	deps := NewSendTopicDeps(c.BroadcastMessage, match.Topic())
+	whiteSubErr := clientsManager.SubService.SubClient(match.WhiteClientKey, match.Topic())
+	blackSubErr := clientsManager.SubService.SubClient(match.BlackClientKey, match.Topic())
+
+	if whiteSubErr != nil {
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, whiteSubErr.Error(), " (white)")
+	}
+	if blackSubErr != nil {
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, blackSubErr.Error(), " (black)")
+	}
+
+	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
 	SendMatchUpdate(deps, match)
 
 	return true

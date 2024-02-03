@@ -61,9 +61,6 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 }
 
 func (m *MatcherService) OnBuild() {
-	m.AddEventListener(CHALLENGE_CREATED, onChallengeCreated)
-	m.AddEventListener(CHALLENGE_ACCEPTED, onChallengeAccepted)
-	m.AddEventListener(MATCH_CREATED, onMatchCreated)
 }
 
 func (m *MatcherService) MatchById(matchId string) (*models.Match, error) {
@@ -399,63 +396,4 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 		newMatch := matchBuilder.Build()
 		_ = m.SetMatch(newMatch)
 	}
-}
-
-var onChallengeAccepted = func(s ServiceI, event EventI) bool {
-	matcherService := s.(*MatcherService)
-	baseErrMsg := "could not follow up on challenge accepted: "
-	challenge := event.Payload().(*ChallengeAcceptedEventPayload).Challenge
-
-	challengerSubErr := matcherService.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
-	challengedSubErr := matcherService.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
-
-	if challengerSubErr != nil {
-		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
-	}
-	if challengedSubErr != nil {
-		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
-	}
-	return true
-}
-
-var onChallengeCreated = func(s ServiceI, event EventI) bool {
-	matcherService := s.(*MatcherService)
-	baseErrMsg := "could not follow up on challenge created: "
-	challenge := event.Payload().(*ChallengeCreatedEventPayload).Challenge
-
-	challengerSubErr := matcherService.SubService.SubClient(challenge.ChallengerKey, challenge.Topic())
-	challengedSubErr := matcherService.SubService.SubClient(challenge.ChallengedKey, challenge.Topic())
-
-	if challengerSubErr != nil {
-		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
-	}
-	if challengedSubErr != nil {
-		matcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
-	}
-	if challengerSubErr != nil || challengedSubErr != nil {
-		_ = matcherService.DeclineChallenge(challenge.ChallengerKey, challenge.ChallengedKey)
-		return false
-	}
-	return true
-}
-
-var onMatchCreated = func(s ServiceI, event EventI) bool {
-	MatcherService := s.(*MatcherService)
-	baseErrMsg := "could not follow up on match created: "
-	match := event.Payload().(*MatchCreatedEventPayload).Match
-
-	whiteSubErr := MatcherService.SubService.SubClient(match.WhiteClientKey, match.Topic())
-	blackSubErr := MatcherService.SubService.SubClient(match.BlackClientKey, match.Topic())
-
-	if whiteSubErr != nil {
-		MatcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, whiteSubErr.Error(), " (white)")
-	}
-	if blackSubErr != nil {
-		MatcherService.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, blackSubErr.Error(), " (black)")
-	}
-	if whiteSubErr != nil || blackSubErr != nil {
-		_ = MatcherService.RemoveMatch(match)
-		return false
-	}
-	return true
 }
