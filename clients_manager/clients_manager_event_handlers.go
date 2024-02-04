@@ -151,3 +151,32 @@ var OnMatchCreationFailed = func(self ServiceI, event EventI) bool {
 
 	return true
 }
+
+var OnMatchUpdated = func(self ServiceI, event EventI) bool {
+	clientsManager := self.(*ClientsManager)
+	match := event.Payload().(*matcher.MatchUpdatedEventPayload).Match
+
+	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
+	SendMatchUpdate(deps, match)
+
+	return true
+}
+
+var OnMatchEnded = func(self ServiceI, event EventI) bool {
+	clientsManager := self.(*ClientsManager)
+	match := event.Payload().(*matcher.MatchEndedEventPayload).Match
+
+	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
+	SendMatchUpdate(deps, match)
+
+	whiteUnsubErr := clientsManager.SubService.UnsubClient(match.WhiteClientKey, match.Topic())
+	blackUnsubErr := clientsManager.SubService.UnsubClient(match.BlackClientKey, match.Topic())
+	if whiteUnsubErr != nil {
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub white client from match topic", whiteUnsubErr.Error())
+	}
+	if blackUnsubErr != nil {
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub black client from match topic", blackUnsubErr.Error())
+	}
+
+	return true
+}

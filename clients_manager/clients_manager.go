@@ -58,6 +58,8 @@ func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(matcher.CHALLENGE_ACCEPTED, OnChallengeAccepted)
 	c.AddEventListener(matcher.MATCH_CREATED, OnMatchCreated)
 	c.AddEventListener(matcher.MATCH_CREATION_FAILED, OnMatchCreationFailed)
+	c.AddEventListener(matcher.MATCH_UPDATED, OnMatchUpdated)
+	c.AddEventListener(matcher.MATCH_ENDED, OnMatchEnded)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
@@ -196,5 +198,6 @@ func (c *ClientsManager) writeMessage(client *models.Client, msg *models.Message
 		return jsonErr
 	}
 	c.Logger.Log(string(client.PublicKey()), "<< ", string(msgJson))
+
 	return client.WSConn().WriteMessage(websocket.TextMessage, msgJson)
 }
