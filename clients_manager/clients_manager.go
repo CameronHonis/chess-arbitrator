@@ -199,5 +199,7 @@ func (c *ClientsManager) writeMessage(client *models.Client, msg *models.Message
 	}
 	c.Logger.Log(string(client.PublicKey()), "<< ", string(msgJson))
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return client.WSConn().WriteMessage(websocket.TextMessage, msgJson)
 }
