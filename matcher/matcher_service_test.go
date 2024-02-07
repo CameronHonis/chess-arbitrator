@@ -56,7 +56,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("AddMatch", func() {
 		var match *models.Match
 		BeforeEach(func() {
-			match = models.NewMatch(
+			match = builders.NewMatch(
 				"client1",
 				"client2",
 				builders.NewBulletTimeControl(),
@@ -64,7 +64,7 @@ var _ = Describe("MatcherService", func() {
 		})
 		Describe("when one of the players in the proposed matcherService is already in a matcherService", func() {
 			BeforeEach(func() {
-				ongoingMatch := models.NewMatch(
+				ongoingMatch := builders.NewMatch(
 					"client1",
 					"client3",
 					builders.NewBulletTimeControl(),
@@ -95,7 +95,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("RemoveMatch", func() {
 		var match *models.Match
 		BeforeEach(func() {
-			match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
+			match = builders.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 		})
 		Describe("when the matcherService exists", func() {
 			BeforeEach(func() {
@@ -126,7 +126,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("SetMatch", func() {
 		var newMatch *models.Match
 		BeforeEach(func() {
-			newMatch = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
+			newMatch = builders.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 			newMatch.WhiteClientKey = "client1"
 			newMatch.BlackClientKey = "client2"
 			move := chess.Move{chess.WHITE_PAWN, &chess.Square{2, 4}, &chess.Square{4, 4}, chess.EMPTY, make([]*chess.Square, 0), chess.EMPTY}
@@ -138,7 +138,7 @@ var _ = Describe("MatcherService", func() {
 		Describe("when the match exists", func() {
 			var prevMatch *models.Match
 			BeforeEach(func() {
-				prevMatch = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
+				prevMatch = builders.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 				prevMatch.WhiteClientKey = "client1"
 				prevMatch.BlackClientKey = "client2"
 				prevMatch.Uuid = newMatch.Uuid
@@ -164,7 +164,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the new match differs by client id", func() {
 				BeforeEach(func() {
-					newMatch = models.NewMatch("other-client1", "client2", builders.NewBulletTimeControl())
+					newMatch = builders.NewMatch("other-client1", "client2", builders.NewBulletTimeControl())
 					newMatch.WhiteClientKey = "other-client1"
 					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
@@ -175,7 +175,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the new matcherService differs by time control", func() {
 				BeforeEach(func() {
-					newMatch = models.NewMatch("client1", "client2", builders.NewRapidTimeControl())
+					newMatch = builders.NewMatch("client1", "client2", builders.NewRapidTimeControl())
 					newMatch.WhiteClientKey = "client1"
 					newMatch.BlackClientKey = "client2"
 					newMatch.Uuid = prevMatch.Uuid
@@ -199,14 +199,14 @@ var _ = Describe("MatcherService", func() {
 		var challenge *models.Challenge
 		Describe("when the challenge is directed to a player client", func() {
 			BeforeEach(func() {
-				challenge = builders.NewChallenge(
-					"client1",
-					"client2",
-					true,
-					false,
-					builders.NewBulletTimeControl(),
-					"",
-				)
+				challengeBuilder := builders.NewChallengeBuilder()
+				challengeBuilder.WithUuid("")
+				challengeBuilder.WithChallengerKey("client1")
+				challengeBuilder.WithChallengedKey("client2")
+				challengeBuilder.WithIsChallengerWhite(true)
+				challengeBuilder.WithTimeControl(builders.NewBulletTimeControl())
+				challengeBuilder.WithIsActive(true)
+				challenge = challengeBuilder.Build()
 			})
 			It("stores the challenge", func() {
 				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
@@ -219,7 +219,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the challenger is already in a match", func() {
 				BeforeEach(func() {
-					existingMatch := models.NewMatch(
+					existingMatch := builders.NewMatch(
 						"client1", "client3", builders.NewBlitzTimeControl(),
 					)
 					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
@@ -230,7 +230,7 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the challenged is already in a match", func() {
 				BeforeEach(func() {
-					existingMatch := models.NewMatch(
+					existingMatch := builders.NewMatch(
 						"client2", "client3", builders.NewBlitzTimeControl(),
 					)
 					Expect(matcherService.AddMatch(existingMatch)).ToNot(HaveOccurred())
@@ -240,7 +240,7 @@ var _ = Describe("MatcherService", func() {
 				})
 				It("stores the challenge", func() {
 					_ = matcherService.RequestChallenge(challenge)
-					Expect(matcherService.GetChallenge("client1", "client2")).To(Equal(challenge))
+					Expect(matcherService.GetChallenge("client1", "client2")).ToNot(BeNil())
 				})
 				It("emits a challenge created event", func() {
 					_ = matcherService.RequestChallenge(challenge)
@@ -260,14 +260,17 @@ var _ = Describe("MatcherService", func() {
 		})
 		Describe("when the challenge is directed to a bot client", func() {
 			BeforeEach(func() {
-				challenge = builders.NewChallenge(
-					"client1",
-					"",
-					true,
-					false,
-					builders.NewBulletTimeControl(),
-					"someBot",
-				)
+				challengeBuilder := builders.NewChallengeBuilder()
+				challengeBuilder.WithUuid("")
+				challengeBuilder.WithChallengerKey("client1")
+				challengeBuilder.WithChallengedKey("")
+				challengeBuilder.WithIsChallengerWhite(true)
+				challengeBuilder.WithIsChallengerBlack(false)
+				challengeBuilder.WithTimeControl(builders.NewBulletTimeControl())
+				challengeBuilder.WithBotName("someBot")
+				challengeBuilder.WithIsActive(true)
+				challenge = challengeBuilder.Build()
+
 				authServiceMock.EXPECT().BotClientExists().Return(true).AnyTimes()
 				botClientKeys := set.EmptySet[models.Key]()
 				botClientKeys.Add("someBotClientKey")
@@ -288,7 +291,8 @@ var _ = Describe("MatcherService", func() {
 			})
 			Describe("when the challenger is already in a match", func() {
 				BeforeEach(func() {
-					Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
+					match := builders.NewMatch(challenge.ChallengerKey, "client3", builders.NewBlitzTimeControl())
+					Expect(matcherService.AddMatch(match)).ToNot(HaveOccurred())
 				})
 				It("returns an error", func() {
 					Expect(matcherService.RequestChallenge(challenge)).To(HaveOccurred())
@@ -315,7 +319,7 @@ var _ = Describe("MatcherService", func() {
 		var match *models.Match
 		var move chess.Move
 		BeforeEach(func() {
-			match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
+			match = builders.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 			move = chess.Move{
 				Piece:               chess.WHITE_PAWN,
 				StartSquare:         &chess.Square{Rank: 2, File: 4},
@@ -337,7 +341,7 @@ var _ = Describe("MatcherService", func() {
 		})
 		Describe("when the match exists", func() {
 			BeforeEach(func() {
-				match = models.NewMatch("client1", "client2", builders.NewBulletTimeControl())
+				match = builders.NewMatch("client1", "client2", builders.NewBulletTimeControl())
 				addMatchErr := matcherService.AddMatch(match)
 				Expect(addMatchErr).ToNot(HaveOccurred())
 				Expect(matcherService.MatchById(match.Uuid)).To(Equal(match))
@@ -376,6 +380,7 @@ var _ = Describe("MatcherService", func() {
 				false,
 				builders.NewBlitzTimeControl(),
 				"",
+				false,
 			)
 			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 		})
@@ -400,6 +405,7 @@ var _ = Describe("MatcherService", func() {
 				false,
 				builders.NewBlitzTimeControl(),
 				"",
+				false,
 			)
 			Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 		})
@@ -424,7 +430,8 @@ var _ = Describe("MatcherService", func() {
 					true,
 					false,
 					builders.NewBulletTimeControl(),
-					"")
+					"",
+					false)
 				Expect(matcherService.RequestChallenge(challenge)).ToNot(HaveOccurred())
 			})
 			It("dispatches a challenge accepted event", func() {

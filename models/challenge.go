@@ -14,6 +14,7 @@ type Challenge struct {
 	TimeControl       *TimeControl `json:"timeControl"`
 	BotName           string       `json:"botName"`
 	TimeCreated       *time.Time   `json:"timeCreated"`
+	IsActive          bool         `json:"isActive"`
 }
 
 func (c *Challenge) Topic() MessageTopic {

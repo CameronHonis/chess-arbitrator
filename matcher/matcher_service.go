@@ -176,7 +176,13 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 func (m *MatcherService) RequestChallenge(_challenge *models.Challenge) error {
 	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s challenging client %s", _challenge.ChallengerKey, _challenge.ChallengedKey))
 
-	challenge := builders.NewChallengeBuilder().FromChallenge(_challenge).WithRandomUuid().Build()
+	now := time.Now()
+	challengeBuilder := builders.NewChallengeBuilder()
+	challengeBuilder.FromChallenge(_challenge)
+	challengeBuilder.WithRandomUuid()
+	challengeBuilder.WithIsActive(true)
+	challengeBuilder.WithTimeCreated(&now)
+	challenge := challengeBuilder.Build()
 	if challengeErr := m.ValidateChallenge(challenge); challengeErr != nil {
 		go m.Dispatch(NewChallengeRequestFailedEvent(challenge, challengeErr.Error()))
 		return challengeErr

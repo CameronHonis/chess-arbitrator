@@ -7,7 +7,7 @@ import (
 )
 
 func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChallengerWhite bool,
-	isChallengerBlack bool, timeControl *models.TimeControl, botName string) *models.Challenge {
+	isChallengerBlack bool, timeControl *models.TimeControl, botName string, isActive bool) *models.Challenge {
 
 	challengeId := uuid.New().String()
 	now := time.Now()
@@ -21,6 +21,7 @@ func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChalleng
 		TimeControl:       timeControl,
 		BotName:           botName,
 		TimeCreated:       &now,
+		IsActive:          isActive,
 	}
 }
 
@@ -30,7 +31,7 @@ type ChallengeBuilder struct {
 
 func NewChallengeBuilder() *ChallengeBuilder {
 	return &ChallengeBuilder{
-		challenge: NewChallenge("", "", false, false, nil, ""),
+		challenge: NewChallenge("", "", false, false, nil, "", true),
 	}
 }
 
@@ -79,8 +80,14 @@ func (b *ChallengeBuilder) WithTimeCreated(timeCreated *time.Time) *ChallengeBui
 	return b
 }
 
+func (b *ChallengeBuilder) WithIsActive(isActive bool) *ChallengeBuilder {
+	b.challenge.IsActive = isActive
+	return b
+}
+
 func (b *ChallengeBuilder) FromChallenge(challenge *models.Challenge) *ChallengeBuilder {
-	b.challenge = challenge
+	challengeCopy := *challenge
+	b.challenge = &challengeCopy
 	return b
 }
 

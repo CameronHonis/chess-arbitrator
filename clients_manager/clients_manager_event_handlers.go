@@ -2,6 +2,7 @@ package clients_manager
 
 import (
 	"github.com/CameronHonis/chess-arbitrator/auth"
+	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/service"
@@ -74,9 +75,10 @@ var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 var OnChallengeRevoked = func(self ServiceI, event EventI) bool {
 	clientManager := self.(*ClientsManager)
 	challenge := event.Payload().(*matcher.ChallengeRevokedEventPayload).Challenge
+	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, nil)
+	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
 
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -87,9 +89,10 @@ var OnChallengeRevoked = func(self ServiceI, event EventI) bool {
 var OnChallengeDenied = func(self ServiceI, event EventI) bool {
 	clientManager := self.(*ClientsManager)
 	challenge := event.Payload().(*matcher.ChallengeDeniedEventPayload).Challenge
+	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, nil)
+	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
 
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -101,9 +104,10 @@ var OnChallengeAccepted = func(s ServiceI, event EventI) bool {
 	clientManager := s.(*ClientsManager)
 	baseErrMsg := "could not follow up on challenge accepted: "
 	challenge := event.Payload().(*matcher.ChallengeAcceptedEventPayload).Challenge
+	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, nil)
+	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
 
 	challengerSubErr := clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
