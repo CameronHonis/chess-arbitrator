@@ -61,6 +61,7 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 }
 
 func (m *MatcherService) OnBuild() {
+	m.AddEventListener(MATCH_UPDATED, OnMatchUpdated)
 }
 
 func (m *MatcherService) MatchById(matchId string) (*models.Match, error) {
@@ -68,7 +69,7 @@ func (m *MatcherService) MatchById(matchId string) (*models.Match, error) {
 	defer m.mu.Unlock()
 	match, ok := m.matchByMatchId[matchId]
 	if !ok {
-		return nil, fmt.Errorf("matcher with id %s not found", matchId)
+		return nil, fmt.Errorf("match with id %s not found", matchId)
 	}
 	return match, nil
 }
@@ -167,12 +168,6 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 	setMatchErr := m.SetMatch(newMatch)
 	if setMatchErr != nil {
 		return setMatchErr
-	}
-
-	if newMatch.Board.IsTerminal {
-		return m.RemoveMatch(newMatch)
-	} else {
-		go m.StartTimer(newMatch)
 	}
 
 	return nil
@@ -309,7 +304,7 @@ func (m *MatcherService) RemoveMatch(match *models.Match) error {
 	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("removing match %s", match.Uuid))
 	m.mu.Lock()
 	if _, ok := m.matchByMatchId[match.Uuid]; !ok {
-		return fmt.Errorf("matcher with id %s doesn't exist", match.Uuid)
+		return fmt.Errorf("match with id %s doesn't exist", match.Uuid)
 	}
 	if match.WhiteClientKey != "" {
 		delete(m.matchIdByClientKey, match.WhiteClientKey)
@@ -396,4 +391,15 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 		newMatch := matchBuilder.Build()
 		_ = m.SetMatch(newMatch)
 	}
+}
+
+var OnMatchUpdated = func(s ServiceI, ev EventI) bool {
+	matcher := s.(*MatcherService)
+	match := ev.Payload().(*MatchUpdatedEventPayload).Match
+	if match.Board.IsTerminal {
+		_ = matcher.RemoveMatch(match)
+	} else {
+		go matcher.StartTimer(match)
+	}
+	return true
 }
