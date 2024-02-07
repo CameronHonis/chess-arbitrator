@@ -378,7 +378,7 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	time.Sleep(waitTime)
 	currMatch, _ := m.MatchById(match.Uuid)
 	if currMatch == nil {
-		m.Logger.LogRed(models.ENV_TIMER, "matcher not found")
+		m.Logger.LogRed(models.ENV_TIMER, "match not found")
 		return
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {
