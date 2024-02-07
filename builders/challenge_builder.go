@@ -10,6 +10,7 @@ func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChalleng
 	isChallengerBlack bool, timeControl *models.TimeControl, botName string) *models.Challenge {
 
 	challengeId := uuid.New().String()
+	now := time.Now()
 
 	return &models.Challenge{
 		Uuid:              challengeId,
@@ -19,7 +20,7 @@ func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChalleng
 		IsChallengerBlack: isChallengerBlack,
 		TimeControl:       timeControl,
 		BotName:           botName,
-		TimeCreated:       time.Now(),
+		TimeCreated:       &now,
 	}
 }
 
