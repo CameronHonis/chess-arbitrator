@@ -199,7 +199,7 @@ var _ = Describe("MatcherService", func() {
 		var challenge *models.Challenge
 		Describe("when the challenge is directed to a player client", func() {
 			BeforeEach(func() {
-				challenge = models.NewChallenge(
+				challenge = builders.NewChallenge(
 					"client1",
 					"client2",
 					true,
@@ -260,7 +260,7 @@ var _ = Describe("MatcherService", func() {
 		})
 		Describe("when the challenge is directed to a bot client", func() {
 			BeforeEach(func() {
-				challenge = models.NewChallenge(
+				challenge = builders.NewChallenge(
 					"client1",
 					"",
 					true,
@@ -369,7 +369,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("RevokeChallenge", func() {
 		var challenge *models.Challenge
 		BeforeEach(func() {
-			challenge = models.NewChallenge(
+			challenge = builders.NewChallenge(
 				"client1",
 				"client2",
 				true,
@@ -393,7 +393,7 @@ var _ = Describe("MatcherService", func() {
 	Describe("DeclineChallenge", func() {
 		var challenge *models.Challenge
 		BeforeEach(func() {
-			challenge = models.NewChallenge(
+			challenge = builders.NewChallenge(
 				"client1",
 				"client2",
 				true,
@@ -418,7 +418,7 @@ var _ = Describe("MatcherService", func() {
 		When("the challenge already exists", func() {
 			var challenge *models.Challenge
 			BeforeEach(func() {
-				challenge = models.NewChallenge(
+				challenge = builders.NewChallenge(
 					"client1",
 					"client2",
 					true,
