@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"time"
 )
 
 type Challenge struct {
@@ -12,6 +13,7 @@ type Challenge struct {
 	IsChallengerBlack bool         `json:"isChallengerBlack"`
 	TimeControl       *TimeControl `json:"timeControl"`
 	BotName           string       `json:"botName"`
+	TimeCreated       time.Time    `json:"timeCreated"`
 }
 
 func (c *Challenge) Topic() MessageTopic {

@@ -3,6 +3,7 @@ package builders
 import (
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/google/uuid"
+	"time"
 )
 
 func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChallengerWhite bool,
@@ -18,6 +19,7 @@ func NewChallenge(challengerKey models.Key, challengedKey models.Key, isChalleng
 		IsChallengerBlack: isChallengerBlack,
 		TimeControl:       timeControl,
 		BotName:           botName,
+		TimeCreated:       time.Now(),
 	}
 }
 
@@ -27,7 +29,7 @@ type ChallengeBuilder struct {
 
 func NewChallengeBuilder() *ChallengeBuilder {
 	return &ChallengeBuilder{
-		challenge: &models.Challenge{},
+		challenge: NewChallenge("", "", false, false, nil, ""),
 	}
 }
 
