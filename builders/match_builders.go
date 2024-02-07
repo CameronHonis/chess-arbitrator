@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+func NewMatch(whiteClientKey models.Key, blackClientKey models.Key, timeControl *models.TimeControl) *models.Match {
+	matchId := uuid.New().String()
+	now := time.Now()
+	return &models.Match{
+		Uuid:                  matchId,
+		Board:                 chess.GetInitBoard(),
+		WhiteClientKey:        whiteClientKey,
+		WhiteTimeRemainingSec: float64(timeControl.InitialTimeSec),
+		BlackClientKey:        blackClientKey,
+		BlackTimeRemainingSec: float64(timeControl.InitialTimeSec),
+		TimeControl:           timeControl,
+		LastMoveTime:          &now,
+	}
+}
+
 type MatchBuilder struct {
 	match *models.Match
 }
@@ -69,6 +84,11 @@ func (mb *MatchBuilder) WithLastMoveTime(lastMoveTime *time.Time) *MatchBuilder 
 	return mb
 }
 
+func (mb *MatchBuilder) WithBotName(botName string) *MatchBuilder {
+	mb.match.BotName = botName
+	return mb
+}
+
 func (mb *MatchBuilder) WithClientKeys(clientAKey models.Key, clientBKey models.Key) *MatchBuilder {
 	clientAIsWhite := helpers.RandomBool()
 	var whiteClientKey, blackClientKey models.Key
@@ -85,7 +105,7 @@ func (mb *MatchBuilder) WithClientKeys(clientAKey models.Key, clientBKey models.
 }
 
 func (mb *MatchBuilder) FromChallenge(challenge *models.Challenge) *MatchBuilder {
-	mb.match = models.NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl)
+	mb.match = NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl)
 	if challenge.IsChallengerWhite {
 		mb.WithWhiteClientKey(challenge.ChallengerKey)
 		mb.WithBlackClientKey(challenge.ChallengedKey)
@@ -95,6 +115,7 @@ func (mb *MatchBuilder) FromChallenge(challenge *models.Challenge) *MatchBuilder
 	} else {
 		mb.WithClientKeys(challenge.ChallengerKey, challenge.ChallengedKey)
 	}
+	mb.WithBotName(challenge.BotName)
 	return mb
 }
 

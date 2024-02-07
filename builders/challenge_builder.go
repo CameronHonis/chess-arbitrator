@@ -74,6 +74,11 @@ func (b *ChallengeBuilder) WithBotName(botName string) *ChallengeBuilder {
 	return b
 }
 
+func (b *ChallengeBuilder) WithTimeCreated(timeCreated *time.Time) *ChallengeBuilder {
+	b.challenge.TimeCreated = timeCreated
+	return b
+}
+
 func (b *ChallengeBuilder) FromChallenge(challenge *models.Challenge) *ChallengeBuilder {
 	b.challenge = challenge
 	return b
