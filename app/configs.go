@@ -25,7 +25,7 @@ func GetLoggerConfig() *LoggerConfig {
 	//logConfigBuilder.WithMutedEnv("client")
 	//logConfigBuilder.WithMutedEnv("matchmaking")
 	//logConfigBuilder.WithMutedEnv("match_manager")
-	//logConfigBuilder.WithMutedEnv("timer")
+	logConfigBuilder.WithMutedEnv(models.ENV_TIMER)
 
 	return logConfigBuilder.Build()
 }
