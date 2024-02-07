@@ -71,6 +71,7 @@ func (mmp *MatchmakingPool) NodeByClientKey(clientKey models.Key) *MMPoolNode {
 
 func (mmp *MatchmakingPool) AddClient(client *models.ClientProfile) error {
 	mmp.mu.Lock()
+	defer mmp.mu.Unlock()
 	if _, ok := mmp.nodeByClientKey[client.ClientKey]; ok {
 		return fmt.Errorf("client with key %s already in pool", client.ClientKey)
 	}
@@ -84,12 +85,12 @@ func (mmp *MatchmakingPool) AddClient(client *models.ClientProfile) error {
 		mmp.tail = node
 	}
 	mmp.nodeByClientKey[client.ClientKey] = node
-	mmp.mu.Unlock()
 	return nil
 }
 
 func (mmp *MatchmakingPool) RemoveClient(clientKey models.Key) error {
 	mmp.mu.Lock()
+	defer mmp.mu.Unlock()
 	node, ok := mmp.nodeByClientKey[clientKey]
 	if !ok {
 		return fmt.Errorf("client with key %s not in pool", clientKey)
@@ -105,6 +106,5 @@ func (mmp *MatchmakingPool) RemoveClient(clientKey models.Key) error {
 		node.next.prev = node.prev
 	}
 	delete(mmp.nodeByClientKey, clientKey)
-	mmp.mu.Unlock()
 	return nil
 }
