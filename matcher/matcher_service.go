@@ -7,24 +7,25 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/sub_service"
-	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
-	. "github.com/CameronHonis/set"
+	"github.com/CameronHonis/log"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
+	"github.com/CameronHonis/set"
 	"math"
 	"sync"
 	"time"
 )
 
 type MatcherServiceI interface {
-	ServiceI
+	service.ServiceI
 	MatchById(matchId string) (*models.Match, error)
 	MatchByClientKey(clientKey models.Key) (*models.Match, error)
-	InboundChallenges(challengedKey models.Key) (*Set[*models.Challenge], error)
-	OutboundChallenges(challengerKey models.Key) (*Set[*models.Challenge], error)
+	InboundChallenges(challengedKey models.Key) (*set.Set[*models.Challenge], error)
+	OutboundChallenges(challengerKey models.Key) (*set.Set[*models.Challenge], error)
 	GetChallenge(challengerKey, receivingClientKey models.Key) (*models.Challenge, error)
 
 	ExecuteMove(matchId string, move *chess.Move) error
+	ResignMatch(matchId string, clientKey models.Key) error
 
 	RequestChallenge(challenge *models.Challenge) error
 	AcceptChallenge(challengedKey, challengerKey models.Key) error
@@ -35,17 +36,17 @@ type MatcherServiceI interface {
 }
 
 type MatcherService struct {
-	Service
-	__dependencies__ Marker
-	Logger           LoggerServiceI
+	service.Service
+	__dependencies__ marker.Marker
+	Logger           log.LoggerServiceI
 	AuthService      auth.AuthenticationServiceI
 	SubService       sub_service.SubscriptionServiceI
 
-	__state__            Marker
+	__state__            marker.Marker
 	matchByMatchId       map[string]*models.Match
 	matchIdByClientKey   map[models.Key]string
-	outboundsByClientKey map[models.Key]*Set[*models.Challenge]
-	inboundsByClientKey  map[models.Key]*Set[*models.Challenge]
+	outboundsByClientKey map[models.Key]*set.Set[*models.Challenge]
+	inboundsByClientKey  map[models.Key]*set.Set[*models.Challenge]
 	mu                   sync.Mutex
 }
 
@@ -53,10 +54,10 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 	matchService := &MatcherService{
 		matchByMatchId:       make(map[string]*models.Match),
 		matchIdByClientKey:   make(map[models.Key]string),
-		outboundsByClientKey: make(map[models.Key]*Set[*models.Challenge]),
-		inboundsByClientKey:  make(map[models.Key]*Set[*models.Challenge]),
+		outboundsByClientKey: make(map[models.Key]*set.Set[*models.Challenge]),
+		inboundsByClientKey:  make(map[models.Key]*set.Set[*models.Challenge]),
 	}
-	matchService.Service = *NewService(matchService, config)
+	matchService.Service = *service.NewService(matchService, config)
 	return matchService
 }
 
@@ -84,23 +85,23 @@ func (m *MatcherService) MatchByClientKey(clientKey models.Key) (*models.Match, 
 	return m.MatchById(matchId)
 }
 
-func (m *MatcherService) InboundChallenges(challengedKey models.Key) (*Set[*models.Challenge], error) {
+func (m *MatcherService) InboundChallenges(challengedKey models.Key) (*set.Set[*models.Challenge], error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	challenges, ok := m.inboundsByClientKey[challengedKey]
 	if !ok {
-		challenges = EmptySet[*models.Challenge]()
+		challenges = set.EmptySet[*models.Challenge]()
 		m.inboundsByClientKey[challengedKey] = challenges
 	}
 	return challenges, nil
 }
 
-func (m *MatcherService) OutboundChallenges(challengerKey models.Key) (*Set[*models.Challenge], error) {
+func (m *MatcherService) OutboundChallenges(challengerKey models.Key) (*set.Set[*models.Challenge], error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	challenges, ok := m.outboundsByClientKey[challengerKey]
 	if !ok {
-		challenges = EmptySet[*models.Challenge]()
+		challenges = set.EmptySet[*models.Challenge]()
 		m.outboundsByClientKey[challengerKey] = challenges
 	}
 	return challenges, nil
@@ -146,19 +147,13 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 		newWhiteTimeRemaining := match.WhiteTimeRemainingSec - math.Max(0.1, secondsSinceLastMove)
 		matchBuilder.WithWhiteTimeRemainingSec(math.Max(0, newWhiteTimeRemaining))
 		if newWhiteTimeRemaining == 0 {
-			boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
-			boardBuilder.WithIsTerminal(true)
-			boardBuilder.WithIsBlackWinner(true)
-			matchBuilder.WithBoard(boardBuilder.Build())
+			matchBuilder.WithResult(models.MATCH_RESULT_BLACK_WINS_BY_TIMEOUT)
 		}
 	} else {
 		newBlackTimeRemaining := match.BlackTimeRemainingSec - math.Max(0.1, secondsSinceLastMove)
 		matchBuilder.WithBlackTimeRemainingSec(math.Max(0, newBlackTimeRemaining))
 		if newBlackTimeRemaining == 0 {
-			boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
-			boardBuilder.WithIsTerminal(true)
-			boardBuilder.WithIsWhiteWinner(true)
-			matchBuilder.WithBoard(boardBuilder.Build())
+			matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT)
 		}
 	}
 	newBoard := chess.GetBoardFromMove(match.Board, move)
@@ -170,6 +165,29 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 		return setMatchErr
 	}
 
+	return nil
+}
+
+func (m *MatcherService) ResignMatch(matchId string, clientKey models.Key) error {
+	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s resigning match %s", clientKey, matchId))
+	match, matchErr := m.MatchById(matchId)
+	if matchErr != nil {
+		return matchErr
+	}
+	var result models.MatchResult
+	if match.Board.IsWhiteTurn {
+		result = models.MATCH_RESULT_BLACK_WINS_BY_RESIGNATION
+	} else {
+		result = models.MATCH_RESULT_WHITE_WINS_BY_RESIGNATION
+	}
+
+	matchBuilder := builders.NewMatchBuilder().FromMatch(match)
+	matchBuilder.WithResult(result)
+	newMatch := matchBuilder.Build()
+
+	if setMatchErr := m.SetMatch(newMatch); setMatchErr != nil {
+		return setMatchErr
+	}
 	return nil
 }
 
@@ -384,25 +402,20 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 	}
 	if currMatch.LastMoveTime.Equal(*match.LastMoveTime) {
 		matchBuilder := builders.NewMatchBuilder().FromMatch(match)
-		boardBuilder := chess.NewBoardBuilder().FromBoard(match.Board)
-		boardBuilder.WithIsTerminal(true)
 		if match.Board.IsWhiteTurn {
 			matchBuilder.WithWhiteTimeRemainingSec(0)
-			boardBuilder.WithIsBlackWinner(true)
 		} else {
 			matchBuilder.WithBlackTimeRemainingSec(0)
-			boardBuilder.WithIsWhiteWinner(true)
 		}
-		matchBuilder.WithBoard(boardBuilder.Build())
 		newMatch := matchBuilder.Build()
 		_ = m.SetMatch(newMatch)
 	}
 }
 
-var OnMatchUpdated = func(s ServiceI, ev EventI) bool {
+var OnMatchUpdated = func(s service.ServiceI, ev service.EventI) bool {
 	matcher := s.(*MatcherService)
 	match := ev.Payload().(*MatchUpdatedEventPayload).Match
-	if match.Board.IsTerminal {
+	if match.Result != models.MATCH_RESULT_IN_PROGRESS {
 		_ = matcher.RemoveMatch(match)
 	} else {
 		go matcher.StartTimer(match)

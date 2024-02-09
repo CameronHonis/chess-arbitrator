@@ -100,7 +100,7 @@ func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, client
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
-	match := builders.NewMatch(clientA.ClientKey, clientB.ClientKey, builders.NewBulletTimeControl())
+	match := builders.NewMatch(clientA.ClientKey, clientB.ClientKey, builders.NewBulletTimeControl(), models.MATCH_RESULT_IN_PROGRESS)
 	addMatchErr := mm.MatchService.AddMatch(match)
 	if addMatchErr != nil {
 		return fmt.Errorf("error adding match %s: %s", match.Uuid, addMatchErr)

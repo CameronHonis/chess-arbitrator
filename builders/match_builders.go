@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func NewMatch(whiteClientKey models.Key, blackClientKey models.Key, timeControl *models.TimeControl) *models.Match {
+func NewMatch(whiteClientKey models.Key, blackClientKey models.Key, timeControl *models.TimeControl, result models.MatchResult) *models.Match {
 	matchId := uuid.New().String()
 	now := time.Now()
 	return &models.Match{
@@ -20,6 +20,7 @@ func NewMatch(whiteClientKey models.Key, blackClientKey models.Key, timeControl 
 		BlackTimeRemainingSec: float64(timeControl.InitialTimeSec),
 		TimeControl:           timeControl,
 		LastMoveTime:          &now,
+		Result:                result,
 	}
 }
 
@@ -45,6 +46,19 @@ func (mb *MatchBuilder) WithUuid(uuid string) *MatchBuilder {
 
 func (mb *MatchBuilder) WithBoard(board *chess.Board) *MatchBuilder {
 	mb.match.Board = board
+	if board.Result == chess.BOARD_RESULT_WHITE_WINS_BY_CHECKMATE {
+		mb.match.Result = models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE
+	} else if board.Result == chess.BOARD_RESULT_BLACK_WINS_BY_CHECKMATE {
+		mb.match.Result = models.MATCH_RESULT_BLACK_WINS_BY_CHECKMATE
+	} else if board.Result == chess.BOARD_RESULT_DRAW_BY_STALEMATE {
+		mb.match.Result = models.MATCH_RESULT_DRAW_BY_STALEMATE
+	} else if board.Result == chess.BOARD_RESULT_DRAW_BY_INSUFFICIENT_MATERIAL {
+		mb.match.Result = models.MATCH_RESULT_DRAW_BY_INSUFFICIENT_MATERIAL
+	} else if board.Result == chess.BOARD_RESULT_DRAW_BY_THREEFOLD_REPETITION {
+		mb.match.Result = models.MATCH_RESULT_DRAW_BY_THREEFOLD_REPETITION
+	} else if board.Result == chess.BOARD_RESULT_DRAW_BY_FIFTY_MOVE_RULE {
+		mb.match.Result = models.MATCH_RESULT_DRAW_BY_FIFTY_MOVE_RULE
+	}
 	return mb
 }
 
@@ -55,6 +69,9 @@ func (mb *MatchBuilder) WithWhiteClientKey(clientKey models.Key) *MatchBuilder {
 
 func (mb *MatchBuilder) WithWhiteTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
 	mb.match.WhiteTimeRemainingSec = timeRemainingSec
+	if timeRemainingSec <= 0 {
+		mb.match.Result = models.MATCH_RESULT_BLACK_WINS_BY_TIMEOUT
+	}
 	return mb
 }
 
@@ -65,6 +82,9 @@ func (mb *MatchBuilder) WithBlackClientKey(clientKey models.Key) *MatchBuilder {
 
 func (mb *MatchBuilder) WithBlackTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
 	mb.match.BlackTimeRemainingSec = timeRemainingSec
+	if timeRemainingSec <= 0 {
+		mb.match.Result = models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT
+	}
 	return mb
 }
 
@@ -104,8 +124,13 @@ func (mb *MatchBuilder) WithClientKeys(clientAKey models.Key, clientBKey models.
 	return mb
 }
 
+func (mb *MatchBuilder) WithResult(result models.MatchResult) *MatchBuilder {
+	mb.match.Result = result
+	return mb
+}
+
 func (mb *MatchBuilder) FromChallenge(challenge *models.Challenge) *MatchBuilder {
-	mb.match = NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl)
+	mb.match = NewMatch(challenge.ChallengerKey, challenge.ChallengedKey, challenge.TimeControl, models.MATCH_RESULT_IN_PROGRESS)
 	if challenge.IsChallengerWhite {
 		mb.WithWhiteClientKey(challenge.ChallengerKey)
 		mb.WithBlackClientKey(challenge.ChallengedKey)
