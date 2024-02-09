@@ -7,15 +7,15 @@ import (
 	mm "github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	sub "github.com/CameronHonis/chess-arbitrator/sub_service"
-	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/log"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
 	"github.com/gorilla/websocket"
 	"sync"
 )
 
 type ClientsManagerI interface {
-	ServiceI
+	service.ServiceI
 	GetClient(clientKey models.Key) (*models.Client, error)
 	AddNewClient(conn *websocket.Conn) (*models.Client, error)
 	AddClient(client *models.Client) error
@@ -25,16 +25,16 @@ type ClientsManagerI interface {
 }
 
 type ClientsManager struct {
-	Service
+	service.Service
 
-	__dependencies__   Marker
-	Logger             LoggerServiceI
+	__dependencies__   marker.Marker
+	Logger             log.LoggerServiceI
 	SubService         sub.SubscriptionServiceI
 	AuthService        auth.AuthenticationServiceI
 	MatchmakingService mm.MatchmakingServiceI
 	MatcherService     matcher.MatcherServiceI
 
-	__state__         Marker
+	__state__         marker.Marker
 	clientByPublicKey map[models.Key]*models.Client
 	mu                sync.Mutex
 }
@@ -43,7 +43,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	s := &ClientsManager{
 		clientByPublicKey: make(map[models.Key]*models.Client),
 	}
-	s.Service = *NewService(s, config)
+	s.Service = *service.NewService(s, config)
 
 	return s
 }
@@ -115,12 +115,12 @@ func (c *ClientsManager) BroadcastMessage(message *models.Message) {
 	for _, clientKey := range subbedClientKeys.Flatten() {
 		client, err := c.GetClient(clientKey)
 		if err != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), ALL_BUT_TEST_ENV)
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), log.ALL_BUT_TEST_ENV)
 			continue
 		}
 		writeErr := c.writeMessage(client, &msgCopy)
 		if writeErr != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error broadcasting to client: %s", writeErr), ALL_BUT_TEST_ENV)
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error broadcasting to client: %s", writeErr), log.ALL_BUT_TEST_ENV)
 			continue
 		}
 	}
@@ -152,17 +152,17 @@ func (c *ClientsManager) listenForUserInput(client *models.Client) {
 		_, rawMsg, readErr := client.WSConn().ReadMessage()
 		_, clientErr := c.GetClient(client.PublicKey())
 		if clientErr != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), ALL_BUT_TEST_ENV)
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), log.ALL_BUT_TEST_ENV)
 			return
 		}
 		if readErr != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), ALL_BUT_TEST_ENV)
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), log.ALL_BUT_TEST_ENV)
 			// assume all readErrs are disconnects
 			_ = c.RemoveClient(client)
 			return
 		}
 		if err := c.readMessage(client.PublicKey(), rawMsg); err != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), ALL_BUT_TEST_ENV)
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), log.ALL_BUT_TEST_ENV)
 
 		}
 	}

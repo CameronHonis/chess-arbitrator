@@ -3,16 +3,16 @@ package auth
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/log"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
 	"github.com/CameronHonis/set"
 	"os"
 	"sync"
 )
 
 type AuthenticationServiceI interface {
-	ServiceI
+	service.ServiceI
 	GetRole(clientKey models.Key) (models.RoleName, error)
 	ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key]
 	BotClientExists() bool
@@ -28,12 +28,12 @@ type AuthenticationServiceI interface {
 }
 
 type AuthenticationService struct {
-	Service
+	service.Service
 
-	__dependencies__ Marker
-	LoggerService    LoggerServiceI
+	__dependencies__ marker.Marker
+	LoggerService    log.LoggerServiceI
 
-	__state__        Marker
+	__state__        marker.Marker
 	roleByClient     map[models.Key]models.RoleName
 	clientKeysByRole map[models.RoleName]*set.Set[models.Key]
 	mu               sync.Mutex
@@ -44,7 +44,7 @@ func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService 
 		roleByClient:     make(map[models.Key]models.RoleName),
 		clientKeysByRole: make(map[models.RoleName]*set.Set[models.Key]),
 	}
-	authService.Service = *NewService(authService, config)
+	authService.Service = *service.NewService(authService, config)
 	return authService
 }
 

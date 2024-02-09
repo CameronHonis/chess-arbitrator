@@ -5,27 +5,27 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
-	. "github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/log"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
 	"math"
 	"time"
 )
 
 type MatchmakingServiceI interface {
-	ServiceI
+	service.ServiceI
 	AddClient(client *models.ClientProfile) error
 	RemoveClient(client *models.ClientProfile) error
 }
 
 type MatchmakingService struct {
-	Service
+	service.Service
 
-	__dependencies__ Marker
-	LogService       LoggerServiceI
+	__dependencies__ marker.Marker
+	LogService       log.LoggerServiceI
 	MatchService     matcher.MatcherServiceI
 
-	__state__ Marker
+	__state__ marker.Marker
 	pool      *MatchmakingPool
 }
 
@@ -33,7 +33,7 @@ func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 	matchmakingService := &MatchmakingService{
 		pool: NewMatchmakingPool(),
 	}
-	matchmakingService.Service = *NewService(matchmakingService, config)
+	matchmakingService.Service = *service.NewService(matchmakingService, config)
 
 	return matchmakingService
 }

@@ -4,31 +4,31 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/log"
-	. "github.com/CameronHonis/marker"
-	. "github.com/CameronHonis/service"
+	"github.com/CameronHonis/marker"
+	"github.com/CameronHonis/service"
 	"net/http"
 )
 import "fmt"
 import "github.com/gorilla/websocket"
 
 type RouterServiceI interface {
-	ServiceI
+	service.ServiceI
 	StartWSServer()
 }
 
 type RouterService struct {
-	Service
+	service.Service
 
-	__dependencies__   Marker
+	__dependencies__   marker.Marker
 	UserClientsService clients_manager.ClientsManagerI
 	Logger             log.LoggerServiceI
 
-	__state__ Marker
+	__state__ marker.Marker
 }
 
 func NewRouterService(config *RouterServiceConfig) *RouterService {
 	routerService := &RouterService{}
-	routerService.Service = *NewService(routerService, config)
+	routerService.Service = *service.NewService(routerService, config)
 	return routerService
 }
 
