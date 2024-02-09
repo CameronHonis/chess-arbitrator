@@ -126,6 +126,26 @@ func (mb *MatchBuilder) WithClientKeys(clientAKey models.Key, clientBKey models.
 
 func (mb *MatchBuilder) WithResult(result models.MatchResult) *MatchBuilder {
 	mb.match.Result = result
+
+	setBoardResult := func(result chess.BoardResult) {
+		mb.match.Board = chess.NewBoardBuilder().FromBoard(mb.match.Board).WithResult(result).Build()
+	}
+	switch result {
+	case models.MATCH_RESULT_IN_PROGRESS:
+		setBoardResult(chess.BOARD_RESULT_IN_PROGRESS)
+	case models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE:
+		setBoardResult(chess.BOARD_RESULT_WHITE_WINS_BY_CHECKMATE)
+	case models.MATCH_RESULT_BLACK_WINS_BY_CHECKMATE:
+		setBoardResult(chess.BOARD_RESULT_BLACK_WINS_BY_CHECKMATE)
+	case models.MATCH_RESULT_DRAW_BY_STALEMATE:
+		setBoardResult(chess.BOARD_RESULT_DRAW_BY_STALEMATE)
+	case models.MATCH_RESULT_DRAW_BY_INSUFFICIENT_MATERIAL:
+		setBoardResult(chess.BOARD_RESULT_DRAW_BY_INSUFFICIENT_MATERIAL)
+	case models.MATCH_RESULT_DRAW_BY_THREEFOLD_REPETITION:
+		setBoardResult(chess.BOARD_RESULT_DRAW_BY_THREEFOLD_REPETITION)
+	case models.MATCH_RESULT_DRAW_BY_FIFTY_MOVE_RULE:
+		setBoardResult(chess.BOARD_RESULT_DRAW_BY_FIFTY_MOVE_RULE)
+	}
 	return mb
 }
 

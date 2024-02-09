@@ -128,4 +128,49 @@ var _ = Describe("MatchBuilder", func() {
 			})
 		})
 	})
+	Describe("WithResult", func() {
+		When("the result is not terminal", func() {
+			BeforeEach(func() {
+				matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE)
+			})
+			It("sets the result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_IN_PROGRESS).Build()
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_IN_PROGRESS))
+			})
+			It("propagates the result to the board result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_IN_PROGRESS).Build()
+				Expect(newMatch.Board.Result).To(Equal(chess.BOARD_RESULT_IN_PROGRESS))
+			})
+		})
+		When("the result is a checkmate", func() {
+			It("sets the result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE).Build()
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE))
+			})
+			It("propagates the result to the board result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_CHECKMATE).Build()
+				Expect(newMatch.Board.Result).To(Equal(chess.BOARD_RESULT_WHITE_WINS_BY_CHECKMATE))
+			})
+		})
+		When("the result is a stalemate", func() {
+			It("sets the result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_DRAW_BY_STALEMATE).Build()
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_DRAW_BY_STALEMATE))
+			})
+			It("propagates the result to the board result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_DRAW_BY_STALEMATE).Build()
+				Expect(newMatch.Board.Result).To(Equal(chess.BOARD_RESULT_DRAW_BY_STALEMATE))
+			})
+		})
+		When("the result is a terminal result 'off the board'", func() {
+			It("sets the result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT).Build()
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT))
+			})
+			It("does not propagate the result to the board result", func() {
+				newMatch := matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT).Build()
+				Expect(newMatch.Board.Result).To(Equal(chess.BOARD_RESULT_IN_PROGRESS))
+			})
+		})
+	})
 })
