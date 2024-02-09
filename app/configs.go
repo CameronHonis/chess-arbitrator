@@ -41,6 +41,7 @@ func GetClientsManagerConfig() *cm.ClientsManagerConfig {
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_SUBSCRIBE_REQUEST, cm.HandleSubscribeRequestMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST, cm.HandleRequestUpgradeAuthMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_MOVE, cm.HandleMoveMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_RESIGN_MATCH, cm.HandleResignMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_CHALLENGE_REQUEST, cm.HandleChallengePlayerMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_ACCEPT_CHALLENGE, cm.HandleAcceptChallengeMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_DECLINE_CHALLENGE, cm.HandleDeclineChallengeMessage)

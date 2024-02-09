@@ -170,9 +170,6 @@ var OnMatchEnded = func(self ServiceI, event EventI) bool {
 	clientsManager := self.(*ClientsManager)
 	match := event.Payload().(*matcher.MatchEndedEventPayload).Match
 
-	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
-	SendMatchUpdate(deps, match)
-
 	whiteUnsubErr := clientsManager.SubService.UnsubClient(match.WhiteClientKey, match.Topic())
 	blackUnsubErr := clientsManager.SubService.UnsubClient(match.BlackClientKey, match.Topic())
 	if whiteUnsubErr != nil {

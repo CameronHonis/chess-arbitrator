@@ -196,6 +196,39 @@ var _ = Describe("MatcherService", func() {
 			})
 		})
 	})
+	Describe("ResignMatch", func() {
+		var match *models.Match
+		BeforeEach(func() {
+			matchBuilder := builders.NewMatchBuilder()
+			matchBuilder.WithWhiteClientKey("client1")
+			matchBuilder.WithBlackClientKey("client2")
+			matchBuilder.WithTimeControl(builders.NewBulletTimeControl())
+			matchBuilder.WithResult(models.MATCH_RESULT_IN_PROGRESS)
+			match = matchBuilder.Build()
+
+			Expect(matcherService.AddMatch(match)).ToNot(HaveOccurred())
+		})
+		When("the client is white", func() {
+			It("sets the match result to black win", func() {
+				Expect(matcherService.ResignMatch(match.Uuid, "client1")).ToNot(HaveOccurred())
+				newMatch, _ := matcherService.MatchById(match.Uuid)
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_BLACK_WINS_BY_RESIGNATION))
+			})
+		})
+		When("the client is black", func() {
+			It("sets the match result to a white win", func() {
+				Expect(matcherService.ResignMatch(match.Uuid, "client2")).ToNot(HaveOccurred())
+				newMatch, _ := matcherService.MatchById(match.Uuid)
+				Expect(newMatch.Result).To(Equal(models.MATCH_RESULT_WHITE_WINS_BY_RESIGNATION))
+			})
+		})
+		It("emits a match update event", func() {
+			_ = matcherService.ResignMatch(match.Uuid, "client1")
+			Eventually(func() int {
+				return eventCatcher.EventsByVariantCount(matcher.MATCH_UPDATED)
+			}).Should(Equal(1))
+		})
+	})
 
 	Describe("ChallengeClient", func() {
 		var challenge *models.Challenge

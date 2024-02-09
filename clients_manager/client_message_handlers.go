@@ -53,6 +53,14 @@ func HandleMoveMessage(m *ClientsManager, moveMsg *models.Message) error {
 	return nil
 }
 
+func HandleResignMessage(m *ClientsManager, resignMsg *models.Message) error {
+	resignMsgContent, ok := resignMsg.Content.(*models.ResignMessageContent)
+	if !ok {
+		return fmt.Errorf("invalid resign message content")
+	}
+	return m.MatcherService.ResignMatch(resignMsgContent.MatchId, resignMsg.SenderKey)
+}
+
 func HandleChallengePlayerMessage(m *ClientsManager, challengeMsg *models.Message) error {
 	challengeMsgContent, ok := challengeMsg.Content.(*models.ChallengeRequestMessageContent)
 	if !ok {

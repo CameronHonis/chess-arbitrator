@@ -170,19 +170,18 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 
 func (m *MatcherService) ResignMatch(matchId string, clientKey models.Key) error {
 	m.Logger.Log(models.ENV_MATCHER_SERVICE, fmt.Sprintf("client %s resigning match %s", clientKey, matchId))
+
 	match, matchErr := m.MatchById(matchId)
 	if matchErr != nil {
 		return matchErr
 	}
-	var result models.MatchResult
-	if match.Board.IsWhiteTurn {
-		result = models.MATCH_RESULT_BLACK_WINS_BY_RESIGNATION
-	} else {
-		result = models.MATCH_RESULT_WHITE_WINS_BY_RESIGNATION
-	}
 
 	matchBuilder := builders.NewMatchBuilder().FromMatch(match)
-	matchBuilder.WithResult(result)
+	if clientKey == match.WhiteClientKey {
+		matchBuilder.WithResult(models.MATCH_RESULT_BLACK_WINS_BY_RESIGNATION)
+	} else {
+		matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_RESIGNATION)
+	}
 	newMatch := matchBuilder.Build()
 
 	if setMatchErr := m.SetMatch(newMatch); setMatchErr != nil {

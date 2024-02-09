@@ -56,6 +56,7 @@ func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (inter
 		CONTENT_TYPE_FIND_MATCH:                &FindMatchMessageContent{},
 		CONTENT_TYPE_MATCH_UPDATED:             &MatchUpdateMessageContent{},
 		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
+		CONTENT_TYPE_RESIGN_MATCH:              &ResignMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST:         &SubscribeRequestMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_GRANTED: &SubscribeRequestGrantedMessageContent{},
 		CONTENT_TYPE_SUBSCRIBE_REQUEST_DENIED:  &SubscribeRequestDeniedMessageContent{},
@@ -102,6 +103,7 @@ const (
 	CONTENT_TYPE_AUTH                             = "AUTH"
 	CONTENT_TYPE_FIND_MATCH                       = "FIND_MATCH"
 	CONTENT_TYPE_MOVE                             = "MOVE"
+	CONTENT_TYPE_RESIGN_MATCH                     = "RESIGN_MATCH"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST                = "SUBSCRIBE_REQUEST"
 	CONTENT_TYPE_UPGRADE_AUTH_REQUEST             = "UPGRADE_AUTH_REQUEST"
 	CONTENT_TYPE_CHALLENGE_REQUEST                = "CHALLENGE_REQUEST"
@@ -125,6 +127,10 @@ type MatchUpdateMessageContent struct {
 type MoveMessageContent struct {
 	MatchId string      `json:"matchId"`
 	Move    *chess.Move `json:"move"`
+}
+
+type ResignMessageContent struct {
+	MatchId string `json:"matchId"`
 }
 
 type SubscribeRequestMessageContent struct {
