@@ -62,6 +62,7 @@ func NewMatcherService(config *MatcherServiceConfig) *MatcherService {
 }
 
 func (m *MatcherService) OnBuild() {
+	m.AddEventListener(MATCH_CREATED, OnMatchCreated)
 	m.AddEventListener(MATCH_UPDATED, OnMatchUpdated)
 }
 
@@ -419,6 +420,14 @@ func (m *MatcherService) StartTimer(match *models.Match) {
 		newMatch := matchBuilder.Build()
 		_ = m.SetMatch(newMatch)
 	}
+}
+
+var OnMatchCreated = func(s service.ServiceI, ev service.EventI) bool {
+	matcher := s.(*MatcherService)
+	match := ev.Payload().(*MatchCreatedEventPayload).Match
+
+	go matcher.StartTimer(match)
+	return true
 }
 
 var OnMatchUpdated = func(s service.ServiceI, ev service.EventI) bool {
