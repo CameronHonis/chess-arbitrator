@@ -5,6 +5,7 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/helpers"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/google/uuid"
+	"math"
 	"time"
 )
 
@@ -68,7 +69,7 @@ func (mb *MatchBuilder) WithWhiteClientKey(clientKey models.Key) *MatchBuilder {
 }
 
 func (mb *MatchBuilder) WithWhiteTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
-	mb.match.WhiteTimeRemainingSec = timeRemainingSec
+	mb.match.WhiteTimeRemainingSec = math.Max(0, timeRemainingSec)
 	if timeRemainingSec <= 0 {
 		mb.match.Result = models.MATCH_RESULT_BLACK_WINS_BY_TIMEOUT
 	}
@@ -81,7 +82,7 @@ func (mb *MatchBuilder) WithBlackClientKey(clientKey models.Key) *MatchBuilder {
 }
 
 func (mb *MatchBuilder) WithBlackTimeRemainingSec(timeRemainingSec float64) *MatchBuilder {
-	mb.match.BlackTimeRemainingSec = timeRemainingSec
+	mb.match.BlackTimeRemainingSec = math.Max(0, timeRemainingSec)
 	if timeRemainingSec <= 0 {
 		mb.match.Result = models.MATCH_RESULT_WHITE_WINS_BY_TIMEOUT
 	}

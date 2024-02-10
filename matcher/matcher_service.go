@@ -177,11 +177,21 @@ func (m *MatcherService) ResignMatch(matchId string, clientKey models.Key) error
 	}
 
 	matchBuilder := builders.NewMatchBuilder().FromMatch(match)
+	secSinceLastMove := time.Now().Sub(*match.LastMoveTime).Seconds()
+	if match.Board.IsWhiteTurn {
+		secRemaining := match.WhiteTimeRemainingSec - secSinceLastMove
+		matchBuilder.WithWhiteTimeRemainingSec(secRemaining)
+	} else {
+		secRemaining := match.BlackTimeRemainingSec - secSinceLastMove
+		matchBuilder.WithBlackTimeRemainingSec(secRemaining)
+	}
+
 	if clientKey == match.WhiteClientKey {
 		matchBuilder.WithResult(models.MATCH_RESULT_BLACK_WINS_BY_RESIGNATION)
 	} else {
 		matchBuilder.WithResult(models.MATCH_RESULT_WHITE_WINS_BY_RESIGNATION)
 	}
+
 	newMatch := matchBuilder.Build()
 
 	if setMatchErr := m.SetMatch(newMatch); setMatchErr != nil {
