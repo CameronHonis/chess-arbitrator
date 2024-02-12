@@ -1,6 +1,9 @@
 package clients_manager
 
-import "github.com/CameronHonis/chess-arbitrator/models"
+import (
+	"github.com/CameronHonis/chess"
+	"github.com/CameronHonis/chess-arbitrator/models"
+)
 
 type DirectMessageFn func(msg *models.Message, clientKey models.Key) error
 type ErrLogger func(env string, msgs ...interface{})
@@ -50,6 +53,16 @@ func SendMatchCreationFailed(deps *SendDirectDeps, reason string, whiteClientKey
 			WhiteClientKey: whiteClientKey,
 			BlackClientKey: blackClientKey,
 			Reason:         reason,
+		},
+	}, deps.clientKey)
+}
+
+func SendMoveFailed(deps *SendDirectDeps, move *chess.Move, reason string) error {
+	return deps.writer(&models.Message{
+		ContentType: models.CONTENT_TYPE_MOVE_FAILED,
+		Content: &models.MoveFailedMessageContent{
+			Move:   move,
+			Reason: reason,
 		},
 	}, deps.clientKey)
 }

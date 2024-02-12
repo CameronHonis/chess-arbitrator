@@ -60,6 +60,7 @@ func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(matcher.MATCH_CREATION_FAILED, OnMatchCreationFailed)
 	c.AddEventListener(matcher.MATCH_UPDATED, OnMatchUpdated)
 	c.AddEventListener(matcher.MATCH_ENDED, OnMatchEnded)
+	c.AddEventListener(matcher.MOVE_FAILURE, OnMoveFailed)
 }
 
 func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {

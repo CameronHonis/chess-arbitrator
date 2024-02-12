@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/service"
 )
@@ -10,6 +11,7 @@ const (
 	MATCH_ENDED                                = "MATCH_ENDED"
 	MATCH_UPDATED                              = "MATCH_UPDATED"
 	MATCH_CREATION_FAILED                      = "MATCH_CREATION_FAILED"
+	MOVE_FAILURE                               = "MOVE_FAILURE"
 )
 
 type MatchCreatedEventPayload struct {
@@ -68,6 +70,26 @@ func NewMatchCreationFailedEvent(whiteClientKey models.Key, blackClientKey model
 			WhiteClientKey: whiteClientKey,
 			BlackClientKey: blackClientKey,
 			Reason:         reason,
+		}),
+	}
+}
+
+type MoveFailureEventPayload struct {
+	MatchId         string
+	Move            *chess.Move
+	OriginClientKey models.Key
+	Reason          string
+}
+
+type MoveFailureEvent struct{ service.Event }
+
+func NewMoveFailureEvent(matchId string, move *chess.Move, originClientKey models.Key, reason string) *MoveFailureEvent {
+	return &MoveFailureEvent{
+		Event: *service.NewEvent(MOVE_FAILURE, &MoveFailureEventPayload{
+			MatchId:         matchId,
+			Move:            move,
+			OriginClientKey: originClientKey,
+			Reason:          reason,
 		}),
 	}
 }

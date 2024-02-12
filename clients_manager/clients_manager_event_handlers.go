@@ -181,3 +181,17 @@ var OnMatchEnded = func(self ServiceI, event EventI) bool {
 
 	return true
 }
+
+var OnMoveFailed = func(self ServiceI, event EventI) bool {
+	clientsManager := self.(*ClientsManager)
+	payload := event.Payload().(*matcher.MoveFailureEventPayload)
+
+	clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "move failed", payload.Reason)
+
+	sendDeps := NewSendDirectDeps(clientsManager.DirectMessage, payload.OriginClientKey)
+	if sendErr := SendMoveFailed(sendDeps, payload.Move, payload.Reason); sendErr != nil {
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not send move failed message", sendErr.Error())
+	}
+
+	return true
+}

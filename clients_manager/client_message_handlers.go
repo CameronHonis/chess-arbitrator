@@ -2,6 +2,7 @@ package clients_manager
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
 )
 
@@ -47,7 +48,7 @@ func HandleMoveMessage(m *ClientsManager, moveMsg *models.Message) error {
 	}
 	moveErr := m.MatcherService.ExecuteMove(moveMsgContent.MatchId, moveMsgContent.Move)
 	if moveErr != nil {
-		go m.Dispatch(NewMoveFailureEvent(moveMsgContent.MatchId, moveMsgContent.Move, moveErr.Error()))
+		go m.Dispatch(matcher.NewMoveFailureEvent(moveMsgContent.MatchId, moveMsgContent.Move, moveMsg.SenderKey, moveErr.Error()))
 		return nil
 	}
 	return nil
