@@ -181,7 +181,7 @@ type DeclineChallengeMessageContent struct {
 }
 
 type RevokeChallengeMessageContent struct {
-	ChallengerClientKey Key `json:"challengerClientKey"`
+	ChallengedClientKey Key `json:"challengedClientKey"`
 }
 
 type ChallengeUpdatedMessageContent struct {

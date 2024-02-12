@@ -102,7 +102,7 @@ func HandleRevokeChallengeMessage(m *ClientsManager, msg *models.Message) error 
 	if !ok {
 		return fmt.Errorf("invalid revoke challenge message content")
 	}
-	revokeChallengeErr := m.MatcherService.RevokeChallenge(msg.SenderKey, msgContent.ChallengerClientKey)
+	revokeChallengeErr := m.MatcherService.RevokeChallenge(msg.SenderKey, msgContent.ChallengedClientKey)
 	if revokeChallengeErr != nil {
 		m.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not revoke challenge: %s", revokeChallengeErr))
 	}
