@@ -2,6 +2,7 @@ package matchmaking_test
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/onsi/ginkgo/v2"
@@ -20,7 +21,7 @@ var _ = Describe("MatchmakingPool", func() {
 		})
 		Context("when the client is not already in the pool", func() {
 			It("should add the client to the pool", func() {
-				err := matchmakingPool.AddClient(clientProfile)
+				err := matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())
 				Expect(err).To(BeNil())
 				Expect(matchmakingPool.Head()).To(Equal(matchmakingPool.Tail()))
 				Expect(matchmakingPool.NodeByClientKey(clientProfile.ClientKey)).To(Equal(matchmakingPool.Head()))
@@ -28,10 +29,10 @@ var _ = Describe("MatchmakingPool", func() {
 		})
 		Context("when the client is already in the pool", func() {
 			BeforeEach(func() {
-				Expect(matchmakingPool.AddClient(clientProfile)).ToNot(HaveOccurred())
+				Expect(matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
 			})
 			It("should return an error", func() {
-				err := matchmakingPool.AddClient(clientProfile)
+				err := matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())
 				Expect(err).To(Equal(fmt.Errorf("client with key %s already in pool", clientProfile.ClientKey)))
 			})
 		})
@@ -39,10 +40,10 @@ var _ = Describe("MatchmakingPool", func() {
 			var otherClientProfile *models.ClientProfile
 			BeforeEach(func() {
 				otherClientProfile = models.NewClientProfile("some-other-client-key", 1000)
-				Expect(matchmakingPool.AddClient(otherClientProfile)).ToNot(HaveOccurred())
+				Expect(matchmakingPool.AddClient(otherClientProfile, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
 			})
 			It("should add the client to the pool", func() {
-				Expect(matchmakingPool.AddClient(clientProfile)).ToNot(HaveOccurred())
+				Expect(matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
 				Expect(matchmakingPool.Head().ClientProfile()).To(Equal(otherClientProfile))
 				Expect(matchmakingPool.Head().Next().ClientProfile()).To(Equal(clientProfile))
 				Expect(matchmakingPool.Tail().ClientProfile()).To(Equal(clientProfile))
@@ -57,9 +58,9 @@ var _ = Describe("MatchmakingPool", func() {
 			clientA = models.NewClientProfile("client-key-a", 1000)
 			clientB = models.NewClientProfile("client-key-b", 1000)
 			clientC = models.NewClientProfile("client-key-c", 1000)
-			Expect(matchmakingPool.AddClient(clientA)).ToNot(HaveOccurred())
-			Expect(matchmakingPool.AddClient(clientB)).ToNot(HaveOccurred())
-			Expect(matchmakingPool.AddClient(clientC)).ToNot(HaveOccurred())
+			Expect(matchmakingPool.AddClient(clientA, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
+			Expect(matchmakingPool.AddClient(clientB, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
+			Expect(matchmakingPool.AddClient(clientC, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
 		})
 		Context("when the client is the head of the pool", func() {
 			It("removes the client and re-assign the head", func() {

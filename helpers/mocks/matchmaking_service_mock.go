@@ -41,17 +41,17 @@ func (m *MockMatchmakingServiceI) EXPECT() *MockMatchmakingServiceIMockRecorder 
 }
 
 // AddClient mocks base method.
-func (m *MockMatchmakingServiceI) AddClient(client *models.ClientProfile) error {
+func (m *MockMatchmakingServiceI) AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddClient", client)
+	ret := m.ctrl.Call(m, "AddClient", client, timeControl)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddClient indicates an expected call of AddClient.
-func (mr *MockMatchmakingServiceIMockRecorder) AddClient(client any) *gomock.Call {
+func (mr *MockMatchmakingServiceIMockRecorder) AddClient(client, timeControl any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddClient", reflect.TypeOf((*MockMatchmakingServiceI)(nil).AddClient), client)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddClient", reflect.TypeOf((*MockMatchmakingServiceI)(nil).AddClient), client, timeControl)
 }
 
 // AddDependency mocks base method.

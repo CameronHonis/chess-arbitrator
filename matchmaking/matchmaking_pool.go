@@ -11,12 +11,14 @@ type MMPoolNode struct {
 	next          *MMPoolNode
 	prev          *MMPoolNode
 	clientProfile *models.ClientProfile
+	timeControl   *models.TimeControl
 	timeJoined    int64
 }
 
-func NewMMPoolNode(profile *models.ClientProfile) *MMPoolNode {
+func NewMMPoolNode(profile *models.ClientProfile, timeControl *models.TimeControl) *MMPoolNode {
 	return &MMPoolNode{
 		clientProfile: profile,
+		timeControl:   timeControl,
 		timeJoined:    time.Now().Unix(),
 	}
 }
@@ -69,13 +71,13 @@ func (mmp *MatchmakingPool) NodeByClientKey(clientKey models.Key) *MMPoolNode {
 	return node
 }
 
-func (mmp *MatchmakingPool) AddClient(client *models.ClientProfile) error {
+func (mmp *MatchmakingPool) AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error {
 	mmp.mu.Lock()
 	defer mmp.mu.Unlock()
 	if _, ok := mmp.nodeByClientKey[client.ClientKey]; ok {
 		return fmt.Errorf("client with key %s already in pool", client.ClientKey)
 	}
-	node := NewMMPoolNode(client)
+	node := NewMMPoolNode(client, timeControl)
 	if mmp.tail == nil {
 		mmp.tail = node
 		mmp.head = node

@@ -119,6 +119,7 @@ type AuthMessageContent struct {
 }
 
 type FindMatchMessageContent struct {
+	TimeControl *TimeControl `json:"timeControl"`
 }
 
 type MatchUpdateMessageContent struct {

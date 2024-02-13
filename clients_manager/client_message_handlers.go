@@ -15,13 +15,18 @@ func HandleEchoMessage(m *ClientsManager, msg *models.Message) error {
 }
 
 func HandleFindMatchMessage(m *ClientsManager, msg *models.Message) error {
+	msgContent, ok := msg.Content.(*models.FindMatchMessageContent)
+	if !ok {
+		return fmt.Errorf("could not cast message content to FindMatchMessageContent")
+	}
+
 	// TODO: query for elo, winStreak, lossStreak
 	return m.MatchmakingService.AddClient(&models.ClientProfile{
 		ClientKey:  msg.SenderKey,
 		Elo:        1000,
 		WinStreak:  0,
 		LossStreak: 0,
-	})
+	}, msgContent.TimeControl)
 }
 
 func HandleSubscribeRequestMessage(m *ClientsManager, msg *models.Message) error {

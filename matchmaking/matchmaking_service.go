@@ -14,7 +14,7 @@ import (
 
 type MatchmakingServiceI interface {
 	service.ServiceI
-	AddClient(client *models.ClientProfile) error
+	AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error
 	RemoveClient(client *models.ClientProfile) error
 }
 
@@ -42,9 +42,9 @@ func (mm *MatchmakingService) OnStart() {
 	go mm.loopMatchmaking()
 }
 
-func (mm *MatchmakingService) AddClient(client *models.ClientProfile) error {
+func (mm *MatchmakingService) AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error {
 	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
-	addErr := mm.pool.AddClient(client)
+	addErr := mm.pool.AddClient(client, timeControl)
 	if addErr != nil {
 		return addErr
 	}
