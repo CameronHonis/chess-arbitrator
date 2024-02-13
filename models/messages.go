@@ -53,7 +53,8 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
 	contentStructMap := map[ContentType]interface{}{
 		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
-		CONTENT_TYPE_FIND_MATCH:                &FindMatchMessageContent{},
+		CONTENT_TYPE_JOIN_MATCHMAKING:          &FindMatchMessageContent{},
+		CONTENT_TYPE_LEAVE_MATCHMAKING:         &LeaveMatchmakingMessageContent{},
 		CONTENT_TYPE_MATCH_UPDATED:             &MatchUpdateMessageContent{},
 		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
 		CONTENT_TYPE_RESIGN_MATCH:              &ResignMessageContent{},
@@ -102,7 +103,8 @@ const (
 	CONTENT_TYPE_EMPTY                ContentType = "EMPTY"
 	CONTENT_TYPE_ECHO                 ContentType = "ECHO"
 	CONTENT_TYPE_AUTH                 ContentType = "AUTH"
-	CONTENT_TYPE_FIND_MATCH           ContentType = "FIND_MATCH"
+	CONTENT_TYPE_JOIN_MATCHMAKING     ContentType = "JOIN_MATCHMAKING"
+	CONTENT_TYPE_LEAVE_MATCHMAKING    ContentType = "LEAVE_MATCHMAKING"
 	CONTENT_TYPE_MOVE                 ContentType = "MOVE"
 	CONTENT_TYPE_RESIGN_MATCH         ContentType = "RESIGN_MATCH"
 	CONTENT_TYPE_SUBSCRIBE_REQUEST    ContentType = "SUBSCRIBE_REQUEST"
@@ -121,6 +123,8 @@ type AuthMessageContent struct {
 type FindMatchMessageContent struct {
 	TimeControl *TimeControl `json:"timeControl"`
 }
+
+type LeaveMatchmakingMessageContent struct{}
 
 type MatchUpdateMessageContent struct {
 	Match *Match `json:"match"`

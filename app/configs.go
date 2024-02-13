@@ -37,7 +37,7 @@ func GetRouterConfig() *router_service.RouterServiceConfig {
 func GetClientsManagerConfig() *cm.ClientsManagerConfig {
 	configBuilder := cm.NewClientsManagerConfigBuilder()
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_ECHO, cm.HandleEchoMessage)
-	configBuilder.WithMessageHandler(models.CONTENT_TYPE_FIND_MATCH, cm.HandleFindMatchMessage)
+	configBuilder.WithMessageHandler(models.CONTENT_TYPE_JOIN_MATCHMAKING, cm.HandleFindMatchMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_SUBSCRIBE_REQUEST, cm.HandleSubscribeRequestMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST, cm.HandleRequestUpgradeAuthMessage)
 	configBuilder.WithMessageHandler(models.CONTENT_TYPE_MOVE, cm.HandleMoveMessage)
