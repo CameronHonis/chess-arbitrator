@@ -14,7 +14,7 @@ func HandleEchoMessage(m *ClientsManager, msg *models.Message) error {
 	return m.DirectMessage(msg, msg.SenderKey)
 }
 
-func HandleFindMatchMessage(m *ClientsManager, msg *models.Message) error {
+func HandleJoinMatchmakingMessage(m *ClientsManager, msg *models.Message) error {
 	msgContent, ok := msg.Content.(*models.FindMatchMessageContent)
 	if !ok {
 		return fmt.Errorf("could not cast message content to FindMatchMessageContent")
@@ -27,6 +27,10 @@ func HandleFindMatchMessage(m *ClientsManager, msg *models.Message) error {
 		WinStreak:  0,
 		LossStreak: 0,
 	}, msgContent.TimeControl)
+}
+
+func HandleLeaveMatchmakingMessage(m *ClientsManager, msg *models.Message) error {
+	return m.MatchmakingService.RemoveClient(&models.ClientProfile{ClientKey: msg.SenderKey})
 }
 
 func HandleSubscribeRequestMessage(m *ClientsManager, msg *models.Message) error {

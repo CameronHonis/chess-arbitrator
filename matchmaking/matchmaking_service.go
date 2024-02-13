@@ -53,6 +53,7 @@ func (mm *MatchmakingService) AddClient(client *models.ClientProfile, timeContro
 }
 
 func (mm *MatchmakingService) RemoveClient(client *models.ClientProfile) error {
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("removing client %s from matchmaking pool", client.ClientKey))
 	return mm.pool.RemoveClient(client.ClientKey)
 }
 
