@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func BuildServices(ctrl *gomock.Controller) *matcher.MatcherService {
+func CreateServices(ctrl *gomock.Controller) *matcher.MatcherService {
 	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
 	getRole := func(clientKey models.Key) (models.RoleName, error) {
@@ -48,7 +48,7 @@ var _ = Describe("MatcherService", func() {
 	var eventCatcher *test_helpers.EventCatcher
 	BeforeEach(func() {
 		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
-		matcherService = BuildServices(ctrl)
+		matcherService = CreateServices(ctrl)
 		authServiceMock = matcherService.AuthService.(*mocks.MockAuthenticationServiceI)
 		eventCatcher = test_helpers.NewEventCatcher()
 		eventCatcher.AddDependency(matcherService)

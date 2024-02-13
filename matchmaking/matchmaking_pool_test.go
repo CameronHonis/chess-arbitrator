@@ -19,7 +19,7 @@ var _ = Describe("MatchmakingPool", func() {
 		BeforeEach(func() {
 			clientProfile = models.NewClientProfile("some-client-key", 1000)
 		})
-		Context("when the client is not already in the pool", func() {
+		When("the client is not already in the pool", func() {
 			It("should add the client to the pool", func() {
 				err := matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())
 				Expect(err).To(BeNil())
@@ -27,7 +27,7 @@ var _ = Describe("MatchmakingPool", func() {
 				Expect(matchmakingPool.NodeByClientKey(clientProfile.ClientKey)).To(Equal(matchmakingPool.Head()))
 			})
 		})
-		Context("when the client is already in the pool", func() {
+		When("the client is already in the pool", func() {
 			BeforeEach(func() {
 				Expect(matchmakingPool.AddClient(clientProfile, builders.NewBlitzTimeControl())).ToNot(HaveOccurred())
 			})
@@ -36,7 +36,7 @@ var _ = Describe("MatchmakingPool", func() {
 				Expect(err).To(Equal(fmt.Errorf("client with key %s already in pool", clientProfile.ClientKey)))
 			})
 		})
-		Context("when a client is already in the pool", func() {
+		When("a client is already in the pool", func() {
 			var otherClientProfile *models.ClientProfile
 			BeforeEach(func() {
 				otherClientProfile = models.NewClientProfile("some-other-client-key", 1000)

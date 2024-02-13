@@ -8,14 +8,15 @@ import (
 	"github.com/CameronHonis/log"
 	"github.com/CameronHonis/marker"
 	"github.com/CameronHonis/service"
-	"math"
+	"sync"
 	"time"
 )
 
 type MatchmakingServiceI interface {
 	service.ServiceI
 	AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error
-	RemoveClient(client *models.ClientProfile) error
+	RemoveClient(clientKey models.Key) error
+	GetClientCountByTimeControl(timeControl *models.TimeControl) int
 }
 
 type MatchmakingService struct {
@@ -25,13 +26,17 @@ type MatchmakingService struct {
 	LogService       log.LoggerServiceI
 	MatchService     matcher.MatcherServiceI
 
-	__state__ marker.Marker
-	pool      *MatchmakingPool
+	__state__             marker.Marker
+	poolByTimeControlHash map[string]*MatchmakingPool
+	poolByClientKey       map[models.Key]*MatchmakingPool
+	mu                    sync.Mutex
 }
 
 func NewMatchmakingService(config *MatchmakingConfig) *MatchmakingService {
 	matchmakingService := &MatchmakingService{
-		pool: NewMatchmakingPool(),
+		poolByTimeControlHash: make(map[string]*MatchmakingPool),
+		poolByClientKey:       make(map[models.Key]*MatchmakingPool),
+		mu:                    sync.Mutex{},
 	}
 	matchmakingService.Service = *service.NewService(matchmakingService, config)
 
@@ -44,60 +49,101 @@ func (mm *MatchmakingService) OnStart() {
 
 func (mm *MatchmakingService) AddClient(client *models.ClientProfile, timeControl *models.TimeControl) error {
 	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("adding client %s to matchmaking pool", client.ClientKey))
-	addErr := mm.pool.AddClient(client, timeControl)
+
+	timeControlHash := timeControl.Hash()
+
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+	if _, ok := mm.poolByClientKey[client.ClientKey]; ok {
+		return fmt.Errorf("client with key %s already in a different timeControl pool", client.ClientKey)
+	}
+	pool := mm.poolByTimeControlHash[timeControlHash]
+	if pool == nil {
+		pool = NewMatchmakingPool()
+		mm.poolByTimeControlHash[timeControlHash] = pool
+	}
+
+	mm.poolByClientKey[client.ClientKey] = pool
+	addErr := pool.AddClient(client, timeControl)
 	if addErr != nil {
 		return addErr
 	}
-	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(mm.pool.nodeByClientKey)))
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(pool.nodeByClientKey)))
 	return nil
 }
 
-func (mm *MatchmakingService) RemoveClient(client *models.ClientProfile) error {
-	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("removing client %s from matchmaking pool", client.ClientKey))
-	return mm.pool.RemoveClient(client.ClientKey)
+func (mm *MatchmakingService) RemoveClient(clientKey models.Key) error {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("removing client %s from matchmaking pool", clientKey))
+	pool := mm.poolByClientKey[clientKey]
+	if pool == nil {
+		return fmt.Errorf("no pool found for client %s", clientKey)
+	}
+
+	delete(mm.poolByClientKey, clientKey)
+	removeErr := pool.RemoveClient(clientKey)
+	if removeErr != nil {
+		return removeErr
+	}
+
+	mm.LogService.Log(models.ENV_MATCHMAKING, fmt.Sprintf("%d clients in pool", len(pool.nodeByClientKey)))
+	return nil
+}
+
+func (mm *MatchmakingService) GetClientCountByTimeControl(timeControl *models.TimeControl) int {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+
+	pool := mm.poolByTimeControlHash[timeControl.Hash()]
+	if pool == nil {
+		return 0
+	}
+	return len(pool.nodeByClientKey)
 }
 
 func (mm *MatchmakingService) loopMatchmaking() {
 	for {
 		time.Sleep(time.Second)
-		if mm.pool.Head() == mm.pool.Tail() {
-			continue
-		}
-		currPoolNode := mm.pool.Head()
-		for currPoolNode != nil && currPoolNode.next != nil {
-			waitTime := time.Now().Unix() - currPoolNode.timeJoined
-			bestMatchPoolNode := currPoolNode.next
-			bestMatchWeight := float64(10000000000)
-			nextPoolNode := currPoolNode.next
-			for nextPoolNode != nil {
-				nextPoolNodeMatchWeight := weightProfileDiff(currPoolNode.clientProfile, nextPoolNode.clientProfile, waitTime)
-				if nextPoolNodeMatchWeight < bestMatchWeight {
-					bestMatchPoolNode = nextPoolNode
-					bestMatchWeight = nextPoolNodeMatchWeight
-				}
-				nextPoolNode = nextPoolNode.next
+		for _, pool := range mm.poolByTimeControlHash {
+			mm.mu.Lock()
+			head := pool.Head()
+			tail := pool.Tail()
+			mm.mu.Unlock()
+
+			if head == tail {
+				continue
 			}
-			clientA := currPoolNode.clientProfile
-			clientB := bestMatchPoolNode.clientProfile
-			if IsMatchable(clientA, clientB, waitTime) {
-				matchErr := mm.matchClients(clientA, clientB)
+			currPoolNode := head
+			for currPoolNode != nil && currPoolNode.next != nil {
+				waitTime := time.Now().Unix() - currPoolNode.timeJoined
+
+				clientA := currPoolNode.clientProfile
+				clientB, _ := pool.GetBestMatch(currPoolNode, waitTime)
+				if clientB == nil {
+					continue
+				}
+
+				matchErr := mm.MatchClient(clientA, clientB)
 				if matchErr != nil {
 					mm.LogService.LogRed(models.ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
 					mm.LogService.LogGreen(models.ENV_MATCHMAKING, fmt.Sprintf("matched clients %s and %s\n", clientA.ClientKey, clientB.ClientKey))
 				}
+
+				currPoolNode = currPoolNode.next
 			}
-			currPoolNode = currPoolNode.next
 		}
 	}
 }
 
-func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, clientB *models.ClientProfile) error {
-	removeErr := mm.pool.RemoveClient(clientA.ClientKey)
+func (mm *MatchmakingService) MatchClient(clientA *models.ClientProfile, clientB *models.ClientProfile) error {
+	removeErr := mm.RemoveClient(clientA.ClientKey)
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientA.ClientKey, removeErr)
 	}
-	removeErr = mm.pool.RemoveClient(clientB.ClientKey)
+	removeErr = mm.RemoveClient(clientB.ClientKey)
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
@@ -107,14 +153,4 @@ func (mm *MatchmakingService) matchClients(clientA *models.ClientProfile, client
 		return fmt.Errorf("error adding match %s: %s", match.Uuid, addMatchErr)
 	}
 	return nil
-}
-
-func IsMatchable(clientA *models.ClientProfile, clientB *models.ClientProfile, longestWaitSeconds int64) bool {
-	return weightProfileDiff(clientA, clientB, longestWaitSeconds) <= 100
-}
-
-func weightProfileDiff(p1 *models.ClientProfile, p2 *models.ClientProfile, longestWaitSeconds int64) float64 {
-	eloDiff := math.Abs(float64(p1.Elo - p2.Elo))
-	eloCoeff := 100 / (float64(longestWaitSeconds) + 50) // asymptotic curve approaches 0, 2 @ t=0, 1 @ t=50, 0.5 @ t=100
-	return eloDiff * eloCoeff
 }

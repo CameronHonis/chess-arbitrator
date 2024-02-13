@@ -3,6 +3,7 @@ package matchmaking
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"math"
 	"sync"
 	"time"
 )
@@ -36,7 +37,7 @@ func (n *MMPoolNode) ClientProfile() *models.ClientProfile {
 }
 
 type MatchmakingPool struct {
-	// doubly linked list of client profiles, sorted by queue time
+	// doubly linked list of client profiles, sorted by queue time (oldest to newest)
 	// prioritizes add/remove speed
 	head *MMPoolNode
 	tail *MMPoolNode
@@ -109,4 +110,39 @@ func (mmp *MatchmakingPool) RemoveClient(clientKey models.Key) error {
 	}
 	delete(mmp.nodeByClientKey, clientKey)
 	return nil
+}
+
+func (mmp *MatchmakingPool) GetBestMatch(node *MMPoolNode, waitTime int64) (*models.ClientProfile, error) {
+	bestMatchPoolNode := node.next
+	bestMatchWeight := float64(10000000000)
+	nextPoolNode := node.next
+	for nextPoolNode != nil {
+		nextPoolNodeMatchWeight := weightProfileDiff(node.clientProfile, nextPoolNode.clientProfile, waitTime)
+
+		if !IsMatchable(node.clientProfile, nextPoolNode.clientProfile, waitTime) {
+			nextPoolNode = nextPoolNode.next
+			continue
+		}
+
+		if nextPoolNodeMatchWeight < bestMatchWeight {
+			bestMatchPoolNode = nextPoolNode
+			bestMatchWeight = nextPoolNodeMatchWeight
+		}
+		nextPoolNode = nextPoolNode.next
+	}
+
+	if bestMatchPoolNode == nil {
+		return nil, fmt.Errorf("no possible matches found")
+	}
+	return bestMatchPoolNode.clientProfile, nil
+}
+
+func weightProfileDiff(p1 *models.ClientProfile, p2 *models.ClientProfile, longestWaitSeconds int64) float64 {
+	eloDiff := math.Abs(float64(p1.Elo - p2.Elo))
+	eloCoeff := 100 / (float64(longestWaitSeconds) + 50) // asymptotic curve approaches 0, 2 @ t=0, 1 @ t=50, 0.5 @ t=100
+	return eloDiff * eloCoeff
+}
+
+func IsMatchable(clientA *models.ClientProfile, clientB *models.ClientProfile, longestWaitSeconds int64) bool {
+	return weightProfileDiff(clientA, clientB, longestWaitSeconds) <= 100
 }

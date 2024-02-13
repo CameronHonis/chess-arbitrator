@@ -30,7 +30,7 @@ func HandleJoinMatchmakingMessage(m *ClientsManager, msg *models.Message) error 
 }
 
 func HandleLeaveMatchmakingMessage(m *ClientsManager, msg *models.Message) error {
-	return m.MatchmakingService.RemoveClient(&models.ClientProfile{ClientKey: msg.SenderKey})
+	return m.MatchmakingService.RemoveClient(msg.SenderKey)
 }
 
 func HandleSubscribeRequestMessage(m *ClientsManager, msg *models.Message) error {
