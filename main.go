@@ -9,7 +9,7 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	app := app.BuildServices()
-	app.Start()
+	appService := app.BuildServices()
+	appService.Start()
 	wg.Wait()
 }
