@@ -53,8 +53,9 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
 	contentStructMap := map[ContentType]interface{}{
 		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
+		CONTENT_TYPE_INVALID_AUTH:              &NoMessageContent{},
 		CONTENT_TYPE_JOIN_MATCHMAKING:          &FindMatchMessageContent{},
-		CONTENT_TYPE_LEAVE_MATCHMAKING:         &LeaveMatchmakingMessageContent{},
+		CONTENT_TYPE_LEAVE_MATCHMAKING:         &NoMessageContent{},
 		CONTENT_TYPE_MATCH_UPDATED:             &MatchUpdateMessageContent{},
 		CONTENT_TYPE_MOVE:                      &MoveMessageContent{},
 		CONTENT_TYPE_RESIGN_MATCH:              &ResignMessageContent{},
@@ -89,6 +90,8 @@ type ContentType string
 
 const (
 	// arbitrator responses
+	CONTENT_TYPE_AUTH                      ContentType = "AUTH"
+	CONTENT_TYPE_INVALID_AUTH              ContentType = "INVALID_AUTH"
 	CONTENT_TYPE_MATCH_UPDATED             ContentType = "MATCH_UPDATED"
 	CONTENT_TYPE_CHALLENGE_UPDATED         ContentType = "CHALLENGE_UPDATED"
 	CONTENT_TYPE_MOVE_FAILED               ContentType = "MOVE_FAILED"
@@ -102,7 +105,6 @@ const (
 	// client requests
 	CONTENT_TYPE_EMPTY                ContentType = "EMPTY"
 	CONTENT_TYPE_ECHO                 ContentType = "ECHO"
-	CONTENT_TYPE_AUTH                 ContentType = "AUTH"
 	CONTENT_TYPE_JOIN_MATCHMAKING     ContentType = "JOIN_MATCHMAKING"
 	CONTENT_TYPE_LEAVE_MATCHMAKING    ContentType = "LEAVE_MATCHMAKING"
 	CONTENT_TYPE_MOVE                 ContentType = "MOVE"
@@ -115,6 +117,8 @@ const (
 	CONTENT_TYPE_REVOKE_CHALLENGE     ContentType = "REVOKE_CHALLENGE"
 )
 
+type NoMessageContent struct{}
+
 type AuthMessageContent struct {
 	PublicKey  Key `json:"publicKey"`
 	PrivateKey Key `json:"privateKey"`
@@ -123,8 +127,6 @@ type AuthMessageContent struct {
 type FindMatchMessageContent struct {
 	TimeControl *TimeControl `json:"timeControl"`
 }
-
-type LeaveMatchmakingMessageContent struct{}
 
 type MatchUpdateMessageContent struct {
 	Match *Match `json:"match"`

@@ -178,6 +178,8 @@ func (c *ClientsManager) readMessage(clientKey models.Key, rawMsg []byte) error 
 		return fmt.Errorf("error unmarshalling message: %s", unmarshalErr)
 	}
 	if authErr := c.AuthService.ValidateAuthInMessage(msg); authErr != nil {
+		sendDeps := NewSendDirectDeps(c.DirectMessage, clientKey)
+		_ = SendInvalidAuth(sendDeps)
 		return fmt.Errorf("error validating auth in message: %s", authErr)
 	}
 	c.AuthService.StripAuthFromMessage(msg)

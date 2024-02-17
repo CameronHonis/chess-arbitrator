@@ -132,6 +132,20 @@ func (mr *MockMatchmakingServiceIMockRecorder) Dispatch(event any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dispatch", reflect.TypeOf((*MockMatchmakingServiceI)(nil).Dispatch), event)
 }
 
+// GetClientCountByTimeControl mocks base method.
+func (m *MockMatchmakingServiceI) GetClientCountByTimeControl(timeControl *models.TimeControl) int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetClientCountByTimeControl", timeControl)
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetClientCountByTimeControl indicates an expected call of GetClientCountByTimeControl.
+func (mr *MockMatchmakingServiceIMockRecorder) GetClientCountByTimeControl(timeControl any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClientCountByTimeControl", reflect.TypeOf((*MockMatchmakingServiceI)(nil).GetClientCountByTimeControl), timeControl)
+}
+
 // OnBuild mocks base method.
 func (m *MockMatchmakingServiceI) OnBuild() {
 	m.ctrl.T.Helper()
@@ -157,17 +171,17 @@ func (mr *MockMatchmakingServiceIMockRecorder) OnStart() *gomock.Call {
 }
 
 // RemoveClient mocks base method.
-func (m *MockMatchmakingServiceI) RemoveClient(client *models.ClientProfile) error {
+func (m *MockMatchmakingServiceI) RemoveClient(clientKey models.Key) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveClient", client)
+	ret := m.ctrl.Call(m, "RemoveClient", clientKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveClient indicates an expected call of RemoveClient.
-func (mr *MockMatchmakingServiceIMockRecorder) RemoveClient(client any) *gomock.Call {
+func (mr *MockMatchmakingServiceIMockRecorder) RemoveClient(clientKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveClient", reflect.TypeOf((*MockMatchmakingServiceI)(nil).RemoveClient), client)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveClient", reflect.TypeOf((*MockMatchmakingServiceI)(nil).RemoveClient), clientKey)
 }
 
 // RemoveEventListener mocks base method.

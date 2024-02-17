@@ -27,6 +27,13 @@ func SendAuth(deps *SendDirectDeps, client *models.Client) error {
 	}, client.PublicKey())
 }
 
+func SendInvalidAuth(deps *SendDirectDeps) error {
+	return deps.writer(&models.Message{
+		ContentType: models.CONTENT_TYPE_INVALID_AUTH,
+		Content:     &models.NoMessageContent{},
+	}, deps.clientKey)
+}
+
 func SendUpgradeAuthGranted(deps *SendDirectDeps, role models.RoleName) error {
 	return deps.writer(&models.Message{
 		ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED,
