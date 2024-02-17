@@ -17,6 +17,7 @@ import (
 )
 
 const PRINT_INBOUND_MSGS = false
+const PRINT_OUTBOUND_MSGS = false
 
 func TestArbitrator(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -118,12 +119,15 @@ func connectClient(msgQueue *MsgQueue, clientName string) *websocket.Conn {
 	return clientConn
 }
 
-func sendMsg(conn *websocket.Conn, pubKey, privKey models.Key, msg *models.Message) {
+func sendMsg(clientName string, conn *websocket.Conn, pubKey, privKey models.Key, msg *models.Message) {
 	msg.SenderKey = pubKey
 	msg.PrivateKey = privKey
 	msgBytes, marshalErr := msg.Marshal()
 	if marshalErr != nil {
 		panic(marshalErr)
+	}
+	if PRINT_OUTBOUND_MSGS {
+		fmt.Printf("[%s] >> %s\n", clientName, string(msgBytes))
 	}
 	if writeErr := conn.WriteMessage(websocket.TextMessage, msgBytes); writeErr != nil {
 		panic(writeErr)
@@ -167,14 +171,16 @@ var _ = Describe("Workflows", func() {
 	})
 
 	Describe("request auth upgrade", func() {
-		It("responds with an Upgrade Auth Msg", func() {
+		var pubKey models.Key
+		var privKey models.Key
+		BeforeEach(func() {
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
 			msgQueue.flush()
 
-			pubKey := authMsg.Content.(*models.AuthMessageContent).PublicKey
-			privKey := authMsg.Content.(*models.AuthMessageContent).PrivateKey
+			pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
+			privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
 			secret, _ := (&auth.AuthenticationService{}).GetSecret(models.BOT)
-			sendMsg(conn, pubKey, privKey, &models.Message{
+			sendMsg("A", conn, pubKey, privKey, &models.Message{
 				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
 				Content: &models.UpgradeAuthRequestMessageContent{
 					Role:   models.BOT,
@@ -182,15 +188,14 @@ var _ = Describe("Workflows", func() {
 				},
 			})
 
-			Eventually(func() []*models.Message {
-				msgs := msgQueue.toSlice()
-				return msgs
-			}).Should(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
-				"ContentType": Equal(models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED),
-				"Content": PointTo(MatchAllFields(Fields{
+		})
+		It("responds with an Upgrade Auth Msg", func() {
+			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED)
+			Expect(authMsg).To(PointTo(HaveField(
+				"Content", PointTo(MatchAllFields(Fields{
 					"UpgradedToRole": BeEquivalentTo(models.BOT),
 				})),
-			}))))
+			)))
 		})
 	})
 
@@ -223,7 +228,7 @@ var _ = Describe("Workflows", func() {
 				builders.NewBlitzTimeControl(),
 				"",
 				true)
-			sendMsg(conn, clientAPubKey, clientAPrivKey, &models.Message{
+			sendMsg("A", conn, clientAPubKey, clientAPrivKey, &models.Message{
 				ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
 				Content: &models.ChallengeRequestMessageContent{
 					Challenge: challengeAtoB,
@@ -258,7 +263,7 @@ var _ = Describe("Workflows", func() {
 				_ = listenForMsgType(clientBMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
 				clientBMsgQueue.flush()
 
-				sendMsg(conn, clientAPubKey, clientAPrivKey, &models.Message{
+				sendMsg("A", conn, clientAPubKey, clientAPrivKey, &models.Message{
 					ContentType: models.CONTENT_TYPE_REVOKE_CHALLENGE,
 					Content: &models.RevokeChallengeMessageContent{
 						ChallengedClientKey: challengeAtoB.ChallengedKey,
@@ -301,7 +306,7 @@ var _ = Describe("Workflows", func() {
 				_ = listenForMsgType(clientBMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
 				clientBMsgQueue.flush()
 
-				sendMsg(clientBConn, clientBPubKey, clientBPrivKey, &models.Message{
+				sendMsg("B", clientBConn, clientBPubKey, clientBPrivKey, &models.Message{
 					ContentType: models.CONTENT_TYPE_ACCEPT_CHALLENGE,
 					Content: &models.AcceptChallengeMessageContent{
 						ChallengerClientKey: challengeAtoB.ChallengerKey,
@@ -359,7 +364,7 @@ var _ = Describe("Workflows", func() {
 				_ = listenForMsgType(clientBMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
 				clientBMsgQueue.flush()
 
-				sendMsg(clientBConn, clientBPubKey, clientBPrivKey, &models.Message{
+				sendMsg("B", clientBConn, clientBPubKey, clientBPrivKey, &models.Message{
 					ContentType: models.CONTENT_TYPE_DECLINE_CHALLENGE,
 					Content: &models.DeclineChallengeMessageContent{
 						ChallengerClientKey: challengeAtoB.ChallengerKey,
@@ -399,7 +404,7 @@ var _ = Describe("Workflows", func() {
 			privKeyB = authMsgToB.Content.(*models.AuthMessageContent).PrivateKey
 			_ = authMsgToB.Content.(*models.AuthMessageContent).PrivateKey
 
-			sendMsg(conn, pubKeyA, privKeyA, &models.Message{
+			sendMsg("A", conn, pubKeyA, privKeyA, &models.Message{
 				ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
 				Content: &models.ChallengeRequestMessageContent{
 					Challenge: builders.NewChallenge(
@@ -418,7 +423,7 @@ var _ = Describe("Workflows", func() {
 			_ = listenForMsgType(msgQueueB, models.CONTENT_TYPE_CHALLENGE_UPDATED)
 			msgQueueB.flush()
 
-			sendMsg(connB, pubKeyB, privKeyB, &models.Message{
+			sendMsg("B", connB, pubKeyB, privKeyB, &models.Message{
 				ContentType: models.CONTENT_TYPE_ACCEPT_CHALLENGE,
 				Content: &models.AcceptChallengeMessageContent{
 					ChallengerClientKey: pubKeyA,
@@ -441,7 +446,7 @@ var _ = Describe("Workflows", func() {
 				pubKeyC = thirdAuthMsg.Content.(*models.AuthMessageContent).PublicKey
 				thirdClientPrivKey := thirdAuthMsg.Content.(*models.AuthMessageContent).PrivateKey
 
-				sendMsg(thirdClientConn, pubKeyC, thirdClientPrivKey, &models.Message{
+				sendMsg("C", thirdClientConn, pubKeyC, thirdClientPrivKey, &models.Message{
 					ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
 					Content: &models.ChallengeRequestMessageContent{
 						Challenge: builders.NewChallenge(
@@ -482,7 +487,7 @@ var _ = Describe("Workflows", func() {
 					_ = listenForMsgType(msgQueueC, models.CONTENT_TYPE_CHALLENGE_UPDATED)
 					msgQueueC.flush()
 
-					sendMsg(conn, pubKeyA, privKeyA, &models.Message{
+					sendMsg("A", conn, pubKeyA, privKeyA, &models.Message{
 						ContentType: models.CONTENT_TYPE_ACCEPT_CHALLENGE,
 						Content: &models.AcceptChallengeMessageContent{
 							ChallengerClientKey: pubKeyC,
@@ -513,7 +518,7 @@ var _ = Describe("Workflows", func() {
 		})
 		Describe("and client B challenges client A", func() {
 			BeforeEach(func() {
-				sendMsg(connB, pubKeyB, privKeyB, &models.Message{
+				sendMsg("B", connB, pubKeyB, privKeyB, &models.Message{
 					ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
 					Content: &models.ChallengeRequestMessageContent{
 						Challenge: builders.NewChallenge(
@@ -535,6 +540,20 @@ var _ = Describe("Workflows", func() {
 					)),
 				)))
 			})
+		})
+	})
+
+	When("the request doesn't include auth keys", func() {
+		It("responds with an invalid auth msg", func() {
+			sendMsg("A", conn, "", "", &models.Message{
+				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
+				Content: &models.UpgradeAuthRequestMessageContent{
+					Role:   models.BOT,
+					Secret: "secret",
+				},
+			})
+
+			listenForMsgType(msgQueue, models.CONTENT_TYPE_INVALID_AUTH)
 		})
 	})
 })
