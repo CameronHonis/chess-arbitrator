@@ -122,6 +122,32 @@ var OnChallengeAccepted = func(s ServiceI, event EventI) bool {
 	return true
 }
 
+var OnChallengeAcceptFailed = func(s ServiceI, event EventI) bool {
+	clientManager := s.(*ClientsManager)
+	baseErrMsg := "could not follow up on challenge accept failed: "
+
+	challenge := event.Payload().(*matcher.ChallengeAcceptFailedEventPayload).Challenge
+	if challenge == nil {
+		return true
+	}
+	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
+
+	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
+	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
+
+	challengerSubErr := clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
+	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
+
+	if challengerSubErr != nil {
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+	}
+	if challengedSubErr != nil {
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+	}
+
+	return true
+}
+
 var OnMatchCreated = func(self ServiceI, event EventI) bool {
 	clientsManager := self.(*ClientsManager)
 	baseErrMsg := "could not follow up on match created: "

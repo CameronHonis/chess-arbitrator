@@ -248,6 +248,7 @@ func (m *MatcherService) AcceptChallenge(challengerKey, challengedKey models.Key
 
 	match := builders.NewMatchBuilder().FromChallenge(challenge).Build()
 	if addMatchErr := m.AddMatch(match); addMatchErr != nil {
+		go m.Dispatch(NewChallengeAcceptFailedEvent(challenge, fmt.Sprintf("could not add match: %s", addMatchErr)))
 		return addMatchErr
 	}
 
@@ -294,7 +295,7 @@ func (m *MatcherService) AddMatch(match *models.Match) error {
 		return fmt.Errorf("white client %s unavailable for matcher: %s", match.WhiteClientKey, whiteAvailableErr.Error())
 	}
 	if blackAvailableErr := m.validateClientAvailable(match.BlackClientKey); blackAvailableErr != nil {
-		go m.Dispatch(NewMatchCreationFailedEvent(match.BlackClientKey, match.BlackClientKey, "black client unavailable for matcher"))
+		go m.Dispatch(NewMatchCreationFailedEvent(match.WhiteClientKey, match.BlackClientKey, "black client unavailable for matcher"))
 		return fmt.Errorf("black client %s unavailable for matcher: %s", match.BlackClientKey, blackAvailableErr.Error())
 	}
 

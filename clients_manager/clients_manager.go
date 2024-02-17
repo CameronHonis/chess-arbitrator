@@ -56,6 +56,7 @@ func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(matcher.CHALLENGE_REVOKED, OnChallengeRevoked)
 	c.AddEventListener(matcher.CHALLENGE_DENIED, OnChallengeDenied)
 	c.AddEventListener(matcher.CHALLENGE_ACCEPTED, OnChallengeAccepted)
+	c.AddEventListener(matcher.CHALLENGE_ACCEPT_FAILED, OnChallengeAcceptFailed)
 	c.AddEventListener(matcher.MATCH_CREATED, OnMatchCreated)
 	c.AddEventListener(matcher.MATCH_CREATION_FAILED, OnMatchCreationFailed)
 	c.AddEventListener(matcher.MATCH_UPDATED, OnMatchUpdated)
