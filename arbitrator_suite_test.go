@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/app"
 	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/builders"
@@ -191,15 +192,16 @@ var _ = Describe("Workflows", func() {
 	})
 
 	Describe("send challenge", func() {
-		//var challengedConn *websocket.Conn
+		var challengedConn *websocket.Conn
 		var challengedMsgQueue *MsgQueue
 		var challengerPubKey models.Key
 		var challengerPrivKey models.Key
 		var challengedPubKey models.Key
+		var challengedPrivKey models.Key
 		var challenge *models.Challenge
 		BeforeEach(func() {
 			challengedMsgQueue = newMsgQueue()
-			_ = connectClient(challengedMsgQueue)
+			challengedConn = connectClient(challengedMsgQueue)
 
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
 			msgQueue.flush()
@@ -209,6 +211,7 @@ var _ = Describe("Workflows", func() {
 			challengerPubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
 			challengerPrivKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
 			challengedPubKey = challengedAuthMsg.Content.(*models.AuthMessageContent).PublicKey
+			challengedPrivKey = challengedAuthMsg.Content.(*models.AuthMessageContent).PrivateKey
 			challenge = builders.NewChallenge(
 				challengerPubKey,
 				challengedPubKey,
@@ -229,7 +232,7 @@ var _ = Describe("Workflows", func() {
 			Expect(challengeUpdatedMsg).To(PointTo(HaveField(
 				"Content", PointTo(HaveField(
 					"Challenge", PointTo(MatchAllFields(Fields{
-						"Uuid":              Ignore(),
+						"Uuid":              Not(BeNil()),
 						"ChallengerKey":     Equal(challenge.ChallengerKey),
 						"ChallengedKey":     Equal(challenge.ChallengedKey),
 						"IsChallengerWhite": Equal(challenge.IsChallengerWhite),
@@ -246,8 +249,39 @@ var _ = Describe("Workflows", func() {
 			Expect(challengedChallengeUpdateMsg).To(Equal(challengeUpdatedMsg))
 		})
 		Describe("and the challenger client revokes the challenge", func() {
-			It("responds to both clients with a challenge update msg", func() {
+			BeforeEach(func() {
+				_ = listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				msgQueue.flush()
+				_ = listenForMsgType(challengedMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				challengedMsgQueue.flush()
 
+				sendMsg(conn, challengerPubKey, challengerPrivKey, &models.Message{
+					ContentType: models.CONTENT_TYPE_REVOKE_CHALLENGE,
+					Content: &models.RevokeChallengeMessageContent{
+						ChallengedClientKey: challenge.ChallengedKey,
+					},
+				})
+			})
+			It("responds to both clients with a challenge update msg", func() {
+				challengeUpdatedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				Expect(challengeUpdatedMsg).To(PointTo(HaveField(
+					"Content", PointTo(HaveField(
+						"Challenge", PointTo(MatchAllFields(Fields{
+							"Uuid":              Not(BeNil()),
+							"ChallengerKey":     Equal(challenge.ChallengerKey),
+							"ChallengedKey":     Equal(challenge.ChallengedKey),
+							"IsChallengerWhite": Equal(challenge.IsChallengerWhite),
+							"IsChallengerBlack": Equal(challenge.IsChallengerBlack),
+							"TimeControl":       Equal(challenge.TimeControl),
+							"BotName":           BeEmpty(),
+							"TimeCreated":       PointTo(BeTemporally(">=", time.Now().Add(-2*time.Second))),
+							"IsActive":          BeFalse(),
+						})),
+					)),
+				)))
+
+				challengedChallengeUpdateMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				Expect(challengedChallengeUpdateMsg).To(Equal(challengeUpdatedMsg))
 			})
 		})
 		Describe("and the challenger client disconnects", func() {
@@ -258,16 +292,86 @@ var _ = Describe("Workflows", func() {
 			})
 		})
 		Describe("and the challenged client accepts", func() {
-			It("responds to both clients with a challenge accepted msg", func() {
+			BeforeEach(func() {
+				_ = listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				msgQueue.flush()
+				_ = listenForMsgType(challengedMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				challengedMsgQueue.flush()
 
+				sendMsg(challengedConn, challengedPubKey, challengedPrivKey, &models.Message{
+					ContentType: models.CONTENT_TYPE_ACCEPT_CHALLENGE,
+					Content: &models.AcceptChallengeMessageContent{
+						ChallengerClientKey: challenge.ChallengerKey,
+					},
+				})
+			})
+			It("responds to both clients with an inactive challenge msg", func() {
+				challengeAcceptedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				Expect(challengeAcceptedMsg).To(PointTo(HaveField(
+					"Content", PointTo(HaveField(
+						"Challenge", PointTo(MatchAllFields(Fields{
+							"Uuid":              Not(BeNil()),
+							"ChallengerKey":     Equal(challenge.ChallengerKey),
+							"ChallengedKey":     Equal(challenge.ChallengedKey),
+							"IsChallengerWhite": Equal(challenge.IsChallengerWhite),
+							"IsChallengerBlack": Equal(challenge.IsChallengerBlack),
+							"TimeControl":       Equal(challenge.TimeControl),
+							"BotName":           BeEmpty(),
+							"TimeCreated":       PointTo(BeTemporally(">=", time.Now().Add(-2*time.Second))),
+							"IsActive":          BeFalse(),
+						})),
+					)),
+				)))
+
+				challengedChallengeAcceptedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				Expect(challengedChallengeAcceptedMsg).To(Equal(challengeAcceptedMsg))
 			})
 			It("responds to both clients with a match created msg", func() {
+				matchCreatedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_MATCH_UPDATED)
+				Expect(matchCreatedMsg).To(PointTo(HaveField(
+					"Content", PointTo(HaveField(
+						"Match", PointTo(MatchAllFields(Fields{
+							"Uuid":                  Not(BeNil()),
+							"Board":                 Equal(chess.GetInitBoard()),
+							"WhiteClientKey":        Equal(challenge.ChallengerKey),
+							"WhiteTimeRemainingSec": Equal(300.0),
+							"BlackClientKey":        Equal(challenge.ChallengedKey),
+							"BlackTimeRemainingSec": Equal(300.0),
+							"TimeControl":           Equal(challenge.TimeControl),
+							"BotName":               Equal(""),
+							"LastMoveTime":          Ignore(),
+							"Result":                Equal(models.MATCH_RESULT_IN_PROGRESS),
+						})),
+					)),
+				)))
 
+				challengedMatchCreatedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_MATCH_UPDATED)
+				Expect(challengedMatchCreatedMsg).To(Equal(matchCreatedMsg))
 			})
 		})
 		Describe("and the challenged declines", func() {
-			It("responds to both clients with a challenge removed msg", func() {
+			BeforeEach(func() {
+				_ = listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				msgQueue.flush()
+				_ = listenForMsgType(challengedMsgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				challengedMsgQueue.flush()
 
+				sendMsg(challengedConn, challengedPubKey, challengedPrivKey, &models.Message{
+					ContentType: models.CONTENT_TYPE_DECLINE_CHALLENGE,
+					Content: &models.DeclineChallengeMessageContent{
+						ChallengerClientKey: challenge.ChallengerKey,
+					},
+				})
+			})
+			It("responds to both clients with an inactive challenge update", func() {
+				challengeUpdatedMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+				Expect(challengeUpdatedMsg).To(PointTo(HaveField(
+					"Content", PointTo(HaveField(
+						"Challenge", PointTo(HaveField(
+							"IsActive", BeFalse(),
+						)),
+					)),
+				)))
 			})
 		})
 	})
