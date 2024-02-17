@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/CameronHonis/chess v0.0.0-20240209135107-c9b4c60ee9bb
-	github.com/CameronHonis/log v0.0.0-20240124043445-36fa39f6d669
+	github.com/CameronHonis/log v0.0.0-20240217020729-dd2bc7ede4b6
 	github.com/CameronHonis/marker v0.0.0-20231220043644-4b47686a2d7b
 	github.com/CameronHonis/service v0.0.0-20240129185253-97bdfd0882f6
 	github.com/CameronHonis/set v0.0.0-20240120001402-957bb72dae93
@@ -12,23 +12,22 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.30.0
+	go.uber.org/mock v0.4.0
 )
 
-replace github.com/CameronHonis/chess => ../chess
-
-replace github.com/CameronHonis/log => ../log
-
-replace github.com/CameronHonis/set => ../set
-
-replace github.com/CameronHonis/service => ../service
+//replace github.com/CameronHonis/chess => ../chess
+//
+//replace github.com/CameronHonis/log => ../log
+//
+//replace github.com/CameronHonis/set => ../set
+//
+//replace github.com/CameronHonis/service => ../service
 
 require (
-	github.com/CameronHonis/stub v0.0.0-20240102233347-cfe07ec39d50 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20231101202521-4ca4178f5c7a // indirect
-	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
