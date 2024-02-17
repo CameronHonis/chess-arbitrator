@@ -78,7 +78,7 @@ func (m *MsgQueue) toSlice() []*models.Message {
 var appService app.AppServiceI
 
 var _ = BeforeSuite(func() {
-	appService = app.BuildServices()
+	appService = app.BuildServices(app.GetMutedLoggerConfig())
 	appService.Start()
 })
 
@@ -190,7 +190,7 @@ var _ = Describe("Workflows", func() {
 		})
 	})
 
-	FDescribe("send challenge", func() {
+	Describe("send challenge", func() {
 		//var challengedConn *websocket.Conn
 		var challengedMsgQueue *MsgQueue
 		var challengerPubKey models.Key

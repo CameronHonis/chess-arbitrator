@@ -30,6 +30,12 @@ func GetLoggerConfig() *LoggerConfig {
 	return logConfigBuilder.Build()
 }
 
+func GetMutedLoggerConfig() *LoggerConfig {
+	logConfigBuilder := NewConfigBuilder()
+	logConfigBuilder.WithIsMuted(true)
+	return logConfigBuilder.Build()
+}
+
 func GetRouterConfig() *router_service.RouterServiceConfig {
 	return router_service.NewRouterServiceConfig()
 }
