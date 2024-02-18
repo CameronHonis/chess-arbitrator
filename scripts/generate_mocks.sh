@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd helpers || exit
+cd ../helpers || exit
 
 mkdir -p mocks
 rm -rf mocks/*

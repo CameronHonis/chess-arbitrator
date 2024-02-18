@@ -162,9 +162,13 @@ func (am *AuthenticationService) SetRole(clientKey models.Key, role models.RoleN
 }
 
 func (am *AuthenticationService) GetSecret(role models.RoleName) (string, error) {
+	env, _ := os.LookupEnv("ENV")
 	envName, ok := models.ENV_NAME_BY_ROLE_NAME[role]
 	if !ok {
 		return "", fmt.Errorf("could not find env name for role %s", role)
+	}
+	if env == "test" {
+		return envName, nil
 	}
 	secret, secretExists := os.LookupEnv(envName)
 	if !secretExists {
