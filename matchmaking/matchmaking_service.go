@@ -125,7 +125,7 @@ func (mm *MatchmakingService) loopMatchmaking() {
 					continue
 				}
 
-				matchErr := mm.MatchClient(clientA, clientB)
+				matchErr := mm.MatchClient(clientA, clientB, currPoolNode.timeControl)
 				if matchErr != nil {
 					mm.LogService.LogRed(models.ENV_MATCHMAKING, fmt.Sprintf("error matching clients %s and %s: %s\n", clientA.ClientKey, clientB.ClientKey, matchErr))
 				} else {
@@ -138,7 +138,7 @@ func (mm *MatchmakingService) loopMatchmaking() {
 	}
 }
 
-func (mm *MatchmakingService) MatchClient(clientA *models.ClientProfile, clientB *models.ClientProfile) error {
+func (mm *MatchmakingService) MatchClient(clientA *models.ClientProfile, clientB *models.ClientProfile, timeControl *models.TimeControl) error {
 	removeErr := mm.RemoveClient(clientA.ClientKey)
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientA.ClientKey, removeErr)
@@ -147,7 +147,7 @@ func (mm *MatchmakingService) MatchClient(clientA *models.ClientProfile, clientB
 	if removeErr != nil {
 		return fmt.Errorf("error removing client %s from matchmaking pool: %s", clientB.ClientKey, removeErr)
 	}
-	match := builders.NewMatch(clientA.ClientKey, clientB.ClientKey, builders.NewBulletTimeControl(), models.MATCH_RESULT_IN_PROGRESS)
+	match := builders.NewMatch(clientA.ClientKey, clientB.ClientKey, timeControl, models.MATCH_RESULT_IN_PROGRESS)
 	addMatchErr := mm.MatchService.AddMatch(match)
 	if addMatchErr != nil {
 		return fmt.Errorf("error adding match %s: %s", match.Uuid, addMatchErr)
