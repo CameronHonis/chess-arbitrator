@@ -236,6 +236,20 @@ func (mr *MockAuthenticationServiceIMockRecorder) SetParent(parent any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParent", reflect.TypeOf((*MockAuthenticationServiceI)(nil).SetParent), parent)
 }
 
+// SetRole mocks base method.
+func (m *MockAuthenticationServiceI) SetRole(clientKey models.Key, role models.RoleName) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRole", clientKey, role)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRole indicates an expected call of SetRole.
+func (mr *MockAuthenticationServiceIMockRecorder) SetRole(clientKey, role any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRole", reflect.TypeOf((*MockAuthenticationServiceI)(nil).SetRole), clientKey, role)
+}
+
 // Start mocks base method.
 func (m *MockAuthenticationServiceI) Start() {
 	m.ctrl.T.Helper()
@@ -261,9 +275,9 @@ func (mr *MockAuthenticationServiceIMockRecorder) StripAuthFromMessage(msg any) 
 }
 
 // UpgradeAuth mocks base method.
-func (m *MockAuthenticationServiceI) UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error {
+func (m *MockAuthenticationServiceI) SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpgradeAuth", clientKey, roleName, secret)
+	ret := m.ctrl.Call(m, "SwitchRole", clientKey, roleName, secret)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -271,7 +285,7 @@ func (m *MockAuthenticationServiceI) UpgradeAuth(clientKey models.Key, roleName 
 // UpgradeAuth indicates an expected call of UpgradeAuth.
 func (mr *MockAuthenticationServiceIMockRecorder) UpgradeAuth(clientKey, roleName, secret any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpgradeAuth", reflect.TypeOf((*MockAuthenticationServiceI)(nil).UpgradeAuth), clientKey, roleName, secret)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SwitchRole", reflect.TypeOf((*MockAuthenticationServiceI)(nil).SwitchRole), clientKey, roleName, secret)
 }
 
 // ValidateAuthInMessage mocks base method.
@@ -300,18 +314,4 @@ func (m *MockAuthenticationServiceI) ValidateClientForTopic(clientKey models.Key
 func (mr *MockAuthenticationServiceIMockRecorder) ValidateClientForTopic(clientKey, topic any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateClientForTopic", reflect.TypeOf((*MockAuthenticationServiceI)(nil).ValidateClientForTopic), clientKey, topic)
-}
-
-// ValidateSecret mocks base method.
-func (m *MockAuthenticationServiceI) ValidateSecret(roleName models.RoleName, secret string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateSecret", roleName, secret)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ValidateSecret indicates an expected call of ValidateSecret.
-func (mr *MockAuthenticationServiceIMockRecorder) ValidateSecret(roleName, secret any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateSecret", reflect.TypeOf((*MockAuthenticationServiceI)(nil).ValidateSecret), roleName, secret)
 }

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess"
 	"github.com/CameronHonis/chess-arbitrator/app"
-	"github.com/CameronHonis/chess-arbitrator/auth"
 	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -173,13 +173,17 @@ var _ = Describe("Workflows", func() {
 	Describe("request auth upgrade", func() {
 		var pubKey models.Key
 		var privKey models.Key
+		var prevBotClientSecret string
 		BeforeEach(func() {
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
 			msgQueue.flush()
 
 			pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
 			privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
-			secret, _ := (&auth.AuthenticationService{}).GetSecret(models.BOT)
+			secret := "secret"
+			prevBotClientSecret = os.Getenv(string(models.BOT_CLIENT_SECRET))
+			Expect(os.Setenv(string(models.BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
+
 			sendMsg("A", conn, pubKey, privKey, &models.Message{
 				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
 				Content: &models.UpgradeAuthRequestMessageContent{
@@ -188,6 +192,9 @@ var _ = Describe("Workflows", func() {
 				},
 			})
 
+		})
+		AfterEach(func() {
+			Expect(os.Setenv(string(models.BOT_CLIENT_SECRET), prevBotClientSecret)).ToNot(HaveOccurred())
 		})
 		It("responds with an Upgrade Auth Msg", func() {
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED)

@@ -27,7 +27,7 @@ var OnClientCreated = func(self ServiceI, event EventI) bool {
 var OnUpgradeAuthGranted = func(self ServiceI, event EventI) bool {
 	c := self.(*ClientsManager)
 	baseErrMsg := "could not follow up with GRANTED upgrade auth request: "
-	payload := event.Payload().(*auth.AuthUpgradeGrantedPayload)
+	payload := event.Payload().(*auth.RoleSwitchGrantedPayload)
 
 	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.ClientKey)
 	sendErr := SendUpgradeAuthGranted(sendDeps, payload.Role)

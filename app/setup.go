@@ -6,6 +6,7 @@ import (
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/matchmaking"
 	"github.com/CameronHonis/chess-arbitrator/router_service"
+	"github.com/CameronHonis/chess-arbitrator/secrets_manager"
 	"github.com/CameronHonis/chess-arbitrator/sub_service"
 	. "github.com/CameronHonis/log"
 	"github.com/CameronHonis/service"
@@ -14,6 +15,7 @@ import (
 var appService *AppService
 
 func BuildServices(configs ...service.ConfigI) *AppService {
+	// TODO: replace get syntax with new syntax
 	appConfig := GetAppConfig()
 	loggerConfig := GetLoggerConfig()
 	routerConfig := GetRouterConfig()
@@ -47,9 +49,9 @@ func BuildServices(configs ...service.ConfigI) *AppService {
 	loggerService := NewLoggerService(loggerConfig)
 	routerService := router_service.NewRouterService(routerConfig)
 	clientsManager := clients_manager.NewClientsManager(clientsManagerConfig)
-	// NOTE: mixture of `get...config` and `new...config` is intentional, trying both out
 	subService := sub_service.NewSubscriptionService(subServiceConfig)
 	authService := auth.NewAuthenticationService(authServiceConfig)
+	secretsManager := secrets_manager.NewSecretsManager()
 	matchmakingService := matchmaking.NewMatchmakingService(matchmakingServiceConfig)
 	matcherService := matcher.NewMatcherService(matcherServiceConfig)
 
@@ -69,6 +71,7 @@ func BuildServices(configs ...service.ConfigI) *AppService {
 	matcherService.AddDependency(subService)
 	subService.AddDependency(authService)
 	subService.AddDependency(loggerService)
+	authService.AddDependency(secretsManager)
 
 	appService.Build()
 

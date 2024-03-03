@@ -162,7 +162,7 @@ var _ = Describe("side effects", func() {
 			}).Should(BeTrue())
 		})
 	})
-	When("a AUTH_UPGRADE_GRANTED event is dispatched", func() {
+	When("a ROLE_SWITCH_GRANTED event is dispatched", func() {
 		var eventHandlerCalled bool
 		BeforeEach(func() {
 			cm.OnUpgradeAuthGranted = func(_ service.ServiceI, _ service.EventI) bool {
@@ -171,7 +171,7 @@ var _ = Describe("side effects", func() {
 			}
 		})
 		It("calls OnUpgradeAuthGranted", func() {
-			ev := auth.NewAuthUpgradeGrantedEvent("client", "role")
+			ev := auth.NewRoleSwitchGrantedEvent("client", "role")
 			uc.Dispatch(ev)
 			Eventually(func() bool {
 				return eventHandlerCalled

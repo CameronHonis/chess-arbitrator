@@ -47,7 +47,7 @@ func HandleRequestUpgradeAuthMessage(m *ClientsManager, msg *models.Message) err
 	if !ok {
 		return fmt.Errorf("could not cast message to UpgradeAuthRequestMessageContent")
 	}
-	return m.AuthService.UpgradeAuth(msg.SenderKey, msgContent.Role, msgContent.Secret)
+	return m.AuthService.SwitchRole(msg.SenderKey, msgContent.Role, msgContent.Secret)
 }
 
 func HandleMoveMessage(m *ClientsManager, moveMsg *models.Message) error {

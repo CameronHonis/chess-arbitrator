@@ -3,11 +3,11 @@ package auth
 import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/CameronHonis/chess-arbitrator/secrets_manager"
 	"github.com/CameronHonis/log"
 	"github.com/CameronHonis/marker"
 	"github.com/CameronHonis/service"
 	"github.com/CameronHonis/set"
-	"os"
 	"sync"
 )
 
@@ -18,10 +18,9 @@ type AuthenticationServiceI interface {
 	BotClientExists() bool
 
 	AddClient(clientKey models.Key)
-	UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error
+	SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error
 	RemoveClient(clientKey models.Key) error
 
-	ValidateSecret(roleName models.RoleName, secret string) error
 	ValidateAuthInMessage(msg *models.Message) error
 	StripAuthFromMessage(msg *models.Message)
 	ValidateClientForTopic(clientKey models.Key, topic models.MessageTopic) error
@@ -32,6 +31,7 @@ type AuthenticationService struct {
 
 	__dependencies__ marker.Marker
 	LoggerService    log.LoggerServiceI
+	SecretsManager   secrets_manager.SecretsManagerI
 
 	__state__        marker.Marker
 	roleByClient     map[models.Key]models.RoleName
@@ -85,20 +85,28 @@ func (am *AuthenticationService) AddClient(clientKey models.Key) {
 	clientKeys.Add(clientKey)
 }
 
-func (am *AuthenticationService) UpgradeAuth(clientKey models.Key, roleName models.RoleName, secret string) error {
-	validSecretErr := am.ValidateSecret(roleName, secret)
-	if validSecretErr != nil {
-		go am.Dispatch(NewAuthUpgradeDeniedEvent(clientKey, validSecretErr.Error()))
-		return validSecretErr
+func (am *AuthenticationService) SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error {
+	// filter out unauthorized role switches
+	switch roleName {
+	case models.PLEB:
+		break
+	case models.BOT:
+		if am.BotClientExists() {
+			return fmt.Errorf("bot already exists")
+		}
+		if am.SecretsManager.ValidateSecret(models.BOT_CLIENT_SECRET, secret) != nil {
+			return fmt.Errorf("invalid secret")
+		}
 	}
 
+	// assumed that role switch is permitted after this point
 	roleErr := am.SetRole(clientKey, roleName)
 	if roleErr != nil {
-		go am.Dispatch(NewAuthUpgradeDeniedEvent(clientKey, roleErr.Error()))
+		go am.Dispatch(NewRoleSwitchDeniedEvent(clientKey, roleErr.Error()))
 		return roleErr
 	}
 
-	go am.Dispatch(NewAuthUpgradeGrantedEvent(clientKey, roleName))
+	go am.Dispatch(NewRoleSwitchGrantedEvent(clientKey, roleName))
 	return nil
 }
 
@@ -111,17 +119,6 @@ func (am *AuthenticationService) RemoveClient(clientKey models.Key) error {
 	am.mu.Lock()
 	delete(am.roleByClient, clientKey)
 	am.mu.Unlock()
-	return nil
-}
-
-func (am *AuthenticationService) ValidateSecret(roleName models.RoleName, secret string) error {
-	expSecret, secretErr := am.GetSecret(roleName)
-	if secretErr != nil {
-		return secretErr
-	}
-	if secret != expSecret {
-		return fmt.Errorf("invalid secret")
-	}
 	return nil
 }
 
@@ -159,20 +156,4 @@ func (am *AuthenticationService) SetRole(clientKey models.Key, role models.RoleN
 	newRoleClientKeys.Add(clientKey)
 	am.mu.Unlock()
 	return nil
-}
-
-func (am *AuthenticationService) GetSecret(role models.RoleName) (string, error) {
-	env, _ := os.LookupEnv("ENV")
-	envName, ok := models.ENV_NAME_BY_ROLE_NAME[role]
-	if !ok {
-		return "", fmt.Errorf("could not find env name for role %s", role)
-	}
-	if env == "test" {
-		return envName, nil
-	}
-	secret, secretExists := os.LookupEnv(envName)
-	if !secretExists {
-		return "", fmt.Errorf("could not find bot client secret")
-	}
-	return secret, nil
 }

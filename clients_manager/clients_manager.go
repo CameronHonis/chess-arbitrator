@@ -50,7 +50,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 
 func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(CLIENT_CREATED, OnClientCreated)
-	c.AddEventListener(auth.AUTH_UPGRADE_GRANTED, OnUpgradeAuthGranted)
+	c.AddEventListener(auth.ROLE_SWITCH_GRANTED, OnUpgradeAuthGranted)
 	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, OnChallengeRequestFailed)
 	c.AddEventListener(matcher.CHALLENGE_CREATED, OnChallengeCreated)
 	c.AddEventListener(matcher.CHALLENGE_REVOKED, OnChallengeRevoked)
