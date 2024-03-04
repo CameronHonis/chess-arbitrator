@@ -5,14 +5,7 @@ import (
 	"encoding/hex"
 	. "github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
-
-func CreateClient(conn *websocket.Conn, cleanup func(*Client)) *Client {
-	pubKey, priKey := GenerateKeyset()
-
-	return NewClient(pubKey, priKey, conn, cleanup)
-}
 
 func GenerateKeyset() (publicKey Key, privateKey Key) {
 	priKey := GeneratePriKey()

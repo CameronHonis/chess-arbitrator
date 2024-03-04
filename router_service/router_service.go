@@ -19,9 +19,9 @@ type RouterServiceI interface {
 type RouterService struct {
 	service.Service
 
-	__dependencies__   marker.Marker
-	UserClientsService clients_manager.ClientsManagerI
-	Logger             log.LoggerServiceI
+	__dependencies__ marker.Marker
+	ClientsManager   clients_manager.ClientsManagerI
+	Logger           log.LoggerServiceI
 
 	__state__ marker.Marker
 }
@@ -43,6 +43,7 @@ func (rs *RouterService) StartWSServer() {
 			rs.Logger.LogRed(models.ENV_SERVER, "error upgrading to ws conn:", connErr.Error())
 			return
 		}
+		rs.ClientsManager.AddConn(conn)
 	})
 
 	config := rs.Config().(*RouterServiceConfig)

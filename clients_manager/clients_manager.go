@@ -17,7 +17,7 @@ import (
 type ClientsManagerI interface {
 	service.ServiceI
 
-	AddConn(conn *websocket.Conn) error
+	AddConn(conn *websocket.Conn)
 	BroadcastMessage(message *models.Message)
 	DirectMessage(message *models.Message, clientKey models.Key) error
 }
@@ -75,7 +75,7 @@ func (c *ClientsManager) BroadcastMessage(message *models.Message) {
 	msgCopy.PrivateKey = ""
 	subbedClientKeys := c.SubService.ClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
-		conn, err := c.GetConnByKey(clientKey)
+		conn, err := c.getConnByKey(clientKey)
 		if err != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), log.ALL_BUT_TEST_ENV)
 			continue
@@ -94,15 +94,15 @@ func (c *ClientsManager) DirectMessage(message *models.Message, clientKey models
 	}
 	msgCopy := *message
 	msgCopy.Topic = "directMessage"
-	conn, err := c.GetConnByKey(clientKey)
+	conn, err := c.getConnByKey(clientKey)
 	if err != nil {
 		return fmt.Errorf("unable to send DM: %s", err)
 	}
 	return c.writeMessage(clientKey, conn, &msgCopy)
 }
 
-func (c *ClientsManager) RegisterConn(pubKey models.Key, conn *websocket.Conn) error {
-	if existingConn, _ := c.GetConnByKey(pubKey); existingConn != nil {
+func (c *ClientsManager) registerConn(pubKey models.Key, conn *websocket.Conn) error {
+	if existingConn, _ := c.getConnByKey(pubKey); existingConn != nil {
 		return fmt.Errorf("client already registered")
 	}
 	c.mu.Lock()
@@ -111,8 +111,8 @@ func (c *ClientsManager) RegisterConn(pubKey models.Key, conn *websocket.Conn) e
 	return nil
 }
 
-func (c *ClientsManager) DeregisterConn(pubKey models.Key) error {
-	if _, err := c.GetConnByKey(pubKey); err != nil {
+func (c *ClientsManager) deregisterConn(pubKey models.Key) error {
+	if _, err := c.getConnByKey(pubKey); err != nil {
 		return err
 	}
 	c.mu.Lock()
@@ -121,7 +121,7 @@ func (c *ClientsManager) DeregisterConn(pubKey models.Key) error {
 	return nil
 }
 
-func (c *ClientsManager) GetConnByKey(pubKey models.Key) (*websocket.Conn, error) {
+func (c *ClientsManager) getConnByKey(pubKey models.Key) (*websocket.Conn, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	conn, ok := c.connByPubKey[pubKey]
@@ -152,7 +152,7 @@ func (c *ClientsManager) listenOnUnregisteredConn(conn *websocket.Conn) (models.
 		return "", fmt.Errorf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg)
 	}
 	existingAuth := refreshAuthMsg.ExistingAuth
-	if refreshAuthMsg.ExistingAuth == nil {
+	if existingAuth != nil {
 		if _, refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PrivateKey); refreshErr != nil {
 			sendDeps := NewSendDirectDeps(c.DirectMessage, existingAuth.PublicKey)
 			sendAuthErr := SendAuth(sendDeps, existingAuth.PrivateKey)
@@ -165,6 +165,12 @@ func (c *ClientsManager) listenOnUnregisteredConn(conn *websocket.Conn) (models.
 	}
 	// client is new or had invalid priKey - assign new, ephemeral guest account
 	creds := c.AuthService.CreateNewClient()
+
+	registerErr := c.registerConn(creds.ClientKey, conn)
+	if registerErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", creds.ClientKey))
+	}
+
 	sendDeps := NewSendDirectDeps(c.DirectMessage, creds.ClientKey)
 	sendAuthErr := SendAuth(sendDeps, creds.PrivateKey)
 	if sendAuthErr != nil {
@@ -179,7 +185,7 @@ func (c *ClientsManager) listenOnRegisteredConn(clientKey models.Key, conn *webs
 		_, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), log.ALL_BUT_TEST_ENV)
-			if deregErr := c.DeregisterConn(clientKey); deregErr != nil {
+			if deregErr := c.deregisterConn(clientKey); deregErr != nil {
 				c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error deregistering client: %s", deregErr), log.ALL_BUT_TEST_ENV)
 			}
 			return

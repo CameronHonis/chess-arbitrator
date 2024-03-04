@@ -14,15 +14,6 @@ func HandleEchoMessage(m *ClientsManager, msg *models.Message) error {
 	return m.DirectMessage(msg, msg.SenderKey)
 }
 
-func HandleRefreshAuthMessage(m *ClientsManager, msg *models.Message) error {
-	msgContent, ok := msg.Content.(*models.RefreshAuthMessageContent)
-	if !ok {
-		return fmt.Errorf("could not cast message to RefreshAuthMessageContent")
-	}
-
-	return m.AuthService
-}
-
 func HandleJoinMatchmakingMessage(m *ClientsManager, msg *models.Message) error {
 	msgContent, ok := msg.Content.(*models.FindMatchMessageContent)
 	if !ok {

@@ -9,8 +9,8 @@ import (
 )
 
 var OnClientCreated = func(self ServiceI, event EventI) bool {
-	c := self.(*ClientsManager)
-	client := event.Payload().(*ClientCreatedEventPayload).Client
+	//c := self.(*ClientsManager)
+	//client := event.Payload().(*ClientCreatedEventPayload).Client
 	//baseErrMsg := "could not send auth: "
 	//sendDeps := NewSendDirectDeps(c.DirectMessage, client.PublicKey())
 	//sendAuthErr := SendAuth(sendDeps, client)
@@ -19,7 +19,7 @@ var OnClientCreated = func(self ServiceI, event EventI) bool {
 	//	return false
 	//}
 
-	go c.listenOnRegisteredConn(client)
+	//go c.listenOnRegisteredConn(client)
 
 	return true
 }

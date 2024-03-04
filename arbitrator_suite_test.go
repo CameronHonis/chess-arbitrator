@@ -97,6 +97,12 @@ func connectClient(msgQueue *MsgQueue, clientName string) *websocket.Conn {
 		time.Sleep(time.Millisecond * 200)
 	}
 
+	refreshAuthMsg := &models.Message{
+		ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+		Content:     &models.RefreshAuthMessageContent{ExistingAuth: nil},
+	}
+	sendMsg(clientName, clientConn, "", "", refreshAuthMsg)
+
 	go func() {
 		for {
 			_, msgBytes, readErr := clientConn.ReadMessage()

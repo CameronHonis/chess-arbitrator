@@ -11,29 +11,29 @@ const (
 )
 
 type ClientCreatedEventPayload struct {
-	Client *models.Client
+	Creds *models.AuthCreds
 }
 
 type ClientCreatedEvent struct{ service.Event }
 
-func NewClientCreatedEvent(client *models.Client) *ClientCreatedEvent {
+func NewClientCreatedEvent(creds *models.AuthCreds) *ClientCreatedEvent {
 	return &ClientCreatedEvent{
 		Event: *service.NewEvent(CLIENT_CREATED, &ClientCreatedEventPayload{
-			Client: client,
+			Creds: creds,
 		}),
 	}
 }
 
 type ClientRemovedEventPayload struct {
-	Client *models.Client
+	ClientKey models.Key
 }
 
 type ClientRemovedEvent struct{ service.Event }
 
-func NewClientRemovedEvent(client *models.Client) *ClientRemovedEvent {
+func NewClientRemovedEvent(clientKey models.Key) *ClientRemovedEvent {
 	return &ClientRemovedEvent{
 		Event: *service.NewEvent(CLIENT_REMOVED, &ClientRemovedEventPayload{
-			Client: client,
+			ClientKey: clientKey,
 		}),
 	}
 }

@@ -105,7 +105,7 @@ var _ = Describe("side effects", func() {
 			}
 		})
 		It("calls OnClientCreated", func() {
-			ev := cm.NewClientCreatedEvent(models.NewClient("client1", "privateKey1", nil, nil))
+			ev := cm.NewClientCreatedEvent(models.NewAuthCreds("client1", "privateKey1", models.PLEB))
 			uc.Dispatch(ev)
 			Eventually(func() bool {
 				return eventHandlerCalled

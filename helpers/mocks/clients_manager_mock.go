@@ -41,18 +41,16 @@ func (m *MockClientsManagerI) EXPECT() *MockClientsManagerIMockRecorder {
 	return m.recorder
 }
 
-// AddClient mocks base method.
-func (m *MockClientsManagerI) AddClient(client *models.Client) error {
+// AddConn mocks base method.
+func (m *MockClientsManagerI) AddConn(conn *websocket.Conn) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddClient", client)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "AddConn", conn)
 }
 
-// AddClient indicates an expected call of AddClient.
-func (mr *MockClientsManagerIMockRecorder) AddClient(client any) *gomock.Call {
+// AddConn indicates an expected call of AddConn.
+func (mr *MockClientsManagerIMockRecorder) AddConn(conn any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddClient", reflect.TypeOf((*MockClientsManagerI)(nil).AddClient), client)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddConn", reflect.TypeOf((*MockClientsManagerI)(nil).AddConn), conn)
 }
 
 // AddDependency mocks base method.
@@ -79,21 +77,6 @@ func (m *MockClientsManagerI) AddEventListener(eventVariant service.EventVariant
 func (mr *MockClientsManagerIMockRecorder) AddEventListener(eventVariant, fn any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEventListener", reflect.TypeOf((*MockClientsManagerI)(nil).AddEventListener), eventVariant, fn)
-}
-
-// AddNewClient mocks base method.
-func (m *MockClientsManagerI) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddNewClient", conn)
-	ret0, _ := ret[0].(*models.Client)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// AddNewClient indicates an expected call of AddNewClient.
-func (mr *MockClientsManagerIMockRecorder) AddNewClient(conn any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddNewClient", reflect.TypeOf((*MockClientsManagerI)(nil).AddNewClient), conn)
 }
 
 // BroadcastMessage mocks base method.
@@ -174,21 +157,6 @@ func (mr *MockClientsManagerIMockRecorder) Dispatch(event any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dispatch", reflect.TypeOf((*MockClientsManagerI)(nil).Dispatch), event)
 }
 
-// GetClient mocks base method.
-func (m *MockClientsManagerI) GetClient(clientKey models.Key) (*models.Client, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetClient", clientKey)
-	ret0, _ := ret[0].(*models.Client)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetClient indicates an expected call of GetClient.
-func (mr *MockClientsManagerIMockRecorder) GetClient(clientKey any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClient", reflect.TypeOf((*MockClientsManagerI)(nil).GetClient), clientKey)
-}
-
 // OnBuild mocks base method.
 func (m *MockClientsManagerI) OnBuild() {
 	m.ctrl.T.Helper()
@@ -211,20 +179,6 @@ func (m *MockClientsManagerI) OnStart() {
 func (mr *MockClientsManagerIMockRecorder) OnStart() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnStart", reflect.TypeOf((*MockClientsManagerI)(nil).OnStart))
-}
-
-// RemoveClient mocks base method.
-func (m *MockClientsManagerI) RemoveClient(client *models.Client) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveClient", client)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveClient indicates an expected call of RemoveClient.
-func (mr *MockClientsManagerIMockRecorder) RemoveClient(client any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveClient", reflect.TypeOf((*MockClientsManagerI)(nil).RemoveClient), client)
 }
 
 // RemoveEventListener mocks base method.
