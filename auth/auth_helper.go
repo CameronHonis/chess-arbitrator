@@ -15,9 +15,13 @@ func CreateClient(conn *websocket.Conn, cleanup func(*Client)) *Client {
 }
 
 func GenerateKeyset() (publicKey Key, privateKey Key) {
-	priKey := uuid.New().String()
+	priKey := GeneratePriKey()
 	pubKey := sha256.Sum256([]byte(priKey))
 	return Key(hex.EncodeToString(pubKey[:])), Key(priKey)
+}
+
+func GeneratePriKey() Key {
+	return Key(uuid.New().String())
 }
 
 func ValidatePrivateKey(publicKey Key, privateKey Key) bool {

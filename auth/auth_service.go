@@ -2,13 +2,16 @@ package auth
 
 import (
 	"fmt"
+	"github.com/CameronHonis/chess-arbitrator/builders"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/chess-arbitrator/secrets_manager"
 	"github.com/CameronHonis/log"
 	"github.com/CameronHonis/marker"
 	"github.com/CameronHonis/service"
 	"github.com/CameronHonis/set"
+	"strconv"
 	"sync"
+	"time"
 )
 
 type AuthenticationServiceI interface {
@@ -17,7 +20,7 @@ type AuthenticationServiceI interface {
 	ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key]
 	BotClientExists() bool
 
-	CreateNewClient() *models.ClientAuthCreds
+	CreateNewClient() *models.AuthCreds
 	SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error
 	RemoveClient(clientKey models.Key) error
 	RefreshPrivateKey(clientKey models.Key) (models.Key, error)
@@ -36,14 +39,14 @@ type AuthenticationService struct {
 	SecretsManager   secrets_manager.SecretsManagerI
 
 	__state__         marker.Marker
-	authCredsByClient map[models.Key]*models.ClientAuthCreds
+	authCredsByClient map[models.Key]*models.AuthCreds
 	clientKeysByRole  map[models.RoleName]*set.Set[models.Key]
 	mu                sync.Mutex
 }
 
 func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService {
 	authService := &AuthenticationService{
-		authCredsByClient: make(map[models.Key]*models.ClientAuthCreds),
+		authCredsByClient: make(map[models.Key]*models.AuthCreds),
 		clientKeysByRole:  make(map[models.RoleName]*set.Set[models.Key]),
 	}
 	authService.Service = *service.NewService(authService, config)
@@ -75,12 +78,12 @@ func (am *AuthenticationService) BotClientExists() bool {
 	return botClientKeys.Size() > 0
 }
 
-func (am *AuthenticationService) CreateNewClient() *models.ClientAuthCreds {
+func (am *AuthenticationService) CreateNewClient() *models.AuthCreds {
 	am.mu.Lock()
 	defer am.mu.Unlock()
 
 	clientKey, priKey := GenerateKeyset()
-	creds := models.NewClientAuthCreds(clientKey, priKey, models.PLEB)
+	creds := models.NewAuthCreds(clientKey, priKey, models.PLEB)
 	am.authCredsByClient[clientKey] = creds
 	clientKeys, ok := am.clientKeysByRole[models.PLEB]
 	if !ok {
@@ -118,18 +121,50 @@ func (am *AuthenticationService) SwitchRole(clientKey models.Key, roleName model
 }
 
 func (am *AuthenticationService) RemoveClient(clientKey models.Key) error {
-	_, roleErr := am.GetRole(clientKey)
+	role, roleErr := am.GetRole(clientKey)
 	if roleErr != nil {
 		am.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("attempt to remove non-existant client %s", clientKey))
 		return nil
 	}
-	am.mu.Lock()
-	delete(am.roleByClient, clientKey)
-	am.mu.Unlock()
+
+	func() {
+		am.mu.Lock()
+		defer am.mu.Unlock()
+		delete(am.authCredsByClient, clientKey)
+		roleKeys, ok := am.clientKeysByRole[role]
+		if !ok {
+			am.LoggerService.LogRed(models.ENV_SERVER, fmt.Sprintf("cannot remove clientKey from role %s pool: set doesn't exist", role))
+			return
+		}
+		roleKeys.Remove(clientKey)
+	}()
+
 	return nil
 }
 
 func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key) (models.Key, error) {
+	priKeyStaleAfterMinsStr, configErr := am.SecretsManager.GetSecret(models.AUTH_KEY_MINS_TO_STALE)
+	if configErr != nil {
+		return "", fmt.Errorf("couldnt refresh private key: %s", configErr)
+	}
+	priKeyStaleAfterMin, floatParseErr := strconv.ParseFloat(priKeyStaleAfterMinsStr, 64)
+	if floatParseErr != nil {
+		return "", fmt.Errorf("couldnt refresh private key: %s", floatParseErr)
+	}
+
+	priKey := func() models.Key {
+		am.mu.Lock()
+		am.mu.Unlock()
+		creds, _ := am.authCredsByClient[clientKey]
+		minSinceIssued := time.Now().Sub(creds.PriKeyCreatedAt).Minutes()
+		if minSinceIssued >= priKeyStaleAfterMin {
+			return GeneratePriKey()
+		} else {
+			return creds.PrivateKey
+		}
+	}()
+
+	return priKey, nil
 }
 
 func (am *AuthenticationService) ValidateAuthInMessage(msg *models.Message) error {
@@ -141,6 +176,16 @@ func (am *AuthenticationService) ValidateAuthInMessage(msg *models.Message) erro
 }
 
 func (am *AuthenticationService) ValidatePrivateKey(pubKey models.Key, priKey models.Key) error {
+	am.mu.Lock()
+	am.mu.Unlock()
+	creds, ok := am.authCredsByClient[pubKey]
+	if !ok {
+		return fmt.Errorf("client with key %s does not exist", pubKey)
+	}
+	if priKey != creds.PrivateKey {
+		return fmt.Errorf("private keys do not match")
+	}
+	return nil
 }
 
 func (am *AuthenticationService) StripAuthFromMessage(msg *models.Message) {
@@ -156,17 +201,23 @@ func (am *AuthenticationService) SetRole(clientKey models.Key, role models.RoleN
 	if getRoleErr != nil {
 		return getRoleErr
 	}
-	am.mu.Lock()
-	am.roleByClient[clientKey] = role
-	if oldRoleClients, ok := am.clientKeysByRole[oldRole]; ok {
-		oldRoleClients.Remove(clientKey)
-	}
-	newRoleClientKeys, ok := am.clientKeysByRole[role]
-	if !ok {
-		newRoleClientKeys = set.EmptySet[models.Key]()
-		am.clientKeysByRole[role] = newRoleClientKeys
-	}
-	newRoleClientKeys.Add(clientKey)
-	am.mu.Unlock()
+
+	func() {
+		am.mu.Lock()
+		defer am.mu.Unlock()
+
+		newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*am.authCredsByClient[clientKey]).WithRole(role).Build()
+		am.authCredsByClient[clientKey] = newCreds
+		if oldRoleClients, ok := am.clientKeysByRole[oldRole]; ok {
+			oldRoleClients.Remove(clientKey)
+		}
+		newRoleClientKeys, ok := am.clientKeysByRole[role]
+		if !ok {
+			newRoleClientKeys = set.EmptySet[models.Key]()
+			am.clientKeysByRole[role] = newRoleClientKeys
+		}
+		newRoleClientKeys.Add(clientKey)
+	}()
+
 	return nil
 }
