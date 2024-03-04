@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-type ClientAuthCreds struct {
+type AuthCreds struct {
 	ClientKey     Key
 	PrivateKey    Key
 	CreatedAt     time.Time
@@ -10,8 +10,8 @@ type ClientAuthCreds struct {
 	Role          RoleName
 }
 
-func NewClientAuthCreds(clientKey Key, privateKey Key, role RoleName) *ClientAuthCreds {
-	return &ClientAuthCreds{
+func NewAuthCreds(clientKey Key, privateKey Key, role RoleName) *AuthCreds {
+	return &AuthCreds{
 		ClientKey:     clientKey,
 		PrivateKey:    privateKey,
 		CreatedAt:     time.Now(),
