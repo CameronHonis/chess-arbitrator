@@ -17,11 +17,13 @@ type AuthenticationServiceI interface {
 	ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key]
 	BotClientExists() bool
 
-	AddClient(clientKey models.Key)
+	CreateNewClient() *models.ClientAuthCreds
 	SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error
 	RemoveClient(clientKey models.Key) error
+	RefreshPrivateKey(clientKey models.Key) (models.Key, error)
 
 	ValidateAuthInMessage(msg *models.Message) error
+	ValidatePrivateKey(pubKey models.Key, priKey models.Key) error
 	StripAuthFromMessage(msg *models.Message)
 	ValidateClientForTopic(clientKey models.Key, topic models.MessageTopic) error
 }
@@ -33,16 +35,16 @@ type AuthenticationService struct {
 	LoggerService    log.LoggerServiceI
 	SecretsManager   secrets_manager.SecretsManagerI
 
-	__state__        marker.Marker
-	roleByClient     map[models.Key]models.RoleName
-	clientKeysByRole map[models.RoleName]*set.Set[models.Key]
-	mu               sync.Mutex
+	__state__         marker.Marker
+	authCredsByClient map[models.Key]*models.ClientAuthCreds
+	clientKeysByRole  map[models.RoleName]*set.Set[models.Key]
+	mu                sync.Mutex
 }
 
 func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService {
 	authService := &AuthenticationService{
-		roleByClient:     make(map[models.Key]models.RoleName),
-		clientKeysByRole: make(map[models.RoleName]*set.Set[models.Key]),
+		authCredsByClient: make(map[models.Key]*models.ClientAuthCreds),
+		clientKeysByRole:  make(map[models.RoleName]*set.Set[models.Key]),
 	}
 	authService.Service = *service.NewService(authService, config)
 	return authService
@@ -50,12 +52,12 @@ func NewAuthenticationService(config *AuthServiceConfig) *AuthenticationService 
 
 func (am *AuthenticationService) GetRole(clientKey models.Key) (models.RoleName, error) {
 	am.mu.Lock()
-	role, ok := am.roleByClient[clientKey]
-	am.mu.Unlock()
+	defer am.mu.Unlock()
+	creds, ok := am.authCredsByClient[clientKey]
 	if !ok {
 		return "", fmt.Errorf("could not find role for client %s", clientKey)
 	}
-	return role, nil
+	return creds.Role, nil
 }
 
 func (am *AuthenticationService) ClientKeysByRole(roleName models.RoleName) *set.Set[models.Key] {
@@ -73,16 +75,21 @@ func (am *AuthenticationService) BotClientExists() bool {
 	return botClientKeys.Size() > 0
 }
 
-func (am *AuthenticationService) AddClient(clientKey models.Key) {
+func (am *AuthenticationService) CreateNewClient() *models.ClientAuthCreds {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	am.roleByClient[clientKey] = models.PLEB
+
+	clientKey, priKey := GenerateKeyset()
+	creds := models.NewClientAuthCreds(clientKey, priKey, models.PLEB)
+	am.authCredsByClient[clientKey] = creds
 	clientKeys, ok := am.clientKeysByRole[models.PLEB]
 	if !ok {
 		clientKeys = set.EmptySet[models.Key]()
 		am.clientKeysByRole[models.PLEB] = clientKeys
 	}
 	clientKeys.Add(clientKey)
+
+	return creds
 }
 
 func (am *AuthenticationService) SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error {
@@ -122,12 +129,18 @@ func (am *AuthenticationService) RemoveClient(clientKey models.Key) error {
 	return nil
 }
 
+func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key) (models.Key, error) {
+}
+
 func (am *AuthenticationService) ValidateAuthInMessage(msg *models.Message) error {
 	isValidAuth := ValidatePrivateKey(msg.SenderKey, msg.PrivateKey)
 	if !isValidAuth {
 		return fmt.Errorf("invalid auth")
 	}
 	return nil
+}
+
+func (am *AuthenticationService) ValidatePrivateKey(pubKey models.Key, priKey models.Key) error {
 }
 
 func (am *AuthenticationService) StripAuthFromMessage(msg *models.Message) {

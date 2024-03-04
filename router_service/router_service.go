@@ -43,11 +43,6 @@ func (rs *RouterService) StartWSServer() {
 			rs.Logger.LogRed(models.ENV_SERVER, "error upgrading to ws conn:", connErr.Error())
 			return
 		}
-		_, addClientErr := rs.UserClientsService.AddNewClient(conn)
-		if addClientErr != nil {
-			rs.Logger.LogRed(models.ENV_SERVER, "error adding client:", connErr.Error())
-			return
-		}
 	})
 
 	config := rs.Config().(*RouterServiceConfig)

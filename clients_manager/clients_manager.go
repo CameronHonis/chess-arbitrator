@@ -16,10 +16,8 @@ import (
 
 type ClientsManagerI interface {
 	service.ServiceI
-	GetClient(clientKey models.Key) (*models.Client, error)
-	AddNewClient(conn *websocket.Conn) (*models.Client, error)
-	AddClient(client *models.Client) error
-	RemoveClient(client *models.Client) error
+
+	AddConn(conn *websocket.Conn) error
 	BroadcastMessage(message *models.Message)
 	DirectMessage(message *models.Message, clientKey models.Key) error
 }
@@ -34,14 +32,14 @@ type ClientsManager struct {
 	MatchmakingService mm.MatchmakingServiceI
 	MatcherService     matcher.MatcherServiceI
 
-	__state__         marker.Marker
-	clientByPublicKey map[models.Key]*models.Client
-	mu                sync.Mutex
+	__state__    marker.Marker
+	connByPubKey map[models.Key]*websocket.Conn
+	mu           sync.Mutex
 }
 
 func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 	s := &ClientsManager{
-		clientByPublicKey: make(map[models.Key]*models.Client),
+		connByPubKey: make(map[models.Key]*websocket.Conn),
 	}
 	s.Service = *service.NewService(s, config)
 
@@ -64,50 +62,12 @@ func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(matcher.MOVE_FAILURE, OnMoveFailed)
 }
 
-func (c *ClientsManager) AddNewClient(conn *websocket.Conn) (*models.Client, error) {
-	client := auth.CreateClient(conn, c.CleanupClient)
-
-	c.AuthService.AddClient(client.PublicKey())
-	if err := c.AddClient(client); err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func (c *ClientsManager) AddClient(client *models.Client) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if _, ok := c.clientByPublicKey[client.PublicKey()]; ok {
-		return fmt.Errorf("client with key %s already exists", client.PublicKey())
-	}
-	c.clientByPublicKey[client.PublicKey()] = client
-	go c.Dispatch(NewClientCreatedEvent(client))
-	return nil
-}
-
-func (c *ClientsManager) RemoveClient(client *models.Client) error {
-	pubKey := client.PublicKey()
-
-	c.mu.Lock()
-	if _, ok := c.clientByPublicKey[pubKey]; !ok {
-		c.mu.Unlock()
-		return fmt.Errorf("client with key %s isn't an established client", client.PublicKey())
-	}
-	delete(c.clientByPublicKey, pubKey)
-	c.mu.Unlock()
-
-	c.SubService.UnsubClientFromAll(pubKey)
-	return nil
-}
-
-func (c *ClientsManager) GetClient(clientKey models.Key) (*models.Client, error) {
-	c.mu.Lock()
-	client, ok := c.clientByPublicKey[clientKey]
-	c.mu.Unlock()
-	if !ok {
-		return nil, fmt.Errorf("no client with public key %s", clientKey)
-	}
-	return client, nil
+func (c *ClientsManager) AddConn(conn *websocket.Conn) {
+	go func() {
+		// TODO: squash listeners
+		clientKey, _ := c.listenOnUnregisteredConn(conn)
+		c.listenOnRegisteredConn(clientKey, conn)
+	}()
 }
 
 func (c *ClientsManager) BroadcastMessage(message *models.Message) {
@@ -115,12 +75,12 @@ func (c *ClientsManager) BroadcastMessage(message *models.Message) {
 	msgCopy.PrivateKey = ""
 	subbedClientKeys := c.SubService.ClientKeysSubbedToTopic(msgCopy.Topic)
 	for _, clientKey := range subbedClientKeys.Flatten() {
-		client, err := c.GetClient(clientKey)
+		conn, err := c.GetConnByKey(clientKey)
 		if err != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error getting client from key: %s", err), log.ALL_BUT_TEST_ENV)
 			continue
 		}
-		writeErr := c.writeMessage(client, &msgCopy)
+		writeErr := c.writeMessage(clientKey, conn, &msgCopy)
 		if writeErr != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error broadcasting to client: %s", writeErr), log.ALL_BUT_TEST_ENV)
 			continue
@@ -134,36 +94,97 @@ func (c *ClientsManager) DirectMessage(message *models.Message, clientKey models
 	}
 	msgCopy := *message
 	msgCopy.Topic = "directMessage"
-	client, clientErr := c.GetClient(clientKey)
-	if clientErr != nil {
-		return clientErr
+	conn, err := c.GetConnByKey(clientKey)
+	if err != nil {
+		return fmt.Errorf("unable to send DM: %s", err)
 	}
-	return c.writeMessage(client, &msgCopy)
+	return c.writeMessage(clientKey, conn, &msgCopy)
 }
 
-func (c *ClientsManager) CleanupClient(client *models.Client) {
-	_ = c.AuthService.RemoveClient(client.PublicKey())
+func (c *ClientsManager) RegisterConn(pubKey models.Key, conn *websocket.Conn) error {
+	if existingConn, _ := c.GetConnByKey(pubKey); existingConn != nil {
+		return fmt.Errorf("client already registered")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connByPubKey[pubKey] = conn
+	return nil
 }
 
-func (c *ClientsManager) listenForUserInput(client *models.Client) {
-	if client.WSConn() == nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("client %s did not establish a websocket connection", client.PublicKey()))
-		return
+func (c *ClientsManager) DeregisterConn(pubKey models.Key) error {
+	if _, err := c.GetConnByKey(pubKey); err != nil {
+		return err
 	}
-	for {
-		_, rawMsg, readErr := client.WSConn().ReadMessage()
-		_, clientErr := c.GetClient(client.PublicKey())
-		if clientErr != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error listening on websocket: %s", clientErr), log.ALL_BUT_TEST_ENV)
-			return
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.connByPubKey, pubKey)
+	return nil
+}
+
+func (c *ClientsManager) GetConnByKey(pubKey models.Key) (*websocket.Conn, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	conn, ok := c.connByPubKey[pubKey]
+	if !ok {
+		return nil, fmt.Errorf("no client with key %s", pubKey)
+	}
+	return conn, nil
+}
+
+func (c *ClientsManager) listenOnUnregisteredConn(conn *websocket.Conn) (models.Key, error) {
+	// NOTE: temporary listener for first message on connection, which should only be a REFRESH_AUTH_MESSAGE
+	//		 message auth not checked here, since it is possibly the first message from a new, unauthorized client
+	_, rawMsg, readErr := conn.ReadMessage()
+	if readErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), log.ALL_BUT_TEST_ENV)
+		return "", readErr
+	}
+	msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
+	if unmarshalErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error unmarshalling message: %s", unmarshalErr), log.ALL_BUT_TEST_ENV)
+		_ = conn.Close()
+		return "", unmarshalErr
+	}
+	refreshAuthMsg, ok := msg.Content.(*models.RefreshAuthMessageContent)
+	if !ok {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg), log.ALL_BUT_TEST_ENV)
+		_ = conn.Close()
+		return "", fmt.Errorf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg)
+	}
+	existingAuth := refreshAuthMsg.ExistingAuth
+	if refreshAuthMsg.ExistingAuth == nil {
+		if _, refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PrivateKey); refreshErr != nil {
+			sendDeps := NewSendDirectDeps(c.DirectMessage, existingAuth.PublicKey)
+			sendAuthErr := SendAuth(sendDeps, existingAuth.PrivateKey)
+			if sendAuthErr != nil {
+				c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error sending auth: %s", sendAuthErr), log.ALL_BUT_TEST_ENV)
+			}
+			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("validated creds for %s from previous session", existingAuth.PublicKey))
+			return existingAuth.PublicKey, nil
 		}
+	}
+	// client is new or had invalid priKey - assign new, ephemeral guest account
+	creds := c.AuthService.CreateNewClient()
+	sendDeps := NewSendDirectDeps(c.DirectMessage, creds.ClientKey)
+	sendAuthErr := SendAuth(sendDeps, creds.PrivateKey)
+	if sendAuthErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error sending new client auth: %s", sendAuthErr), log.ALL_BUT_TEST_ENV)
+	}
+
+	return creds.ClientKey, nil
+}
+
+func (c *ClientsManager) listenOnRegisteredConn(clientKey models.Key, conn *websocket.Conn) {
+	for {
+		_, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), log.ALL_BUT_TEST_ENV)
-			// assume all readErrs are disconnects
-			_ = c.RemoveClient(client)
+			if deregErr := c.DeregisterConn(clientKey); deregErr != nil {
+				c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error deregistering client: %s", deregErr), log.ALL_BUT_TEST_ENV)
+			}
 			return
 		}
-		if err := c.readMessage(client.PublicKey(), rawMsg); err != nil {
+		if err := c.handleMsg(clientKey, rawMsg); err != nil {
 			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), log.ALL_BUT_TEST_ENV)
 
 		}
@@ -171,7 +192,7 @@ func (c *ClientsManager) listenForUserInput(client *models.Client) {
 
 }
 
-func (c *ClientsManager) readMessage(clientKey models.Key, rawMsg []byte) error {
+func (c *ClientsManager) handleMsg(clientKey models.Key, rawMsg []byte) error {
 	c.Logger.Log(string(clientKey), ">> ", string(rawMsg))
 	msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
 	if unmarshalErr != nil {
@@ -196,14 +217,14 @@ func (c *ClientsManager) readMessage(clientKey models.Key, rawMsg []byte) error 
 	return nil
 }
 
-func (c *ClientsManager) writeMessage(client *models.Client, msg *models.Message) error {
+func (c *ClientsManager) writeMessage(pubkey models.Key, conn *websocket.Conn, msg *models.Message) error {
 	msgJson, jsonErr := msg.Marshal()
 	if jsonErr != nil {
 		return jsonErr
 	}
-	c.Logger.Log(string(client.PublicKey()), "<< ", string(msgJson))
+	c.Logger.Log(string(pubkey), "<< ", string(msgJson))
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return client.WSConn().WriteMessage(websocket.TextMessage, msgJson)
+	return conn.WriteMessage(websocket.TextMessage, msgJson)
 }

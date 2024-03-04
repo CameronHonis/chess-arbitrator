@@ -55,62 +55,12 @@ var _ = Describe("methods", func() {
 	var subServiceMock *mocks.MockSubscriptionServiceI
 	var eventCatcher *test_helpers.EventCatcher
 	var uc *cm.ClientsManager
-	var client *models.Client
 	BeforeEach(func() {
 		ctrl := gomock.NewController(T, gomock.WithOverridableExpectations())
 		uc = CreateServices(ctrl)
 		eventCatcher = test_helpers.NewEventCatcher()
 		eventCatcher.AddDependency(uc)
 		subServiceMock = uc.SubService.(*mocks.MockSubscriptionServiceI)
-		client = auth.CreateClient(nil, nil)
-	})
-	Describe("::AddClient", func() {
-		BeforeEach(func() {
-			eventCount := eventCatcher.EventsByVariantCount(cm.CLIENT_CREATED)
-			Expect(eventCount).To(Equal(0))
-		})
-		When("the client hasn't been added", func() {
-			It("adds the client to the map", func() {
-				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
-				Expect(uc.GetClient(client.PublicKey())).Error().ToNot(HaveOccurred())
-				Expect(uc.GetClient(client.PublicKey())).To(BeAssignableToTypeOf(&models.Client{}))
-			})
-			It("emits a CLIENT_CREATED event", func() {
-				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
-				Eventually(func() int {
-					return eventCatcher.EventsByVariantCount(cm.CLIENT_CREATED)
-				}).Should(Equal(1))
-			})
-		})
-		When("the client already exists", func() {
-			BeforeEach(func() {
-				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
-			})
-			It("returns an error", func() {
-				Expect(uc.AddClient(client)).Error().To(HaveOccurred())
-			})
-		})
-	})
-	Describe("::RemoveClient", func() {
-		When("a player was subscribed to a topic", func() {
-			BeforeEach(func() {
-				Expect(uc.AddClient(client)).ToNot(HaveOccurred())
-				subServiceMock.EXPECT().UnsubClientFromAll(gomock.All()).AnyTimes()
-			})
-			It("removes the client from the client map", func() {
-				Expect(uc.RemoveClient(client)).ToNot(HaveOccurred())
-				Expect(uc.GetClient(client.PublicKey())).Error().To(HaveOccurred())
-			})
-			It("unsubs client from all topics", func() {
-				subServiceMock.EXPECT().UnsubClientFromAll(client.PublicKey())
-				Expect(uc.RemoveClient(client)).ToNot(HaveOccurred())
-			})
-		})
-		When("the player was never added", func() {
-			It("returns an error", func() {
-				Expect(uc.RemoveClient(client)).To(HaveOccurred())
-			})
-		})
 	})
 	Describe("::BroadcastMessage", func() {
 		var topic models.MessageTopic

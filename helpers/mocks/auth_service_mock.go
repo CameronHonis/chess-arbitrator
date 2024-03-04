@@ -44,13 +44,13 @@ func (m *MockAuthenticationServiceI) EXPECT() *MockAuthenticationServiceIMockRec
 // AddClient mocks base method.
 func (m *MockAuthenticationServiceI) AddClient(clientKey models.Key) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddClient", clientKey)
+	m.ctrl.Call(m, "CreateNewClient", clientKey)
 }
 
 // AddClient indicates an expected call of AddClient.
 func (mr *MockAuthenticationServiceIMockRecorder) AddClient(clientKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddClient", reflect.TypeOf((*MockAuthenticationServiceI)(nil).AddClient), clientKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewClient", reflect.TypeOf((*MockAuthenticationServiceI)(nil).AddClient), clientKey)
 }
 
 // AddDependency mocks base method.

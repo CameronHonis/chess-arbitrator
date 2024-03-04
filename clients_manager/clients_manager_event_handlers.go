@@ -11,15 +11,15 @@ import (
 var OnClientCreated = func(self ServiceI, event EventI) bool {
 	c := self.(*ClientsManager)
 	client := event.Payload().(*ClientCreatedEventPayload).Client
-	baseErrMsg := "could not send auth: "
-	sendDeps := NewSendDirectDeps(c.DirectMessage, client.PublicKey())
-	sendAuthErr := SendAuth(sendDeps, client)
-	if sendAuthErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
-		return false
-	}
+	//baseErrMsg := "could not send auth: "
+	//sendDeps := NewSendDirectDeps(c.DirectMessage, client.PublicKey())
+	//sendAuthErr := SendAuth(sendDeps, client)
+	//if sendAuthErr != nil {
+	//	c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
+	//	return false
+	//}
 
-	go c.listenForUserInput(client)
+	go c.listenOnRegisteredConn(client)
 
 	return true
 }

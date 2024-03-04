@@ -17,14 +17,14 @@ func NewSendDirectDeps(writer DirectMessageFn, clientKey models.Key) *SendDirect
 	return &SendDirectDeps{writer, clientKey}
 }
 
-func SendAuth(deps *SendDirectDeps, client *models.Client) error {
+func SendAuth(deps *SendDirectDeps, priKey models.Key) error {
 	return deps.writer(&models.Message{
 		ContentType: models.CONTENT_TYPE_AUTH,
 		Content: &models.AuthMessageContent{
-			PublicKey:  client.PublicKey(),
-			PrivateKey: client.PrivateKey(),
+			PublicKey:  deps.clientKey,
+			PrivateKey: priKey,
 		},
-	}, client.PublicKey())
+	}, deps.clientKey)
 }
 
 func SendInvalidAuth(deps *SendDirectDeps) error {

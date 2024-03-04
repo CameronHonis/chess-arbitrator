@@ -53,6 +53,7 @@ func UnmarshalToMessage(msgJson []byte) (*Message, error) {
 func UnmarshalMessageContent(contentType ContentType, contentJson []byte) (interface{}, error) {
 	contentStructMap := map[ContentType]interface{}{
 		CONTENT_TYPE_AUTH:                      &AuthMessageContent{},
+		CONTENT_TYPE_REFRESH_AUTH:              &RefreshAuthMessageContent{},
 		CONTENT_TYPE_INVALID_AUTH:              &NoMessageContent{},
 		CONTENT_TYPE_JOIN_MATCHMAKING:          &FindMatchMessageContent{},
 		CONTENT_TYPE_LEAVE_MATCHMAKING:         &NoMessageContent{},
@@ -103,6 +104,7 @@ const (
 	CONTENT_TYPE_MATCH_CREATION_FAILED     ContentType = "MATCH_CREATION_FAILED"
 
 	// client requests
+	CONTENT_TYPE_REFRESH_AUTH         ContentType = "REFRESH_AUTH"
 	CONTENT_TYPE_EMPTY                ContentType = "EMPTY"
 	CONTENT_TYPE_ECHO                 ContentType = "ECHO"
 	CONTENT_TYPE_JOIN_MATCHMAKING     ContentType = "JOIN_MATCHMAKING"
@@ -122,6 +124,10 @@ type NoMessageContent struct{}
 type AuthMessageContent struct {
 	PublicKey  Key `json:"publicKey"`
 	PrivateKey Key `json:"privateKey"`
+}
+
+type RefreshAuthMessageContent struct {
+	ExistingAuth *AuthMessageContent `json:"existingAuth"`
 }
 
 type FindMatchMessageContent struct {
