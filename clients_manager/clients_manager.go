@@ -128,7 +128,7 @@ func (c *ClientsManager) getConnByKey(pubKey models.Key) (*websocket.Conn, error
 }
 
 func (c *ClientsManager) listenOnConn(conn *websocket.Conn) {
-	var clientKey models.Key
+	var clientKey models.Key = "??"
 	for {
 		_, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {

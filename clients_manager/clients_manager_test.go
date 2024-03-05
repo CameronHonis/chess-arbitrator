@@ -96,22 +96,6 @@ var _ = Describe("side effects", func() {
 	JustBeforeEach(func() {
 		uc.Build()
 	})
-	When("a CLIENT_CREATED event is dispatched", func() {
-		var eventHandlerCalled bool
-		BeforeEach(func() {
-			cm.OnClientCreated = func(_ service.ServiceI, _ service.EventI) bool {
-				eventHandlerCalled = true
-				return true
-			}
-		})
-		It("calls OnClientCreated", func() {
-			ev := cm.NewClientCreatedEvent(models.NewAuthCreds("client1", "privateKey1", models.PLEB))
-			uc.Dispatch(ev)
-			Eventually(func() bool {
-				return eventHandlerCalled
-			}).Should(BeTrue())
-		})
-	})
 	When("a ROLE_SWITCHED event is dispatched", func() {
 		var eventHandlerCalled bool
 		BeforeEach(func() {

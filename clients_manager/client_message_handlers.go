@@ -22,9 +22,11 @@ func HandleRefreshAuthMessage(c *ClientsManager, msg *models.Message, conn *webs
 	}
 	existingAuth := refreshAuthMsg.ExistingAuth
 	if existingAuth != nil {
-		if refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PublicKey); refreshErr == nil {
+		if refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PublicKey, existingAuth.PrivateKey); refreshErr == nil {
 			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("validated creds for %s from previous session", existingAuth.PublicKey))
 			return existingAuth.PublicKey, nil
+		} else {
+			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("could not validate creds for %s from previous session: %s", existingAuth.PublicKey, refreshErr))
 		}
 	}
 	// client is new or had invalid priKey - assign new, ephemeral guest account

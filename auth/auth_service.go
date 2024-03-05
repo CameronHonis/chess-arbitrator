@@ -23,7 +23,7 @@ type AuthenticationServiceI interface {
 	CreateNewClient() *models.AuthCreds
 	SwitchRole(clientKey models.Key, roleName models.RoleName, secret string) error
 	RemoveClient(clientKey models.Key)
-	RefreshPrivateKey(clientKey models.Key) error
+	RefreshPrivateKey(clientKey models.Key, priKey models.Key) error
 
 	VetAuthInMessage(msg *models.Message) error
 	VetPrivateKey(pubKey models.Key, priKey models.Key) error
@@ -115,7 +115,7 @@ func (am *AuthenticationService) RemoveClient(clientKey models.Key) {
 	am.removeCreds(clientKey)
 }
 
-func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key) error {
+func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key, priKey models.Key) error {
 	priKeyStaleAfterMinsStr, configErr := am.SecretsManager.GetSecret(models.SECRET_AUTH_KEY_MINS_TO_STALE)
 	if configErr != nil {
 		return fmt.Errorf("couldnt refresh private key: %s", configErr)
@@ -128,13 +128,17 @@ func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key) error {
 	if credsErr != nil {
 		return fmt.Errorf("couldnt refresh private key: %s", credsErr)
 	}
+	if creds.PrivateKey != priKey {
+		return fmt.Errorf("couldnt refresh private key: invalid private key")
+	}
 
 	minsSinceIssued := time.Now().Sub(creds.PriKeyCreatedAt).Minutes()
+	newPriKey := creds.PrivateKey
 	if minsSinceIssued >= priKeyStaleAfterMin {
-		newPriKey := GeneratePriKey()
-		newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*creds).WithPrivateKey(newPriKey).Build()
-		am.setCreds(newCreds)
+		newPriKey = GeneratePriKey()
 	}
+	newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*creds).WithPrivateKey(newPriKey).Build()
+	am.setCreds(newCreds)
 
 	return nil
 }
@@ -192,7 +196,10 @@ func (am *AuthenticationService) setCreds(creds *models.AuthCreds) {
 			am.clientKeysByRole[creds.Role] = newRoleClientKeys
 		}
 		newRoleClientKeys.Add(creds.ClientKey)
-		go am.Dispatch(NewRoleSwitchedEvent(creds.ClientKey, creds.Role))
+
+		if prevCreds != nil {
+			go am.Dispatch(NewRoleSwitchedEvent(creds.ClientKey, creds.Role))
+		}
 	}
 
 	am.authCredsByClient[creds.ClientKey] = creds

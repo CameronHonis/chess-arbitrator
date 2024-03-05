@@ -12,7 +12,7 @@ import (
 func BuildServices(ctrl *gomock.Controller) *sub_service.SubscriptionService {
 	authServiceMock := mocks.NewMockAuthenticationServiceI(ctrl)
 	authServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()
-	authServiceMock.EXPECT().ValidateClientForTopic(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	authServiceMock.EXPECT().VetClientForTopic(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	logServiceMock := mocks.NewMockLoggerServiceI(ctrl)
 	logServiceMock.EXPECT().SetParent(gomock.Any()).AnyTimes()

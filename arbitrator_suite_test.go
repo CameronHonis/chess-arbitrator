@@ -156,11 +156,17 @@ func listenForMsgType(msgQueue *MsgQueue, contentType models.ContentType) *model
 }
 
 var _ = Describe("before authentication", func() {
+	var prevAuthKeyMinsToStale string
 	var conn *websocket.Conn
 	var msgQueue *MsgQueue
 	BeforeEach(func() {
 		msgQueue = newMsgQueue()
 		conn = connectClient(msgQueue, "A", false)
+		prevAuthKeyMinsToStale = os.Getenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE))
+		_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), "1")
+	})
+	AfterEach(func() {
+		_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), prevAuthKeyMinsToStale)
 	})
 	Describe("request refresh auth", func() {
 		When("no prior creds exist", func() {
@@ -196,6 +202,8 @@ var _ = Describe("before authentication", func() {
 			When("the auth is valid", func() {
 				When("the auth is fresh", func() {
 					BeforeEach(func() {
+						msgQueue.flush()
+						fmt.Println("FLUSH")
 						refreshAuthMsg := &models.Message{
 							ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
 							Content: &models.RefreshAuthMessageContent{
@@ -215,11 +223,10 @@ var _ = Describe("before authentication", func() {
 					})
 				})
 				When("the auth is stale", func() {
-					var oldAuthKeyMinsToStale string
 					BeforeEach(func() {
 						msgQueue.flush()
 
-						oldAuthKeyMinsToStale = os.Getenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE))
+						prevAuthKeyMinsToStale = os.Getenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE))
 						_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), "0.0001")
 
 						time.Sleep(time.Millisecond * 100)
@@ -236,7 +243,7 @@ var _ = Describe("before authentication", func() {
 						sendMsg("A", conn, pubKey, priKey, refreshAuthMsg)
 					})
 					AfterEach(func() {
-						_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), oldAuthKeyMinsToStale)
+						_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), prevAuthKeyMinsToStale)
 					})
 					It("replies with the updated private key", func() {
 						authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)

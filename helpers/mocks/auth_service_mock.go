@@ -201,17 +201,17 @@ func (mr *MockAuthenticationServiceIMockRecorder) OnStart() *gomock.Call {
 }
 
 // RefreshPrivateKey mocks base method.
-func (m *MockAuthenticationServiceI) RefreshPrivateKey(clientKey models.Key) error {
+func (m *MockAuthenticationServiceI) RefreshPrivateKey(clientKey, priKey models.Key) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshPrivateKey", clientKey)
+	ret := m.ctrl.Call(m, "RefreshPrivateKey", clientKey, priKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RefreshPrivateKey indicates an expected call of RefreshPrivateKey.
-func (mr *MockAuthenticationServiceIMockRecorder) RefreshPrivateKey(clientKey any) *gomock.Call {
+func (mr *MockAuthenticationServiceIMockRecorder) RefreshPrivateKey(clientKey, priKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshPrivateKey", reflect.TypeOf((*MockAuthenticationServiceI)(nil).RefreshPrivateKey), clientKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshPrivateKey", reflect.TypeOf((*MockAuthenticationServiceI)(nil).RefreshPrivateKey), clientKey, priKey)
 }
 
 // RemoveClient mocks base method.
