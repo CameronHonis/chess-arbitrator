@@ -1,43 +1,56 @@
 package auth
 
 import (
-	. "github.com/CameronHonis/chess-arbitrator/models"
+	models "github.com/CameronHonis/chess-arbitrator/models"
 	. "github.com/CameronHonis/service"
 )
 
 const (
-	ROLE_SWITCH_GRANTED EventVariant = "ROLE_SWITCH_GRANTED"
-	ROLE_SWITCH_DENIED  EventVariant = "ROLE_SWITCH_DENIED"
+	ROLE_SWITCHED EventVariant = "ROLE_SWITCHED"
+	CREDS_CHANGED EventVariant = "CREDS_CHANGED"
+	CREDS_REMOVED EventVariant = "CREDS_REMOVED"
 )
 
-type RoleSwitchGrantedPayload struct {
-	ClientKey Key
-	Role      RoleName
+type RoleSwitchedPayload struct {
+	ClientKey models.Key
+	Role      models.RoleName
 }
 
-type RoleSwitchGrantedEvent struct{ Event }
+type RoleSwitchedEvent struct{ Event }
 
-func NewRoleSwitchGrantedEvent(clientKey Key, role RoleName) *RoleSwitchGrantedEvent {
-	return &RoleSwitchGrantedEvent{
-		Event: *NewEvent(ROLE_SWITCH_GRANTED, &RoleSwitchGrantedPayload{
+func NewRoleSwitchedEvent(clientKey models.Key, role models.RoleName) *RoleSwitchedEvent {
+	return &RoleSwitchedEvent{
+		Event: *NewEvent(ROLE_SWITCHED, &RoleSwitchedPayload{
 			ClientKey: clientKey,
 			Role:      role,
 		}),
 	}
 }
 
-type RoleSwitchDeniedPayload struct {
-	ClientKey Key
-	Reason    string
+type CredsChangedPayload struct {
+	NewCreds *models.AuthCreds
 }
 
-type RoleSwitchDeniedEvent struct{ Event }
+type CredsChangedEvent struct{ Event }
 
-func NewRoleSwitchDeniedEvent(clientKey Key, reason string) *RoleSwitchDeniedEvent {
-	return &RoleSwitchDeniedEvent{
-		Event: *NewEvent(ROLE_SWITCH_DENIED, &RoleSwitchDeniedPayload{
+func NewCredsChangedEvent(newCreds *models.AuthCreds) *CredsChangedEvent {
+	return &CredsChangedEvent{
+		Event: *NewEvent(CREDS_CHANGED, &CredsChangedPayload{
+			NewCreds: newCreds,
+		}),
+	}
+}
+
+type CredsRemovedPayload struct {
+	ClientKey models.Key
+}
+
+type CredsRemovedEvent struct{ Event }
+
+func NewCredsRemovedEvent(clientKey models.Key) *CredsRemovedEvent {
+	return &CredsRemovedEvent{
+		Event: *NewEvent(CREDS_REMOVED, &CredsRemovedPayload{
 			ClientKey: clientKey,
-			Reason:    reason,
 		}),
 	}
 }

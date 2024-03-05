@@ -87,7 +87,7 @@ var _ = BeforeSuite(func() {
 	appService.Start()
 })
 
-func connectClient(msgQueue *MsgQueue, clientName string) *websocket.Conn {
+func connectClient(msgQueue *MsgQueue, clientName string, shouldRequestAuth bool) *websocket.Conn {
 	var clientConn *websocket.Conn
 	for i := 0; i < 10; i++ {
 		clientConn, _, _ = websocket.DefaultDialer.Dial("ws://localhost:8080", nil)
@@ -97,11 +97,13 @@ func connectClient(msgQueue *MsgQueue, clientName string) *websocket.Conn {
 		time.Sleep(time.Millisecond * 200)
 	}
 
-	refreshAuthMsg := &models.Message{
-		ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
-		Content:     &models.RefreshAuthMessageContent{ExistingAuth: nil},
+	if shouldRequestAuth {
+		refreshAuthMsg := &models.Message{
+			ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+			Content:     &models.RefreshAuthMessageContent{ExistingAuth: nil},
+		}
+		sendMsg(clientName, clientConn, "", "", refreshAuthMsg)
 	}
-	sendMsg(clientName, clientConn, "", "", refreshAuthMsg)
 
 	go func() {
 		for {
@@ -153,12 +155,128 @@ func listenForMsgType(msgQueue *MsgQueue, contentType models.ContentType) *model
 	panic(fmt.Sprintf("timed out waiting for msg of type %s", contentType))
 }
 
-var _ = Describe("Workflows", func() {
+var _ = Describe("before authentication", func() {
 	var conn *websocket.Conn
 	var msgQueue *MsgQueue
 	BeforeEach(func() {
 		msgQueue = newMsgQueue()
-		conn = connectClient(msgQueue, "A")
+		conn = connectClient(msgQueue, "A", false)
+	})
+	Describe("request refresh auth", func() {
+		When("no prior creds exist", func() {
+			BeforeEach(func() {
+				refreshAuthMsg := &models.Message{
+					ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+					Content: &models.RefreshAuthMessageContent{
+						ExistingAuth: nil,
+					},
+				}
+				sendMsg("A", conn, "", "", refreshAuthMsg)
+			})
+			It("replies with fresh creds", func() {
+				listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+			})
+		})
+		When("prior creds do exist", func() {
+			var pubKey models.Key
+			var priKey models.Key
+			BeforeEach(func() {
+				refreshAuthMsg := &models.Message{
+					ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+					Content: &models.RefreshAuthMessageContent{
+						ExistingAuth: nil,
+					},
+				}
+				sendMsg("A", conn, "", "", refreshAuthMsg)
+				msg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+				authMsgContent := msg.Content.(*models.AuthMessageContent)
+				pubKey = authMsgContent.PublicKey
+				priKey = authMsgContent.PrivateKey
+			})
+			When("the auth is valid", func() {
+				When("the auth is fresh", func() {
+					BeforeEach(func() {
+						refreshAuthMsg := &models.Message{
+							ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+							Content: &models.RefreshAuthMessageContent{
+								ExistingAuth: &models.AuthMessageContent{
+									PublicKey:  pubKey,
+									PrivateKey: priKey,
+								},
+							},
+						}
+						sendMsg("A", conn, pubKey, priKey, refreshAuthMsg)
+					})
+					It("mirrors the creds back", func() {
+						authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+						authMsgContent := authMsg.Content.(*models.AuthMessageContent)
+						Expect(authMsgContent.PublicKey).To(Equal(pubKey))
+						Expect(authMsgContent.PrivateKey).To(Equal(priKey))
+					})
+				})
+				When("the auth is stale", func() {
+					var oldAuthKeyMinsToStale string
+					BeforeEach(func() {
+						msgQueue.flush()
+
+						oldAuthKeyMinsToStale = os.Getenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE))
+						_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), "0.0001")
+
+						time.Sleep(time.Millisecond * 100)
+
+						refreshAuthMsg := &models.Message{
+							ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+							Content: &models.RefreshAuthMessageContent{
+								ExistingAuth: &models.AuthMessageContent{
+									PublicKey:  pubKey,
+									PrivateKey: priKey,
+								},
+							},
+						}
+						sendMsg("A", conn, pubKey, priKey, refreshAuthMsg)
+					})
+					AfterEach(func() {
+						_ = os.Setenv(string(models.SECRET_AUTH_KEY_MINS_TO_STALE), oldAuthKeyMinsToStale)
+					})
+					It("replies with the updated private key", func() {
+						authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+						authMsgContent := authMsg.Content.(*models.AuthMessageContent)
+						Expect(authMsgContent.PublicKey).To(Equal(pubKey))
+						Expect(authMsgContent.PrivateKey).ToNot(Equal(priKey))
+					})
+				})
+			})
+			When("the auth is invalid", func() {
+				BeforeEach(func() {
+					msgQueue.flush()
+					refreshAuthMsg := &models.Message{
+						ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+						Content: &models.RefreshAuthMessageContent{
+							ExistingAuth: &models.AuthMessageContent{
+								PublicKey:  pubKey,
+								PrivateKey: "invalid",
+							},
+						},
+					}
+					sendMsg("A", conn, pubKey, priKey, refreshAuthMsg)
+				})
+				It("replies with a new client creds", func() {
+					authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+					authMsgContent := authMsg.Content.(*models.AuthMessageContent)
+					Expect(authMsgContent.PublicKey).ToNot(Equal(pubKey))
+					Expect(authMsgContent.PrivateKey).ToNot(Equal(priKey))
+				})
+			})
+		})
+	})
+})
+
+var _ = Describe("after authentication", func() {
+	var conn *websocket.Conn
+	var msgQueue *MsgQueue
+	BeforeEach(func() {
+		msgQueue = newMsgQueue()
+		conn = connectClient(msgQueue, "A", true)
 	})
 	Describe("receives basic auth upon connection", func() {
 		It("responds with an Auth Msg", func() {
@@ -187,8 +305,8 @@ var _ = Describe("Workflows", func() {
 			pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
 			privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
 			secret := "secret"
-			prevBotClientSecret = os.Getenv(string(models.BOT_CLIENT_SECRET))
-			Expect(os.Setenv(string(models.BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
+			prevBotClientSecret = os.Getenv(string(models.SECRET_BOT_CLIENT_SECRET))
+			Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
 
 			sendMsg("A", conn, pubKey, privKey, &models.Message{
 				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
@@ -200,7 +318,7 @@ var _ = Describe("Workflows", func() {
 
 		})
 		AfterEach(func() {
-			Expect(os.Setenv(string(models.BOT_CLIENT_SECRET), prevBotClientSecret)).ToNot(HaveOccurred())
+			Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), prevBotClientSecret)).ToNot(HaveOccurred())
 		})
 		It("responds with an Upgrade Auth Msg", func() {
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED)
@@ -222,7 +340,7 @@ var _ = Describe("Workflows", func() {
 		var challengeAtoB *models.Challenge
 		BeforeEach(func() {
 			clientBMsgQueue = newMsgQueue()
-			clientBConn = connectClient(clientBMsgQueue, "B")
+			clientBConn = connectClient(clientBMsgQueue, "B", true)
 
 			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
 			msgQueue.flush()
@@ -406,7 +524,7 @@ var _ = Describe("Workflows", func() {
 		var privKeyB models.Key
 		BeforeEach(func() {
 			msgQueueB = newMsgQueue()
-			connB = connectClient(msgQueueB, "B")
+			connB = connectClient(msgQueueB, "B", true)
 
 			authMsgToA := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
 			pubKeyA = authMsgToA.Content.(*models.AuthMessageContent).PublicKey
@@ -454,7 +572,7 @@ var _ = Describe("Workflows", func() {
 			var pubKeyC models.Key
 			BeforeEach(func() {
 				msgQueueC = newMsgQueue()
-				thirdClientConn := connectClient(msgQueueC, "C")
+				thirdClientConn := connectClient(msgQueueC, "C", true)
 				thirdAuthMsg := listenForMsgType(msgQueueC, models.CONTENT_TYPE_AUTH)
 				pubKeyC = thirdAuthMsg.Content.(*models.AuthMessageContent).PublicKey
 				thirdClientPrivKey := thirdAuthMsg.Content.(*models.AuthMessageContent).PrivateKey

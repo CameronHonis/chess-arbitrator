@@ -47,8 +47,8 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 }
 
 func (c *ClientsManager) OnBuild() {
-	c.AddEventListener(CLIENT_CREATED, OnClientCreated)
-	c.AddEventListener(auth.ROLE_SWITCH_GRANTED, OnUpgradeAuthGranted)
+	c.AddEventListener(auth.CREDS_CHANGED, OnCredsChanged)
+	c.AddEventListener(auth.ROLE_SWITCHED, OnUpgradeAuthGranted)
 	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, OnChallengeRequestFailed)
 	c.AddEventListener(matcher.CHALLENGE_CREATED, OnChallengeCreated)
 	c.AddEventListener(matcher.CHALLENGE_REVOKED, OnChallengeRevoked)
@@ -63,11 +63,7 @@ func (c *ClientsManager) OnBuild() {
 }
 
 func (c *ClientsManager) AddConn(conn *websocket.Conn) {
-	go func() {
-		// TODO: squash listeners
-		clientKey, _ := c.listenOnUnregisteredConn(conn)
-		c.listenOnRegisteredConn(clientKey, conn)
-	}()
+	go c.listenOnConn(conn)
 }
 
 func (c *ClientsManager) BroadcastMessage(message *models.Message) {
@@ -131,56 +127,8 @@ func (c *ClientsManager) getConnByKey(pubKey models.Key) (*websocket.Conn, error
 	return conn, nil
 }
 
-func (c *ClientsManager) listenOnUnregisteredConn(conn *websocket.Conn) (models.Key, error) {
-	// NOTE: temporary listener for first message on connection, which should only be a REFRESH_AUTH_MESSAGE
-	//		 message auth not checked here, since it is possibly the first message from a new, unauthorized client
-	_, rawMsg, readErr := conn.ReadMessage()
-	if readErr != nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", readErr), log.ALL_BUT_TEST_ENV)
-		return "", readErr
-	}
-	msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
-	if unmarshalErr != nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error unmarshalling message: %s", unmarshalErr), log.ALL_BUT_TEST_ENV)
-		_ = conn.Close()
-		return "", unmarshalErr
-	}
-	refreshAuthMsg, ok := msg.Content.(*models.RefreshAuthMessageContent)
-	if !ok {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg), log.ALL_BUT_TEST_ENV)
-		_ = conn.Close()
-		return "", fmt.Errorf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg)
-	}
-	existingAuth := refreshAuthMsg.ExistingAuth
-	if existingAuth != nil {
-		if _, refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PrivateKey); refreshErr != nil {
-			sendDeps := NewSendDirectDeps(c.DirectMessage, existingAuth.PublicKey)
-			sendAuthErr := SendAuth(sendDeps, existingAuth.PrivateKey)
-			if sendAuthErr != nil {
-				c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error sending auth: %s", sendAuthErr), log.ALL_BUT_TEST_ENV)
-			}
-			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("validated creds for %s from previous session", existingAuth.PublicKey))
-			return existingAuth.PublicKey, nil
-		}
-	}
-	// client is new or had invalid priKey - assign new, ephemeral guest account
-	creds := c.AuthService.CreateNewClient()
-
-	registerErr := c.registerConn(creds.ClientKey, conn)
-	if registerErr != nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", creds.ClientKey))
-	}
-
-	sendDeps := NewSendDirectDeps(c.DirectMessage, creds.ClientKey)
-	sendAuthErr := SendAuth(sendDeps, creds.PrivateKey)
-	if sendAuthErr != nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error sending new client auth: %s", sendAuthErr), log.ALL_BUT_TEST_ENV)
-	}
-
-	return creds.ClientKey, nil
-}
-
-func (c *ClientsManager) listenOnRegisteredConn(clientKey models.Key, conn *websocket.Conn) {
+func (c *ClientsManager) listenOnConn(conn *websocket.Conn) {
+	var clientKey models.Key
 	for {
 		_, rawMsg, readErr := conn.ReadMessage()
 		if readErr != nil {
@@ -190,26 +138,41 @@ func (c *ClientsManager) listenOnRegisteredConn(clientKey models.Key, conn *webs
 			}
 			return
 		}
-		if err := c.handleMsg(clientKey, rawMsg); err != nil {
-			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), log.ALL_BUT_TEST_ENV)
+		c.Logger.Log(string(clientKey), ">> ", string(rawMsg))
+		msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
+		if unmarshalErr != nil {
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error unmarshalling message: %s", unmarshalErr))
+			continue
+		}
 
+		// NOTE: this msg type is special since it requires the connection and doesn't require auth vetting
+		if msg.ContentType == models.CONTENT_TYPE_REFRESH_AUTH {
+			pubKey, refreshErr := HandleRefreshAuthMessage(c, msg, conn)
+			if refreshErr != nil {
+				c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not refresh creds: %s", refreshErr.Error()))
+			} else {
+				clientKey = pubKey
+			}
+			continue
+		}
+
+		if authErr := c.AuthService.VetAuthInMessage(msg); authErr != nil {
+			sendDeps := NewSendDirectDeps(c.DirectMessage, clientKey)
+			_ = SendInvalidAuth(sendDeps)
+			c.Logger.LogRed(fmt.Sprintf("error validating auth in message: %s", authErr))
+			continue
+		} else if msg.SenderKey != "" {
+			clientKey = msg.SenderKey
+		}
+		c.AuthService.StripAuthFromMessage(msg)
+
+		if err := c.handleMsg(clientKey, msg); err != nil {
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("error reading message from websocket: %s", err), log.ALL_BUT_TEST_ENV)
 		}
 	}
-
 }
 
-func (c *ClientsManager) handleMsg(clientKey models.Key, rawMsg []byte) error {
-	c.Logger.Log(string(clientKey), ">> ", string(rawMsg))
-	msg, unmarshalErr := models.UnmarshalToMessage(rawMsg)
-	if unmarshalErr != nil {
-		return fmt.Errorf("error unmarshalling message: %s", unmarshalErr)
-	}
-	if authErr := c.AuthService.ValidateAuthInMessage(msg); authErr != nil {
-		sendDeps := NewSendDirectDeps(c.DirectMessage, clientKey)
-		_ = SendInvalidAuth(sendDeps)
-		return fmt.Errorf("error validating auth in message: %s", authErr)
-	}
-	c.AuthService.StripAuthFromMessage(msg)
+func (c *ClientsManager) handleMsg(clientKey models.Key, msg *models.Message) error {
 
 	config := c.Config().(*ClientsManagerConfig)
 	if msgHandler := config.HandlerByContentType(msg.ContentType); msgHandler != nil {

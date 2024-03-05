@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/CameronHonis/chess-arbitrator/matcher"
 	"github.com/CameronHonis/chess-arbitrator/models"
+	"github.com/gorilla/websocket"
 )
 
 func HandleEchoMessage(m *ClientsManager, msg *models.Message) error {
@@ -12,6 +13,29 @@ func HandleEchoMessage(m *ClientsManager, msg *models.Message) error {
 		return fmt.Errorf("could not cast message to EchoMessageContent")
 	}
 	return m.DirectMessage(msg, msg.SenderKey)
+}
+
+func HandleRefreshAuthMessage(c *ClientsManager, msg *models.Message, conn *websocket.Conn) (models.Key, error) {
+	refreshAuthMsg, ok := msg.Content.(*models.RefreshAuthMessageContent)
+	if !ok {
+		return "", fmt.Errorf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg)
+	}
+	existingAuth := refreshAuthMsg.ExistingAuth
+	if existingAuth != nil {
+		if refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PublicKey); refreshErr == nil {
+			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("validated creds for %s from previous session", existingAuth.PublicKey))
+			return existingAuth.PublicKey, nil
+		}
+	}
+	// client is new or had invalid priKey - assign new, ephemeral guest account
+	creds := c.AuthService.CreateNewClient()
+
+	registerErr := c.registerConn(creds.ClientKey, conn)
+	if registerErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", creds.ClientKey))
+	}
+
+	return creds.ClientKey, nil
 }
 
 func HandleJoinMatchmakingMessage(m *ClientsManager, msg *models.Message) error {

@@ -201,12 +201,11 @@ func (mr *MockAuthenticationServiceIMockRecorder) OnStart() *gomock.Call {
 }
 
 // RefreshPrivateKey mocks base method.
-func (m *MockAuthenticationServiceI) RefreshPrivateKey(clientKey models.Key) (models.Key, error) {
+func (m *MockAuthenticationServiceI) RefreshPrivateKey(clientKey models.Key) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RefreshPrivateKey", clientKey)
-	ret0, _ := ret[0].(models.Key)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RefreshPrivateKey indicates an expected call of RefreshPrivateKey.
@@ -216,11 +215,9 @@ func (mr *MockAuthenticationServiceIMockRecorder) RefreshPrivateKey(clientKey an
 }
 
 // RemoveClient mocks base method.
-func (m *MockAuthenticationServiceI) RemoveClient(clientKey models.Key) error {
+func (m *MockAuthenticationServiceI) RemoveClient(clientKey models.Key) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveClient", clientKey)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "RemoveClient", clientKey)
 }
 
 // RemoveClient indicates an expected call of RemoveClient.
@@ -291,44 +288,44 @@ func (mr *MockAuthenticationServiceIMockRecorder) SwitchRole(clientKey, roleName
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SwitchRole", reflect.TypeOf((*MockAuthenticationServiceI)(nil).SwitchRole), clientKey, roleName, secret)
 }
 
-// ValidateAuthInMessage mocks base method.
-func (m *MockAuthenticationServiceI) ValidateAuthInMessage(msg *models.Message) error {
+// VetAuthInMessage mocks base method.
+func (m *MockAuthenticationServiceI) VetAuthInMessage(msg *models.Message) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateAuthInMessage", msg)
+	ret := m.ctrl.Call(m, "VetAuthInMessage", msg)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ValidateAuthInMessage indicates an expected call of ValidateAuthInMessage.
-func (mr *MockAuthenticationServiceIMockRecorder) ValidateAuthInMessage(msg any) *gomock.Call {
+// VetAuthInMessage indicates an expected call of VetAuthInMessage.
+func (mr *MockAuthenticationServiceIMockRecorder) VetAuthInMessage(msg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateAuthInMessage", reflect.TypeOf((*MockAuthenticationServiceI)(nil).ValidateAuthInMessage), msg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VetAuthInMessage", reflect.TypeOf((*MockAuthenticationServiceI)(nil).VetAuthInMessage), msg)
 }
 
-// ValidateClientForTopic mocks base method.
-func (m *MockAuthenticationServiceI) ValidateClientForTopic(clientKey models.Key, topic models.MessageTopic) error {
+// VetClientForTopic mocks base method.
+func (m *MockAuthenticationServiceI) VetClientForTopic(clientKey models.Key, topic models.MessageTopic) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateClientForTopic", clientKey, topic)
+	ret := m.ctrl.Call(m, "VetClientForTopic", clientKey, topic)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ValidateClientForTopic indicates an expected call of ValidateClientForTopic.
-func (mr *MockAuthenticationServiceIMockRecorder) ValidateClientForTopic(clientKey, topic any) *gomock.Call {
+// VetClientForTopic indicates an expected call of VetClientForTopic.
+func (mr *MockAuthenticationServiceIMockRecorder) VetClientForTopic(clientKey, topic any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateClientForTopic", reflect.TypeOf((*MockAuthenticationServiceI)(nil).ValidateClientForTopic), clientKey, topic)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VetClientForTopic", reflect.TypeOf((*MockAuthenticationServiceI)(nil).VetClientForTopic), clientKey, topic)
 }
 
-// ValidatePrivateKey mocks base method.
-func (m *MockAuthenticationServiceI) ValidatePrivateKey(pubKey, priKey models.Key) error {
+// VetPrivateKey mocks base method.
+func (m *MockAuthenticationServiceI) VetPrivateKey(pubKey, priKey models.Key) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidatePrivateKey", pubKey, priKey)
+	ret := m.ctrl.Call(m, "VetPrivateKey", pubKey, priKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ValidatePrivateKey indicates an expected call of ValidatePrivateKey.
-func (mr *MockAuthenticationServiceIMockRecorder) ValidatePrivateKey(pubKey, priKey any) *gomock.Call {
+// VetPrivateKey indicates an expected call of VetPrivateKey.
+func (mr *MockAuthenticationServiceIMockRecorder) VetPrivateKey(pubKey, priKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidatePrivateKey", reflect.TypeOf((*MockAuthenticationServiceI)(nil).ValidatePrivateKey), pubKey, priKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VetPrivateKey", reflect.TypeOf((*MockAuthenticationServiceI)(nil).VetPrivateKey), pubKey, priKey)
 }

@@ -8,18 +8,16 @@ import (
 	. "github.com/CameronHonis/service"
 )
 
-var OnClientCreated = func(self ServiceI, event EventI) bool {
-	//c := self.(*ClientsManager)
-	//client := event.Payload().(*ClientCreatedEventPayload).Client
-	//baseErrMsg := "could not send auth: "
-	//sendDeps := NewSendDirectDeps(c.DirectMessage, client.PublicKey())
-	//sendAuthErr := SendAuth(sendDeps, client)
-	//if sendAuthErr != nil {
-	//	c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendAuthErr.Error())
-	//	return false
-	//}
+var OnCredsChanged = func(self ServiceI, event EventI) bool {
+	c := self.(*ClientsManager)
+	baseErrMsg := "could not follow up with creds changed: "
+	payload := event.Payload().(*auth.CredsChangedPayload)
 
-	//go c.listenOnRegisteredConn(client)
+	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.NewCreds.ClientKey)
+	sendErr := SendAuth(sendDeps, payload.NewCreds.PrivateKey)
+	if sendErr != nil {
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+	}
 
 	return true
 }
@@ -27,13 +25,12 @@ var OnClientCreated = func(self ServiceI, event EventI) bool {
 var OnUpgradeAuthGranted = func(self ServiceI, event EventI) bool {
 	c := self.(*ClientsManager)
 	baseErrMsg := "could not follow up with GRANTED upgrade auth request: "
-	payload := event.Payload().(*auth.RoleSwitchGrantedPayload)
+	payload := event.Payload().(*auth.RoleSwitchedPayload)
 
 	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.ClientKey)
 	sendErr := SendUpgradeAuthGranted(sendDeps, payload.Role)
 	if sendErr != nil {
 		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
-		return false
 	}
 	return true
 }
@@ -47,7 +44,6 @@ var OnChallengeRequestFailed = func(self ServiceI, event EventI) bool {
 	sendErr := SendChallengeRequestFailed(sendDeps, payload.Challenge, payload.Reason)
 	if sendErr != nil {
 		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
-		return false
 	}
 	return true
 }

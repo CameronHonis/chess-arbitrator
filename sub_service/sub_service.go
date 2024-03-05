@@ -42,7 +42,7 @@ func NewSubscriptionService(config *SubscriptionServiceConfig) *SubscriptionServ
 }
 func (s *SubscriptionService) SubClient(clientKey models.Key, topic models.MessageTopic) error {
 	s.Logger.Log(models.SUB_SERVICE, fmt.Sprintf("subscribing client %s to topic %s", clientKey, topic))
-	authErr := s.AuthService.ValidateClientForTopic(clientKey, topic)
+	authErr := s.AuthService.VetClientForTopic(clientKey, topic)
 	if authErr != nil {
 		go s.Dispatch(NewSubFailedEvent(clientKey, topic, authErr.Error()))
 		return authErr
