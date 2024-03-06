@@ -21,8 +21,22 @@ var OnCredsChanged = func(self ServiceI, event EventI) bool {
 		sendDeps := NewSendDirectDeps(c.DirectMessage, payload.NewCreds.ClientKey)
 		sendErr := SendAuth(sendDeps, payload.NewCreds.PrivateKey)
 		if sendErr != nil {
-			c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+			c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr)
 		}
+	}
+
+	return true
+}
+
+var OnCredsVetted = func(self ServiceI, event EventI) bool {
+	c := self.(*ClientsManager)
+	baseErrMsg := "could not follow up with creds vetted: "
+	payload := event.Payload().(*auth.CredsVettedPayload)
+
+	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.ClientKey)
+	sendErr := SendAuth(sendDeps, payload.PriKey)
+	if sendErr != nil {
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr)
 	}
 
 	return true
@@ -36,7 +50,7 @@ var OnUpgradeAuthGranted = func(self ServiceI, event EventI) bool {
 	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.ClientKey)
 	sendErr := SendUpgradeAuthGranted(sendDeps, payload.Role)
 	if sendErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr)
 	}
 	return true
 }
@@ -49,7 +63,7 @@ var OnChallengeRequestFailed = func(self ServiceI, event EventI) bool {
 	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.Challenge.ChallengerKey)
 	sendErr := SendChallengeRequestFailed(sendDeps, payload.Challenge, payload.Reason)
 	if sendErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr)
 	}
 	return true
 }
@@ -63,10 +77,10 @@ var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 	challengedSubErr := c.SubService.SubClient(challenge.ChallengedKey, challenge.Topic())
 
 	if challengerSubErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenger)")
 	}
 	if challengedSubErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenged)")
 	}
 
 	sendTopicDeps := NewSendTopicDeps(c.BroadcastMessage, challenge.Topic())
@@ -115,10 +129,10 @@ var OnChallengeAccepted = func(s ServiceI, event EventI) bool {
 	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
 
 	if challengerSubErr != nil {
-		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenger)")
 	}
 	if challengedSubErr != nil {
-		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenged)")
 	}
 
 	return true
@@ -141,10 +155,10 @@ var OnChallengeAcceptFailed = func(s ServiceI, event EventI) bool {
 	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
 
 	if challengerSubErr != nil {
-		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenger)")
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenger)")
 	}
 	if challengedSubErr != nil {
-		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr.Error(), " (challenged)")
+		clientManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, challengerSubErr, " (challenged)")
 	}
 
 	return true
@@ -159,10 +173,10 @@ var OnMatchCreated = func(self ServiceI, event EventI) bool {
 	blackSubErr := clientsManager.SubService.SubClient(match.BlackClientKey, match.Topic())
 
 	if whiteSubErr != nil {
-		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, whiteSubErr.Error(), " (white)")
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, whiteSubErr, " (white)")
 	}
 	if blackSubErr != nil {
-		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, blackSubErr.Error(), " (black)")
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, blackSubErr, " (black)")
 	}
 
 	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
@@ -201,10 +215,10 @@ var OnMatchEnded = func(self ServiceI, event EventI) bool {
 	whiteUnsubErr := clientsManager.SubService.UnsubClient(match.WhiteClientKey, match.Topic())
 	blackUnsubErr := clientsManager.SubService.UnsubClient(match.BlackClientKey, match.Topic())
 	if whiteUnsubErr != nil {
-		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub white client from match topic", whiteUnsubErr.Error())
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub white client from match topic", whiteUnsubErr)
 	}
 	if blackUnsubErr != nil {
-		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub black client from match topic", blackUnsubErr.Error())
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not unsub black client from match topic", blackUnsubErr)
 	}
 
 	return true
@@ -218,7 +232,7 @@ var OnMoveFailed = func(self ServiceI, event EventI) bool {
 
 	sendDeps := NewSendDirectDeps(clientsManager.DirectMessage, payload.OriginClientKey)
 	if sendErr := SendMoveFailed(sendDeps, payload.Move, payload.Reason); sendErr != nil {
-		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not send move failed message", sendErr.Error())
+		clientsManager.Logger.LogRed(models.ENV_CLIENT_MNGR, "could not send move failed message", sendErr)
 	}
 
 	return true

@@ -48,6 +48,7 @@ func NewClientsManager(config *ClientsManagerConfig) *ClientsManager {
 
 func (c *ClientsManager) OnBuild() {
 	c.AddEventListener(auth.CREDS_CHANGED, OnCredsChanged)
+	c.AddEventListener(auth.CREDS_VETTED, OnCredsVetted)
 	c.AddEventListener(auth.ROLE_SWITCHED, OnUpgradeAuthGranted)
 	c.AddEventListener(matcher.CHALLENGE_REQUEST_FAILED, OnChallengeRequestFailed)
 	c.AddEventListener(matcher.CHALLENGE_CREATED, OnChallengeCreated)

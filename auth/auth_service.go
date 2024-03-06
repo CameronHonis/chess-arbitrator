@@ -135,9 +135,12 @@ func (am *AuthenticationService) RefreshPrivateKey(clientKey models.Key, priKey 
 	newPriKey := creds.PrivateKey
 	if minsSinceIssued >= priKeyStaleAfterMin {
 		newPriKey = GeneratePriKey()
+		newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*creds).WithPrivateKey(newPriKey).Build()
+		am.setCreds(newCreds)
+		return nil
 	}
-	newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*creds).WithPrivateKey(newPriKey).Build()
-	am.setCreds(newCreds)
+
+	go am.Dispatch(NewCredsVettedEvent(clientKey, priKey))
 
 	return nil
 }

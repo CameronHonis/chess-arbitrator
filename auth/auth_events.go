@@ -7,6 +7,7 @@ import (
 
 const (
 	ROLE_SWITCHED EventVariant = "ROLE_SWITCHED"
+	CREDS_VETTED  EventVariant = "CREDS_VETTED"
 	CREDS_CHANGED EventVariant = "CREDS_CHANGED"
 	CREDS_REMOVED EventVariant = "CREDS_REMOVED"
 )
@@ -23,6 +24,22 @@ func NewRoleSwitchedEvent(clientKey models.Key, role models.RoleName) *RoleSwitc
 		Event: *NewEvent(ROLE_SWITCHED, &RoleSwitchedPayload{
 			ClientKey: clientKey,
 			Role:      role,
+		}),
+	}
+}
+
+type CredsVettedPayload struct {
+	ClientKey models.Key
+	PriKey    models.Key
+}
+
+type CredsVettedEvent struct{ Event }
+
+func NewCredsVettedEvent(clientKey models.Key, priKey models.Key) *CredsVettedEvent {
+	return &CredsVettedEvent{
+		Event: *NewEvent(CREDS_VETTED, &CredsVettedPayload{
+			ClientKey: clientKey,
+			PriKey:    priKey,
 		}),
 	}
 }

@@ -108,11 +108,11 @@ func connectClient(msgQueue *MsgQueue, clientName string, shouldRequestAuth bool
 	go func() {
 		for {
 			_, msgBytes, readErr := clientConn.ReadMessage()
+			if readErr != nil {
+				return
+			}
 			if PRINT_INBOUND_MSGS {
 				fmt.Printf("[client %s] << %s\n", clientName, string(msgBytes))
-			}
-			if readErr != nil {
-				panic(readErr)
 			}
 
 			msg, unmarshalErr := models.UnmarshalToMessage(msgBytes)
@@ -198,6 +198,10 @@ var _ = Describe("auth", func() {
 				authMsgContent := msg.Content.(*models.AuthMessageContent)
 				pubKey = authMsgContent.PublicKey
 				priKey = authMsgContent.PrivateKey
+				msgQueue.flush()
+				Expect(conn.Close()).ToNot(HaveOccurred())
+
+				conn = connectClient(msgQueue, "A", false)
 			})
 			When("the auth is valid", func() {
 				When("the auth is fresh", func() {
