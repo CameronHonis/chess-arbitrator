@@ -155,7 +155,7 @@ func listenForMsgType(msgQueue *MsgQueue, contentType models.ContentType) *model
 	panic(fmt.Sprintf("timed out waiting for msg of type %s", contentType))
 }
 
-var _ = Describe("before authentication", func() {
+var _ = Describe("auth", func() {
 	var prevAuthKeyMinsToStale string
 	var conn *websocket.Conn
 	var msgQueue *MsgQueue
@@ -277,66 +277,74 @@ var _ = Describe("before authentication", func() {
 	})
 })
 
-var _ = Describe("after authentication", func() {
+var _ = Describe("auth upgrade", func() {
 	var conn *websocket.Conn
 	var msgQueue *MsgQueue
 	BeforeEach(func() {
 		msgQueue = newMsgQueue()
 		conn = connectClient(msgQueue, "A", true)
 	})
-	Describe("receives basic auth upon connection", func() {
-		It("responds with an Auth Msg", func() {
-			Eventually(func() []*models.Message {
-				msgs := msgQueue.toSlice()
-				return msgs
-			}).Should(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
-				"ContentType": Equal(models.CONTENT_TYPE_AUTH),
-				"Content": PointTo(MatchFields(IgnoreExtras, Fields{
-					"PublicKey":  Not(BeZero()),
-					"PrivateKey": Not(BeZero()),
-				})),
-			}))))
-			msgQueue.flush()
-		})
-	})
-
 	Describe("request auth upgrade", func() {
-		var pubKey models.Key
-		var privKey models.Key
-		var prevBotClientSecret string
-		BeforeEach(func() {
-			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
-			msgQueue.flush()
+		When("the request includes valid auth keys", func() {
+			var pubKey models.Key
+			var privKey models.Key
+			var prevBotClientSecret string
+			BeforeEach(func() {
+				authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+				msgQueue.flush()
 
-			pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
-			privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
-			secret := "secret"
-			prevBotClientSecret = os.Getenv(string(models.SECRET_BOT_CLIENT_SECRET))
-			Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
+				pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
+				privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
+				secret := "secret"
+				prevBotClientSecret = os.Getenv(string(models.SECRET_BOT_CLIENT_SECRET))
+				Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
 
-			sendMsg("A", conn, pubKey, privKey, &models.Message{
-				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
-				Content: &models.UpgradeAuthRequestMessageContent{
-					Role:   models.BOT,
-					Secret: secret,
-				},
+				sendMsg("A", conn, pubKey, privKey, &models.Message{
+					ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
+					Content: &models.UpgradeAuthRequestMessageContent{
+						Role:   models.BOT,
+						Secret: secret,
+					},
+				})
+
 			})
+			AfterEach(func() {
+				Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), prevBotClientSecret)).ToNot(HaveOccurred())
+			})
+			It("responds with an Upgrade Auth Msg", func() {
+				authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED)
+				Expect(authMsg).To(PointTo(HaveField(
+					"Content", PointTo(MatchAllFields(Fields{
+						"UpgradedToRole": BeEquivalentTo(models.BOT),
+					})),
+				)))
+			})
+		})
+		When("the request doesn't include auth keys", func() {
+			It("responds with an invalid auth msg", func() {
+				sendMsg("A", conn, "", "", &models.Message{
+					ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
+					Content: &models.UpgradeAuthRequestMessageContent{
+						Role:   models.BOT,
+						Secret: "secret",
+					},
+				})
 
-		})
-		AfterEach(func() {
-			Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), prevBotClientSecret)).ToNot(HaveOccurred())
-		})
-		It("responds with an Upgrade Auth Msg", func() {
-			authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_UPGRADE_AUTH_GRANTED)
-			Expect(authMsg).To(PointTo(HaveField(
-				"Content", PointTo(MatchAllFields(Fields{
-					"UpgradedToRole": BeEquivalentTo(models.BOT),
-				})),
-			)))
+				listenForMsgType(msgQueue, models.CONTENT_TYPE_INVALID_AUTH)
+			})
 		})
 	})
 
-	Describe("send challenge", func() {
+})
+
+var _ = Describe("challenges", func() {
+	var conn *websocket.Conn
+	var msgQueue *MsgQueue
+	BeforeEach(func() {
+		msgQueue = newMsgQueue()
+		conn = connectClient(msgQueue, "A", true)
+	})
+	When("client A sends client B a challenge request", func() {
 		var clientAPubKey models.Key
 		var clientAPrivKey models.Key
 		var clientBConn *websocket.Conn
@@ -521,7 +529,7 @@ var _ = Describe("after authentication", func() {
 		})
 	})
 
-	When("two clients are in a match", func() {
+	When("clients A & B are in a match", func() {
 		var pubKeyA models.Key
 		var privKeyA models.Key
 		var msgQueueB *MsgQueue
@@ -677,20 +685,6 @@ var _ = Describe("after authentication", func() {
 					)),
 				)))
 			})
-		})
-	})
-
-	When("the request doesn't include auth keys", func() {
-		It("responds with an invalid auth msg", func() {
-			sendMsg("A", conn, "", "", &models.Message{
-				ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
-				Content: &models.UpgradeAuthRequestMessageContent{
-					Role:   models.BOT,
-					Secret: "secret",
-				},
-			})
-
-			listenForMsgType(msgQueue, models.CONTENT_TYPE_INVALID_AUTH)
 		})
 	})
 })
