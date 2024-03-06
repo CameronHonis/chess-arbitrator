@@ -31,6 +31,7 @@ type Match struct {
 	BlackTimeRemainingSec float64      `json:"blackTimeRemainingSec"`
 	TimeControl           *TimeControl `json:"timeControl"`
 	BotName               string       `json:"botName"`
+	LastMove              *chess.Move  `json:"lastMove"`
 	LastMoveTime          *time.Time   `json:"-"`
 	Result                MatchResult  `json:"result"`
 }

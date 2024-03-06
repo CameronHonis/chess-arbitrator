@@ -493,6 +493,7 @@ var _ = Describe("challenges", func() {
 							"TimeControl":           Equal(challengeAtoB.TimeControl),
 							"BotName":               Equal(""),
 							"LastMoveTime":          Ignore(),
+							"LastMove":              BeNil(),
 							"Result":                Equal(models.MATCH_RESULT_IN_PROGRESS),
 						})),
 					)),

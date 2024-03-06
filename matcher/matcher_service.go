@@ -159,6 +159,7 @@ func (m *MatcherService) ExecuteMove(matchId string, move *chess.Move) error {
 	}
 	newBoard := chess.GetBoardFromMove(match.Board, move)
 	matchBuilder.WithBoard(newBoard)
+	matchBuilder.WithLastMove(move)
 	newMatch := matchBuilder.Build()
 
 	setMatchErr := m.SetMatch(newMatch)

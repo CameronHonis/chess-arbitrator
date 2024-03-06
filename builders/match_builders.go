@@ -100,6 +100,11 @@ func (mb *MatchBuilder) WithTimeControl(timeControl *models.TimeControl) *MatchB
 	return mb
 }
 
+func (mb *MatchBuilder) WithLastMove(move *chess.Move) *MatchBuilder {
+	mb.match.LastMove = move
+	return mb
+}
+
 func (mb *MatchBuilder) WithLastMoveTime(lastMoveTime *time.Time) *MatchBuilder {
 	mb.match.LastMoveTime = lastMoveTime
 	return mb

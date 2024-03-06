@@ -403,6 +403,11 @@ var _ = Describe("MatcherService", func() {
 				newMatch, _ := matcherService.MatchById(match.Uuid)
 				Expect(newMatch.Board).To(Equal(expBoard))
 			})
+			It("updates the last move", func() {
+				Expect(matcherService.ExecuteMove(match.Uuid, &move)).ToNot(HaveOccurred())
+				newMatch, _ := matcherService.MatchById(match.Uuid)
+				Expect(newMatch.LastMove).To(Equal(&move))
+			})
 		})
 	})
 	Describe("RevokeChallenge", func() {
