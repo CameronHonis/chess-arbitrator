@@ -107,7 +107,6 @@ func (am *AuthenticationService) SwitchRole(clientKey models.Key, roleName model
 	newCreds := builders.NewAuthCredsBuilder().FromAuthCreds(*creds).WithRole(roleName).Build()
 	am.setCreds(newCreds)
 
-	go am.Dispatch(NewRoleSwitchedEvent(clientKey, roleName))
 	return nil
 }
 
