@@ -203,7 +203,7 @@ func (am *AuthenticationService) setCreds(creds *models.AuthCreds) {
 	}
 
 	am.authCredsByClient[creds.ClientKey] = creds
-	go am.Dispatch(NewCredsChangedEvent(creds))
+	go am.Dispatch(NewCredsChangedEvent(prevCreds, creds))
 }
 
 func (am *AuthenticationService) removeCreds(clientKey models.Key) *models.AuthCreds {

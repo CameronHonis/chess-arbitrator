@@ -28,14 +28,16 @@ func NewRoleSwitchedEvent(clientKey models.Key, role models.RoleName) *RoleSwitc
 }
 
 type CredsChangedPayload struct {
+	OldCreds *models.AuthCreds
 	NewCreds *models.AuthCreds
 }
 
 type CredsChangedEvent struct{ Event }
 
-func NewCredsChangedEvent(newCreds *models.AuthCreds) *CredsChangedEvent {
+func NewCredsChangedEvent(oldCreds *models.AuthCreds, newCreds *models.AuthCreds) *CredsChangedEvent {
 	return &CredsChangedEvent{
 		Event: *NewEvent(CREDS_CHANGED, &CredsChangedPayload{
+			OldCreds: oldCreds,
 			NewCreds: newCreds,
 		}),
 	}

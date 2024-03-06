@@ -21,23 +21,27 @@ func HandleRefreshAuthMessage(c *ClientsManager, msg *models.Message, conn *webs
 		return "", fmt.Errorf("invalid message content %s, expected REFRESH_AUTH_MESSAGE_CONTENT", msg)
 	}
 	existingAuth := refreshAuthMsg.ExistingAuth
+
+	var clientKey models.Key
 	if existingAuth != nil {
 		if refreshErr := c.AuthService.RefreshPrivateKey(existingAuth.PublicKey, existingAuth.PrivateKey); refreshErr == nil {
 			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("validated creds for %s from previous session", existingAuth.PublicKey))
-			return existingAuth.PublicKey, nil
+			clientKey = existingAuth.PublicKey
 		} else {
 			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("could not validate creds for %s from previous session: %s", existingAuth.PublicKey, refreshErr))
 		}
 	}
 	// client is new or had invalid priKey - assign new, ephemeral guest account
-	creds := c.AuthService.CreateNewClient()
-
-	registerErr := c.registerConn(creds.ClientKey, conn)
-	if registerErr != nil {
-		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", creds.ClientKey))
+	if clientKey == "" {
+		clientKey = c.AuthService.CreateNewClient().ClientKey
 	}
 
-	return creds.ClientKey, nil
+	registerErr := c.registerConn(clientKey, conn)
+	if registerErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", clientKey))
+	}
+
+	return clientKey, nil
 }
 
 func HandleJoinMatchmakingMessage(m *ClientsManager, msg *models.Message) error {

@@ -13,10 +13,16 @@ var OnCredsChanged = func(self ServiceI, event EventI) bool {
 	baseErrMsg := "could not follow up with creds changed: "
 	payload := event.Payload().(*auth.CredsChangedPayload)
 
-	sendDeps := NewSendDirectDeps(c.DirectMessage, payload.NewCreds.ClientKey)
-	sendErr := SendAuth(sendDeps, payload.NewCreds.PrivateKey)
-	if sendErr != nil {
-		c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+	var keyChanged = payload.OldCreds == nil ||
+		payload.OldCreds.ClientKey != payload.NewCreds.ClientKey ||
+		payload.OldCreds.PrivateKey != payload.NewCreds.PrivateKey
+
+	if keyChanged {
+		sendDeps := NewSendDirectDeps(c.DirectMessage, payload.NewCreds.ClientKey)
+		sendErr := SendAuth(sendDeps, payload.NewCreds.PrivateKey)
+		if sendErr != nil {
+			c.Logger.LogRed(models.ENV_CLIENT_MNGR, baseErrMsg, sendErr.Error())
+		}
 	}
 
 	return true

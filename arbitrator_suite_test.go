@@ -203,7 +203,6 @@ var _ = Describe("before authentication", func() {
 				When("the auth is fresh", func() {
 					BeforeEach(func() {
 						msgQueue.flush()
-						fmt.Println("FLUSH")
 						refreshAuthMsg := &models.Message{
 							ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
 							Content: &models.RefreshAuthMessageContent{
