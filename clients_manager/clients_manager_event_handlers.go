@@ -84,7 +84,7 @@ var OnChallengeCreated = func(self ServiceI, event EventI) bool {
 	}
 
 	sendTopicDeps := NewSendTopicDeps(c.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, challenge)
+	SendChallengeUpdateToAll(sendTopicDeps, challenge)
 	return true
 }
 
@@ -94,7 +94,7 @@ var OnChallengeRevoked = func(self ServiceI, event EventI) bool {
 	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
+	SendChallengeUpdateToAll(sendTopicDeps, inactiveChallenge)
 
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -108,7 +108,7 @@ var OnChallengeDenied = func(self ServiceI, event EventI) bool {
 	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
+	SendChallengeUpdateToAll(sendTopicDeps, inactiveChallenge)
 
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	_ = clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -123,7 +123,7 @@ var OnChallengeAccepted = func(s ServiceI, event EventI) bool {
 	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
+	SendChallengeUpdateToAll(sendTopicDeps, inactiveChallenge)
 
 	challengerSubErr := clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -149,7 +149,7 @@ var OnChallengeAcceptFailed = func(s ServiceI, event EventI) bool {
 	inactiveChallenge := builders.NewChallengeBuilder().FromChallenge(challenge).WithIsActive(false).Build()
 
 	sendTopicDeps := NewSendTopicDeps(clientManager.BroadcastMessage, challenge.Topic())
-	SendChallengeUpdate(sendTopicDeps, inactiveChallenge)
+	SendChallengeUpdateToAll(sendTopicDeps, inactiveChallenge)
 
 	challengerSubErr := clientManager.SubService.UnsubClient(challenge.ChallengerKey, challenge.Topic())
 	challengedSubErr := clientManager.SubService.UnsubClient(challenge.ChallengedKey, challenge.Topic())
@@ -180,7 +180,7 @@ var OnMatchCreated = func(self ServiceI, event EventI) bool {
 	}
 
 	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
-	SendMatchUpdate(deps, match)
+	SendMatchUpdateToAll(deps, match)
 
 	return true
 }
@@ -203,7 +203,7 @@ var OnMatchUpdated = func(self ServiceI, event EventI) bool {
 	match := event.Payload().(*matcher.MatchUpdatedEventPayload).Match
 
 	deps := NewSendTopicDeps(clientsManager.BroadcastMessage, match.Topic())
-	SendMatchUpdate(deps, match)
+	SendMatchUpdateToAll(deps, match)
 
 	return true
 }

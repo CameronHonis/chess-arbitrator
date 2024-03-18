@@ -64,12 +64,30 @@ func SendMatchCreationFailed(deps *SendDirectDeps, reason string, whiteClientKey
 	}, deps.clientKey)
 }
 
+func SendMatchUpdate(deps *SendDirectDeps, match *models.Match) error {
+	return deps.writer(&models.Message{
+		ContentType: models.CONTENT_TYPE_MATCH_UPDATED,
+		Content: &models.MatchUpdateMessageContent{
+			Match: match,
+		},
+	}, deps.clientKey)
+}
+
 func SendMoveFailed(deps *SendDirectDeps, move *chess.Move, reason string) error {
 	return deps.writer(&models.Message{
 		ContentType: models.CONTENT_TYPE_MOVE_FAILED,
 		Content: &models.MoveFailedMessageContent{
 			Move:   move,
 			Reason: reason,
+		},
+	}, deps.clientKey)
+}
+
+func SendChallengeUpdate(deps *SendDirectDeps, challenge *models.Challenge) error {
+	return deps.writer(&models.Message{
+		ContentType: models.CONTENT_TYPE_CHALLENGE_UPDATED,
+		Content: &models.ChallengeUpdatedMessageContent{
+			Challenge: challenge,
 		},
 	}, deps.clientKey)
 }
@@ -85,7 +103,7 @@ func NewSendTopicDeps(writer BroadcastMessageFn, topic models.MessageTopic) *Sen
 	return &SendTopicDeps{writer, topic}
 }
 
-func SendChallengeUpdate(deps *SendTopicDeps, challenge *models.Challenge) {
+func SendChallengeUpdateToAll(deps *SendTopicDeps, challenge *models.Challenge) {
 	deps.writer(&models.Message{
 		Topic:       deps.topic,
 		ContentType: models.CONTENT_TYPE_CHALLENGE_UPDATED,
@@ -95,7 +113,7 @@ func SendChallengeUpdate(deps *SendTopicDeps, challenge *models.Challenge) {
 	})
 }
 
-func SendMatchUpdate(deps *SendTopicDeps, match *models.Match) {
+func SendMatchUpdateToAll(deps *SendTopicDeps, match *models.Match) {
 	deps.writer(&models.Message{
 		Topic:       deps.topic,
 		ContentType: models.CONTENT_TYPE_MATCH_UPDATED,

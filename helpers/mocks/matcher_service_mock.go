@@ -96,6 +96,20 @@ func (mr *MockMatcherServiceIMockRecorder) AddMatch(match any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMatch", reflect.TypeOf((*MockMatcherServiceI)(nil).AddMatch), match)
 }
 
+// AllChallenges mocks base method.
+func (m *MockMatcherServiceI) AllChallenges(clientKey models.Key) *set.Set[*models.Challenge] {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllChallenges", clientKey)
+	ret0, _ := ret[0].(*set.Set[*models.Challenge])
+	return ret0
+}
+
+// AllChallenges indicates an expected call of AllChallenges.
+func (mr *MockMatcherServiceIMockRecorder) AllChallenges(clientKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllChallenges", reflect.TypeOf((*MockMatcherServiceI)(nil).AllChallenges), clientKey)
+}
+
 // Build mocks base method.
 func (m *MockMatcherServiceI) Build() {
 	m.ctrl.T.Helper()

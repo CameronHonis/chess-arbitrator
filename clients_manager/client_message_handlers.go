@@ -31,7 +31,6 @@ func HandleRefreshAuthMessage(c *ClientsManager, msg *models.Message, conn *webs
 			c.Logger.Log(models.ENV_SERVER, fmt.Sprintf("could not validate creds for %s from previous session: %s", existingAuth.PublicKey, refreshErr))
 		}
 	}
-	// client is new or had invalid priKey - assign new, ephemeral guest account
 	if clientKey == "" {
 		clientKey = c.AuthService.CreateNewClient().ClientKey
 	}
@@ -39,6 +38,28 @@ func HandleRefreshAuthMessage(c *ClientsManager, msg *models.Message, conn *webs
 	registerErr := c.registerConn(clientKey, conn)
 	if registerErr != nil {
 		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not register WS conn to key %s", clientKey))
+	}
+
+	match, matchErr := c.MatcherService.MatchByClientKey(clientKey)
+	if matchErr == nil {
+		sendDeps := NewSendDirectDeps(c.DirectMessage, clientKey)
+		sendErr := SendMatchUpdate(sendDeps, match)
+		if sendErr != nil {
+			c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not send match update to %s: %s", clientKey, sendErr))
+		}
+	}
+
+	challenges := c.MatcherService.AllChallenges(clientKey)
+	var sendChallengesErr error
+	for _, challenge := range challenges.Flatten() {
+		sendDeps := NewSendDirectDeps(c.DirectMessage, clientKey)
+		sendErr := SendChallengeUpdate(sendDeps, challenge)
+		if sendErr != nil {
+			sendChallengesErr = sendErr
+		}
+	}
+	if sendChallengesErr != nil {
+		c.Logger.LogRed(models.ENV_SERVER, fmt.Sprintf("could not send challenges to %s: %s", clientKey, sendChallengesErr))
 	}
 
 	return clientKey, nil

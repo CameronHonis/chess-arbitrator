@@ -22,6 +22,7 @@ type MatcherServiceI interface {
 	MatchByClientKey(clientKey models.Key) (*models.Match, error)
 	InboundChallenges(challengedKey models.Key) (*set.Set[*models.Challenge], error)
 	OutboundChallenges(challengerKey models.Key) (*set.Set[*models.Challenge], error)
+	AllChallenges(clientKey models.Key) *set.Set[*models.Challenge]
 	GetChallenge(challengerKey, receivingClientKey models.Key) (*models.Challenge, error)
 
 	ExecuteMove(matchId string, move *chess.Move) error
@@ -106,6 +107,18 @@ func (m *MatcherService) OutboundChallenges(challengerKey models.Key) (*set.Set[
 		m.outboundsByClientKey[challengerKey] = challenges
 	}
 	return challenges, nil
+}
+
+func (m *MatcherService) AllChallenges(clientKey models.Key) *set.Set[*models.Challenge] {
+	outbounds, _ := m.OutboundChallenges(clientKey)
+	inbounds, _ := m.InboundChallenges(clientKey)
+	if outbounds == nil {
+		outbounds = set.EmptySet[*models.Challenge]()
+	}
+	if inbounds == nil {
+		inbounds = set.EmptySet[*models.Challenge]()
+	}
+	return outbounds.Union(inbounds)
 }
 
 func (m *MatcherService) GetChallenge(challengerKey models.Key, receiverKey models.Key) (*models.Challenge, error) {

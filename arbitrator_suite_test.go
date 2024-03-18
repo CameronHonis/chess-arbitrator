@@ -278,6 +278,72 @@ var _ = Describe("auth", func() {
 				})
 			})
 		})
+		When("the client is currently in a match", func() {
+			var pubKey models.Key
+			var priKey models.Key
+			BeforeEach(func() {
+				refreshAuthMsg := &models.Message{
+					ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+					Content: &models.RefreshAuthMessageContent{
+						ExistingAuth: nil,
+					},
+				}
+				sendMsg("A", conn, "", "", refreshAuthMsg)
+				authMsg := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH)
+				authMsgContent := authMsg.Content.(*models.AuthMessageContent)
+				pubKey = authMsgContent.PublicKey
+				priKey = authMsgContent.PrivateKey
+
+				msgQueueB := newMsgQueue()
+				connB := connectClient(msgQueueB, "B", true)
+				authBMsg := listenForMsgType(msgQueueB, models.CONTENT_TYPE_AUTH)
+				authMsgContent = authBMsg.Content.(*models.AuthMessageContent)
+				pubKeyB := authMsgContent.PublicKey
+				priKeyB := authMsgContent.PrivateKey
+				msgQueueB.flush()
+
+				sendMsg("A", conn, pubKey, priKey, &models.Message{
+					ContentType: models.CONTENT_TYPE_CHALLENGE_REQUEST,
+					Content: &models.ChallengeRequestMessageContent{
+						Challenge: builders.NewChallenge(pubKey, pubKeyB, true, false, builders.NewBlitzTimeControl(), "", true),
+					},
+				})
+
+				_ = listenForMsgType(msgQueueB, models.CONTENT_TYPE_CHALLENGE_UPDATED)
+
+				msgQueue.flush()
+				msgQueueB.flush()
+				sendMsg("B", connB, pubKeyB, priKeyB, &models.Message{
+					ContentType: models.CONTENT_TYPE_ACCEPT_CHALLENGE,
+					Content: &models.AcceptChallengeMessageContent{
+						ChallengerClientKey: pubKey,
+					},
+				})
+
+				_ = listenForMsgType(msgQueue, models.CONTENT_TYPE_MATCH_UPDATED)
+				_ = listenForMsgType(msgQueueB, models.CONTENT_TYPE_MATCH_UPDATED)
+				msgQueue.flush()
+				msgQueueB.flush()
+
+				Expect(conn.Close()).ToNot(HaveOccurred())
+
+				conn = connectClient(msgQueue, "A", false)
+			})
+			It("responds with the match update", func() {
+				refreshAuthMsg := &models.Message{
+					ContentType: models.CONTENT_TYPE_REFRESH_AUTH,
+					Content: &models.RefreshAuthMessageContent{
+						ExistingAuth: &models.AuthMessageContent{
+							PublicKey:  pubKey,
+							PrivateKey: priKey,
+						},
+					},
+				}
+				sendMsg("A", conn, pubKey, priKey, refreshAuthMsg)
+
+				listenForMsgType(msgQueue, models.CONTENT_TYPE_MATCH_UPDATED)
+			})
+		})
 	})
 })
 
