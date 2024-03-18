@@ -109,6 +109,11 @@ func (c *ClientsManager) registerConn(pubKey models.Key, conn *websocket.Conn) e
 }
 
 func (c *ClientsManager) deregisterConn(pubKey models.Key) error {
+	role, _ := c.AuthService.GetRole(pubKey)
+	if role == models.BOT {
+		c.AuthService.RemoveClient(pubKey)
+	}
+
 	if _, err := c.getConnByKey(pubKey); err != nil {
 		return err
 	}

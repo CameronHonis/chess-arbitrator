@@ -216,6 +216,7 @@ func (am *AuthenticationService) removeCreds(clientKey models.Key) *models.AuthC
 		return nil
 	}
 	delete(am.authCredsByClient, clientKey)
+	am.clientKeysByRole[creds.Role].Remove(clientKey)
 	go am.Dispatch(NewCredsRemovedEvent(clientKey))
 	return creds
 }
