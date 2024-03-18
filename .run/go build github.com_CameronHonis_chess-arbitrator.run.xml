@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="go build github.com/CameronHonis/chess-arbitrator" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+    <module name="arbitrator" />
+    <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="AUTH_KEY_MINS_TO_STALE" value="10080" />
+      <env name="BOT_CLIENT_SECRET" value="207fh27ghas71shd68nb12slqpdd3sw" />
+      <env name="ENV" value="prod" />
+      <env name="LISTEN_PORT" value="8080" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/CameronHonis/chess-arbitrator" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

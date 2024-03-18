@@ -1,6 +1,7 @@
 package router_service
 
 import (
+	"context"
 	"github.com/CameronHonis/chess-arbitrator/clients_manager"
 	"github.com/CameronHonis/chess-arbitrator/models"
 	"github.com/CameronHonis/log"
@@ -24,6 +25,7 @@ type RouterService struct {
 	Logger           log.LoggerServiceI
 
 	__state__ marker.Marker
+	server    *http.Server
 }
 
 func NewRouterService(config *RouterServiceConfig) *RouterService {
@@ -36,11 +38,17 @@ func (rs *RouterService) OnStart() {
 	go rs.StartWSServer()
 }
 
+func (rs *RouterService) OnStop() {
+	if err := rs.server.Shutdown(context.Background()); err != nil {
+		rs.Logger.LogRed(models.ENV_SERVER, "could not stop server:", err)
+	}
+}
+
 func (rs *RouterService) StartWSServer() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, connErr := upgradeToWSCon(w, r)
 		if connErr != nil {
-			rs.Logger.LogRed(models.ENV_SERVER, "error upgrading to ws conn:", connErr.Error())
+			rs.Logger.LogRed(models.ENV_SERVER, "error upgrading to ws conn:", connErr)
 			return
 		}
 		rs.ClientsManager.AddConn(conn)
@@ -49,10 +57,12 @@ func (rs *RouterService) StartWSServer() {
 	config := rs.Config().(*RouterServiceConfig)
 	port := config.Port
 	addr := fmt.Sprintf(":%d", port)
-	rs.Logger.Log(models.ENV_SERVER, "server spinning up on port ", port)
-	err := http.ListenAndServe(addr, nil)
+
+	rs.Logger.Log(models.ENV_SERVER, "server spinning up on port", port)
+	rs.server = &http.Server{Addr: addr}
+	err := rs.server.ListenAndServe()
 	if err != nil {
-		rs.Logger.LogRed(models.ENV_SERVER, "could not spin up server:", err.Error())
+		rs.Logger.LogRed(models.ENV_SERVER, "could not spin up server:", err)
 		return
 	}
 }

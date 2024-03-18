@@ -80,13 +80,6 @@ func (m *MsgQueue) toSlice() []*models.Message {
 	return m.dump[m.ptr:]
 }
 
-var appService app.AppServiceI
-
-var _ = BeforeSuite(func() {
-	appService = app.BuildServices(app.GetMutedLoggerConfig())
-	appService.Start()
-})
-
 func connectClient(msgQueue *MsgQueue, clientName string, shouldRequestAuth bool) *websocket.Conn {
 	var clientConn *websocket.Conn
 	for i := 0; i < 10; i++ {
@@ -155,19 +148,25 @@ func listenForMsgType(msgQueue *MsgQueue, contentType models.ContentType) *model
 	panic(fmt.Sprintf("timed out waiting for msg of type %s", contentType))
 }
 
+var botClientSecret string
+var prevBotClientSecret string
+var appService app.AppServiceI
+var _ = BeforeSuite(func() {
+	appService = app.BuildServices(app.GetMutedLoggerConfig())
+	appService.Start()
+
+	botClientSecret = "bot_client_secret"
+	prevBotClientSecret = os.Getenv(string(models.SECRET_BOT_CLIENT_SECRET))
+	Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), botClientSecret)).To(Succeed())
+})
+
+var _ = AfterSuite(func() {
+	appService.Stop()
+
+	_ = os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), prevBotClientSecret)
+})
+
 var _ = Describe("integration tests", func() {
-
-	var botClientSecret string
-	var prevBotClientSecret string
-	BeforeEach(func() {
-		botClientSecret = "bot_client_secret"
-		prevBotClientSecret = os.Getenv(string(models.SECRET_BOT_CLIENT_SECRET))
-		Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), botClientSecret)).To(Succeed())
-	})
-	AfterEach(func() {
-		_ = os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), prevBotClientSecret)
-	})
-
 	Describe("auth", func() {
 		var prevAuthKeyMinsToStale string
 		var conn *websocket.Conn
@@ -377,14 +376,12 @@ var _ = Describe("integration tests", func() {
 
 					pubKey = authMsg.Content.(*models.AuthMessageContent).PublicKey
 					privKey = authMsg.Content.(*models.AuthMessageContent).PrivateKey
-					secret := "secret"
-					Expect(os.Setenv(string(models.SECRET_BOT_CLIENT_SECRET), secret)).ToNot(HaveOccurred())
 
 					sendMsg("A", conn, pubKey, privKey, &models.Message{
 						ContentType: models.CONTENT_TYPE_UPGRADE_AUTH_REQUEST,
 						Content: &models.UpgradeAuthRequestMessageContent{
 							Role:   models.BOT,
-							Secret: secret,
+							Secret: botClientSecret,
 						},
 					})
 
@@ -396,6 +393,9 @@ var _ = Describe("integration tests", func() {
 							"UpgradedToRole": BeEquivalentTo(models.BOT),
 						})),
 					)))
+				})
+				AfterEach(func() {
+					_ = conn.Close()
 				})
 			})
 			When("the request doesn't include auth keys", func() {
@@ -770,7 +770,7 @@ var _ = Describe("integration tests", func() {
 
 	// test "journeys" below
 	Describe("journeys", func() {
-		FIt("allows a bot to join and rejoin", func() {
+		It("allows a bot to join and rejoin", func() {
 			msgQueue := newMsgQueue()
 			conn := connectClient(msgQueue, "A", true)
 			authMsgContent := listenForMsgType(msgQueue, models.CONTENT_TYPE_AUTH).Content.(*models.AuthMessageContent)

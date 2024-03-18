@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="./... in arbitrator" type="GoTestRunConfiguration" factoryName="Go Test" nameIsGenerated="true">
+    <module name="arbitrator" />
+    <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="ENV" value="test" />
+    </envs>
+    <kind value="DIRECTORY" />
+    <package value="github.com/CameronHonis/chess-arbitrator" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <pattern value="./..." />
+    <method v="2" />
+  </configuration>
+</component>
